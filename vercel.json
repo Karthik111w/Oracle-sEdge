@@ -1,12 +1,13 @@
 {
-  "rewrites": [
-    {
-      "source": "/_/backend/:path*",
-      "destination": "/backend/:path*"
-    },
-    {
-      "source": "/:path*",
-      "destination": "/frontend/:path*"
+    "experimentalServices": {
+        "frontend": {
+            "root": "frontend",
+            "routePrefix": "/",
+            "framework": "vite"
+        },
+        "backend": {
+            "root": "backend",
+            "routePrefix": "/_/backend"
+        }
     }
-  ]
 }
