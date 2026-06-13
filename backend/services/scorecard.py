@@ -274,56 +274,56 @@ def calculate_scorecard(stock_data: dict) -> dict:
 
     metrics = []
 
-    # 1. Revenue Growth — 5yr CAGR
+    # 1. Revenue Growth — 5yr CAGR (2 pts)
     rev_first, rev_last, rev_years = _first_last_valid(revenue)
     rev_cagr = _cagr(rev_first, rev_last, rev_years) if rev_years > 0 else None
-    rev_score = _score_growth(rev_cagr)
+    rev_score = _score_growth(rev_cagr) * (2.0 / 12.5)
     metrics.append({
         "name": "Revenue Growth",
         "score": rev_score,
-        "max": 12.5,
+        "max": 2.0,
         "value": f"{rev_cagr * 100:.1f}%" if rev_cagr is not None else "N/A",
         "details": f"{rev_years}yr CAGR" if rev_years > 0 else "Insufficient data",
     })
 
-    # 2. FCF Growth — 5yr CAGR
+    # 2. FCF Growth — 5yr CAGR (15 pts)
     fcf_first, fcf_last, fcf_years = _first_last_valid(free_cash_flow)
     fcf_cagr = _cagr(fcf_first, fcf_last, fcf_years) if fcf_years > 0 else None
-    fcf_score = _score_growth(fcf_cagr)
+    fcf_score = _score_growth(fcf_cagr) * (15.0 / 12.5)
     metrics.append({
         "name": "FCF Growth",
         "score": fcf_score,
-        "max": 12.5,
+        "max": 15.0,
         "value": f"{fcf_cagr * 100:.1f}%" if fcf_cagr is not None else "N/A",
         "details": f"{fcf_years}yr CAGR" if fcf_years > 0 else "Insufficient data",
     })
 
-    # 3. Profit Margin — Latest net margin
+    # 3. Profit Margin — Latest net margin (15 pts)
     latest_revenue = revenue[-1] if revenue else None
     latest_net_income = net_income[-1] if net_income else None
     net_margin = _safe_div(latest_net_income, latest_revenue)
-    margin_score = _score_margin(net_margin)
+    margin_score = _score_margin(net_margin) * (15.0 / 12.5)
     metrics.append({
         "name": "Profit Margin",
         "score": margin_score,
-        "max": 12.5,
+        "max": 15.0,
         "value": f"{net_margin * 100:.1f}%" if net_margin is not None else "N/A",
         "details": "Net Income / Revenue (latest year)",
     })
 
-    # 4. ROE — Latest net_income / stockholders_equity
+    # 4. ROE — Latest net_income / stockholders_equity (12 pts)
     latest_equity = equity[-1] if equity else None
     roe = _safe_div(latest_net_income, latest_equity)
-    roe_score = _score_roe(roe)
+    roe_score = _score_roe(roe) * (12.0 / 12.5)
     metrics.append({
         "name": "ROE",
         "score": roe_score,
-        "max": 12.5,
+        "max": 12.0,
         "value": f"{roe * 100:.1f}%" if roe is not None else "N/A",
         "details": "Net Income / Stockholders' Equity",
     })
 
-    # 5. ROIC — NOPAT / Invested Capital
+    # 5. ROIC — NOPAT / Invested Capital (18 pts)
     latest_op_income = operating_income[-1] if operating_income else None
     latest_debt = total_debt[-1] if total_debt else None
     latest_cash = cash[-1] if cash else None
@@ -334,48 +334,49 @@ def calculate_scorecard(stock_data: dict) -> dict:
     elif latest_debt is not None and latest_equity is not None:
         invested_capital = latest_debt + latest_equity
     roic = _safe_div(nopat, invested_capital)
-    roic_score = _score_roic(roic)
+    roic_score = _score_roic(roic) * (18.0 / 12.5)
     metrics.append({
         "name": "ROIC",
         "score": roic_score,
-        "max": 12.5,
+        "max": 18.0,
         "value": f"{roic * 100:.1f}%" if roic is not None else "N/A",
         "details": "NOPAT / Invested Capital",
     })
 
-    # 6. Debt-to-Equity
+    # 6. Debt-to-Equity (10 pts)
     de_ratio = _safe_div(latest_debt, latest_equity)
-    de_score = _score_de_ratio(de_ratio)
+    de_score = _score_de_ratio(de_ratio) * (10.0 / 12.5)
     metrics.append({
         "name": "Debt-to-Equity",
         "score": de_score,
-        "max": 12.5,
+        "max": 10.0,
         "value": f"{de_ratio:.2f}" if de_ratio is not None else "N/A",
         "details": "Total Debt / Stockholders' Equity",
     })
 
-    # 7. Interest Coverage — EBIT / Interest Expense
+    # 7. Interest Coverage — EBIT / Interest Expense (8 pts)
     latest_ebit = ebit[-1] if ebit else None
     latest_interest = interest_expense[-1] if interest_expense else None
     # Interest expense is often reported as negative in yFinance
     if latest_interest is not None and latest_interest < 0:
         latest_interest = abs(latest_interest)
     coverage = _safe_div(latest_ebit, latest_interest)
-    cov_score = _score_interest_coverage(coverage)
+    cov_score = _score_interest_coverage(coverage) * (8.0 / 12.5)
     metrics.append({
         "name": "Interest Coverage",
         "score": cov_score,
-        "max": 12.5,
+        "max": 8.0,
         "value": f"{coverage:.1f}x" if coverage is not None else "N/A",
         "details": "EBIT / Interest Expense",
     })
 
-    # 8. Earnings Consistency
+    # 8. Earnings Consistency (20 pts)
     consistency_score, consistency_pct = _score_consistency(net_income)
+    consistency_score = consistency_score * (20.0 / 12.5)
     metrics.append({
         "name": "Earnings Consistency",
         "score": consistency_score,
-        "max": 12.5,
+        "max": 20.0,
         "value": f"{consistency_pct * 100:.0f}%" if consistency_pct is not None else "N/A",
         "details": "% of years with YoY earnings growth",
     })
