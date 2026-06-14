@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = 'https://oracle-sedge-1.onrender.com';
 
 export async function getStockAnalysis(ticker) {
   const res = await fetch(`${BASE_URL}/api/stock/${ticker}/analysis`);
