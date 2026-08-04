@@ -73,6 +73,7 @@ def get_stock_data(ticker: str) -> Optional[dict]:
         ebit_series = safe_get(income_stmt, ["EBIT", "Ebit"])
         operating_income_series = safe_get(income_stmt, ["OperatingIncome", "Operating Income"])
         interest_expense_series = safe_get(income_stmt, ["InterestExpense", "Interest Expense"])
+        eps_series = safe_get(income_stmt, ["DilutedEPS", "Diluted EPS", "BasicEPS", "Basic EPS", "EPS"])
 
         total_debt_series = safe_get(balance_sheet, ["TotalDebt", "Total Debt"])
         equity_series = safe_get(balance_sheet, [
@@ -97,6 +98,7 @@ def get_stock_data(ticker: str) -> Optional[dict]:
         ebit = _series_to_list(ebit_series, years_count)
         operating_income = _series_to_list(operating_income_series, years_count)
         interest_expense = _series_to_list(interest_expense_series, years_count)
+        eps = _series_to_list(eps_series, years_count)
         total_debt = _series_to_list(total_debt_series, years_count)
         stockholders_equity = _series_to_list(equity_series, years_count)
         total_assets = _series_to_list(total_assets_series, years_count)
@@ -119,6 +121,7 @@ def get_stock_data(ticker: str) -> Optional[dict]:
         free_cash_flow.reverse()
         operating_cash_flow.reverse()
         capital_expenditure.reverse()
+        eps.reverse()
 
         # --- Extract scalar info ---
         current_price = _to_float(getattr(fast, "last_price", None))
@@ -165,6 +168,7 @@ def get_stock_data(ticker: str) -> Optional[dict]:
                 "ebit": ebit,
                 "operating_income": operating_income,
                 "interest_expense": interest_expense,
+                "eps": eps,
                 "total_debt": total_debt,
                 "stockholders_equity": stockholders_equity,
                 "total_assets": total_assets,

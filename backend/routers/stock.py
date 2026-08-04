@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from ..services.stock_data import get_stock_data, get_price_history
-from ..services.scorecard import calculate_scorecard, calculate_scorecard_history
+from ..services.scorecard import calculate_scorecard_by_investor, calculate_scorecard_history
 from ..services.dcf import calculate_dcf
 from ..services.margin_of_safety import calculate_margin_of_safety
 from ..services.risk_filter import check_risk_flags
@@ -10,12 +10,12 @@ from ..services.ai_report import generate_ai_report
 router = APIRouter(prefix="/api/stock", tags=["Stock"])
 
 @router.get("/{ticker}/analysis")
-def get_analysis(ticker: str):
+def get_analysis(ticker: str, investor: str = "buffett"):
     stock_data = get_stock_data(ticker)
     if not stock_data:
         raise HTTPException(status_code=404, detail="Stock not found or data unavailable")
 
-    scorecard = calculate_scorecard(stock_data)
+    scorecard = calculate_scorecard_by_investor(stock_data, investor)
     dcf = calculate_dcf(stock_data)
     
     if dcf and dcf.get("intrinsic_value") is not None and stock_data.get("current_price") is not None:
@@ -24,7 +24,7 @@ def get_analysis(ticker: str):
         margin = None
 
     risk = check_risk_flags(stock_data)
-    classification = classify_stock(scorecard["total_score"], margin["classification"] if margin else "Unknown", risk["is_avoid"])
+    classification_details = classify_stock(scorecard, margin["classification"] if margin else "Unknown", risk["is_avoid"])
     scorecard_trend = calculate_scorecard_history(stock_data)
 
     return {
@@ -34,11 +34,12 @@ def get_analysis(ticker: str):
         "dcf": dcf,
         "margin": margin,
         "risk": risk,
-        "classification": classification
+        "classification": classification_details["classification"],
+        "classification_explanation": classification_details["explanation"],
     }
 
 @router.get("/{ticker}/ai-report")
-def get_ai_report_endpoint(ticker: str, request: Request):
+def get_ai_report_endpoint(ticker: str, request: Request, investor: str = "buffett"):
     api_key = request.headers.get("X-Gemini-API-Key")
     model_name = request.headers.get("X-Gemini-Model", "gemini-2.5-flash")
     
@@ -46,7 +47,7 @@ def get_ai_report_endpoint(ticker: str, request: Request):
     if not stock_data:
         raise HTTPException(status_code=404, detail="Stock not found")
 
-    scorecard = calculate_scorecard(stock_data)
+    scorecard = calculate_scorecard_by_investor(stock_data, investor)
     dcf = calculate_dcf(stock_data)
     
     if dcf and dcf.get("intrinsic_value") is not None and stock_data.get("current_price") is not None:
@@ -55,14 +56,15 @@ def get_ai_report_endpoint(ticker: str, request: Request):
         margin = None
 
     risk = check_risk_flags(stock_data)
-    classification = classify_stock(scorecard["total_score"], margin["classification"] if margin else "Unknown", risk["is_avoid"])
+    classification_details = classify_stock(scorecard, margin["classification"] if margin else "Unknown", risk["is_avoid"])
 
     report_result = generate_ai_report(
         stock_data=stock_data,
         scorecard=scorecard,
         dcf=dcf,
         margin=margin,
-        classification=classification,
+        classification=classification_details["classification"],
+        classification_explanation=classification_details["explanation"],
         api_key=api_key,
         model_name=model_name
     )

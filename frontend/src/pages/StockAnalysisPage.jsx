@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { getStockAnalysis } from '../api/client';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ScoreCard from '../components/ScoreCard';
@@ -12,28 +12,44 @@ import ClassificationBadge from '../components/ClassificationBadge';
 import SearchBar from '../components/SearchBar';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 
+const INVESTOR_OPTIONS = [
+  { value: 'buffett', label: 'Warren Buffett', description: 'Long-term business quality, moat, and intrinsic value' },
+  { value: 'lynch', label: 'Peter Lynch', description: 'Growth at a reasonable price — find fast growers before Wall Street does' },
+  { value: 'graham', label: 'Benjamin Graham', description: 'Deep value and balance sheet safety — buy with a large margin of safety' },
+  { value: 'munger', label: 'Charlie Munger', description: 'Exceptional businesses at fair prices — quality over everything' },
+];
+
 const StockAnalysisPage = () => {
   const { ticker } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const investorParam = searchParams.get('investor') || 'buffett';
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedInvestor, setSelectedInvestor] = useState(investorParam);
+
+  const fetchData = async (investor) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getStockAnalysis(ticker, investor);
+      setData(result);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAnalyze = () => {
+    setSearchParams({ investor: selectedInvestor });
+    fetchData(selectedInvestor);
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await getStockAnalysis(ticker);
-        setData(result);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [ticker]);
+    setSelectedInvestor(investorParam);
+    fetchData(investorParam);
+  }, [ticker, investorParam]);
 
   if (loading) {
     return (
@@ -114,6 +130,40 @@ const StockAnalysisPage = () => {
         </div>
       </div>
 
+      <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'grid', gap: '1rem', gridTemplateColumns: '1fr auto', alignItems: 'end' }}>
+        <div>
+          <label htmlFor="investor-select" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Investor framework</label>
+          <select
+            id="investor-select"
+            value={selectedInvestor}
+            onChange={(event) => setSelectedInvestor(event.target.value)}
+            style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-background)' }}
+          >
+            {INVESTOR_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <p style={{ margin: '0.75rem 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
+            {INVESTOR_OPTIONS.find((option) => option.value === selectedInvestor)?.description}
+          </p>
+        </div>
+        <button
+          onClick={handleAnalyze}
+          style={{
+            background: 'var(--color-primary)',
+            color: '#000',
+            border: 'none',
+            borderRadius: '10px',
+            padding: '1rem 1.5rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            alignSelf: 'stretch',
+          }}
+        >
+          Analyze
+        </button>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         {/* Risk Section - Full Width */}
         <RiskFlags riskData={data.risk} />
@@ -133,8 +183,9 @@ const StockAnalysisPage = () => {
         </div>
 
         {/* Bottom Section: AI Report */}
-        <AIReport ticker={ticker} />
+        <AIReport ticker={ticker} investor={selectedInvestor} investorLabel={data.scorecard?.investor_label} />
       </div>
+
     </div>
   );
 };

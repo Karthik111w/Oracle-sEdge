@@ -1,7 +1,7 @@
 const BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
-export async function getStockAnalysis(ticker) {
-  const res = await fetch(`${BASE_URL}/api/stock/${ticker}/analysis`);
+export async function getStockAnalysis(ticker, investor = 'buffett') {
+  const res = await fetch(`${BASE_URL}/api/stock/${ticker}/analysis?investor=${encodeURIComponent(investor)}`);
   if (!res.ok) {
     const errBody = await res.json().catch(() => null);
     const msg = errBody?.detail || errBody?.error || res.statusText || 'Analysis failed';
@@ -10,7 +10,7 @@ export async function getStockAnalysis(ticker) {
   return res.json();
 }
 
-export async function getAIReport(ticker) {
+export async function getAIReport(ticker, investor = 'buffett') {
   const apiKey = localStorage.getItem('gemini_api_key');
   const model = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
   const headers = {};

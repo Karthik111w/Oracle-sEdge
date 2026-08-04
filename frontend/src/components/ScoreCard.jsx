@@ -37,10 +37,15 @@ const ScoreCard = ({ scorecard }) => {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Buffett Scorecard</h3>
+          <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{scorecard.investor_label || 'Buffett'} Scorecard</h3>
           {scorecard.sector_label && scorecard.sector_label !== 'Default' && (
             <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
               Weighted for {scorecard.sector_label} sector
+            </div>
+          )}
+          {scorecard.grade_explanation && (
+            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.75rem', maxWidth: '28rem' }}>
+              {scorecard.grade_explanation}
             </div>
           )}
         </div>

@@ -24,6 +24,7 @@ def generate_ai_report(
     dcf: dict,
     margin: dict,
     classification: str,
+    classification_explanation: str = None,
     api_key: str = None,
     model_name: str = "gemini-2.5-flash"
 ) -> dict:
@@ -159,7 +160,8 @@ Scorecard: {scorecard.get('total_score', 0)}/100 ({scorecard.get('grade', 'N/A')
 Key metrics: Revenue growth {rev_growth_str}%, FCF growth {fcf_growth_str}%, Net margin {net_margin_str}%, ROE {roe_str}%, ROIC {roic_str}%, Debt/Equity {de_str}, Earnings consistency {consistency_str}%
 Intrinsic value: ${safe_dcf.get('intrinsic_value', 0):.2f} | Current price: ${stock_data.get('current_price', 0):.2f} | Margin of safety: {safe_margin.get('margin_pct', 0):.1f}%
 Risk flags: {stock_data.get('risk_flags', 'N/A')}
-Classification: {classification}"""
+Classification: {classification}
+Classification rationale: {classification_explanation or 'N/A'}"""
 
     try:
         import google.generativeai as genai

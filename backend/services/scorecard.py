@@ -1,108 +1,248 @@
 from .sector_profiles import get_sector_profile
 from . import sector_profiles
 
+INVESTOR_PROFILES = {
+    "buffett": {
+        "label": "Warren Buffett",
+        "weights": {
+            "earnings_consistency": 1,
+            "roic": 1,
+            "fcf_growth": 1,
+            "profit_margin": 1,
+            "roe": 1,
+            "debt_to_equity": 1,
+            "interest_coverage": 1,
+            "revenue_growth": 1,
+        },
+    },
+    "lynch": {
+        "label": "Peter Lynch",
+        "weights": {
+            "revenue_growth": 25,
+            "earnings_consistency": 20,
+            "fcf_growth": 15,
+            "profit_margin": 15,
+            "roe": 10,
+            "roic": 8,
+            "debt_to_equity": 5,
+            "interest_coverage": 2,
+        },
+    },
+    "graham": {
+        "label": "Benjamin Graham",
+        "weights": {
+            "debt_to_equity": 25,
+            "earnings_consistency": 25,
+            "interest_coverage": 20,
+            "profit_margin": 10,
+            "roe": 8,
+            "revenue_growth": 5,
+            "roic": 5,
+            "fcf_growth": 2,
+        },
+    },
+    "munger": {
+        "label": "Charlie Munger",
+        "weights": {
+            "roic": 25,
+            "earnings_consistency": 20,
+            "profit_margin": 18,
+            "fcf_growth": 15,
+            "roe": 10,
+            "debt_to_equity": 7,
+            "interest_coverage": 4,
+            "revenue_growth": 1,
+        },
+    },
+}
+
+DEFAULT_THRESHOLDS = {
+    "earnings_consistency": [(0.65, 1.0), (0.6, 0.8), (0.4, 0.6), (0.2, 0.4)],
+    "roic": [(0.15, 1.0), (0.12, 0.8), (0.10, 0.6), (0.07, 0.4)],
+    "fcf_growth": [(0.08, 1.0), (0.05, 0.8), (0.03, 0.6), (0.01, 0.4), (0.0, 0.2)],
+    "profit_margin": [(0.20, 1.0), (0.15, 0.8), (0.10, 0.6), (0.05, 0.4)],
+    "roe": [(0.20, 1.0), (0.15, 0.8), (0.12, 0.6), (0.08, 0.4)],
+    "debt_to_equity": [(1.0, 1.0), (1.5, 0.8), (2.0, 0.6), (3.0, 0.4)],
+    "interest_coverage": [(8, 1.0), (5, 0.8), (3, 0.6), (2, 0.4)],
+    "revenue_growth": [(0.06, 1.0), (0.03, 0.8), (0.015, 0.6), (0.01, 0.4), (0.0, 0.2)],
+}
+
+INVESTOR_THRESHOLDS = {
+    "lynch": {
+        "revenue_growth": [(0.15, 1.0), (0.10, 0.8), (0.07, 0.6), (0.05, 0.4)],
+    },
+    "graham": {
+        "debt_to_equity": [(0.5, 1.0), (1.0, 0.8), (1.5, 0.6), (2.0, 0.4)],
+    },
+}
+
 
 def calculate_scorecard(stock_data: dict) -> dict:
+    return calculate_scorecard_by_investor(stock_data, "buffett")
+
+
+def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett") -> dict:
+    investor_key = (investor or "buffett").lower()
+    profile = INVESTOR_PROFILES.get(investor_key, INVESTOR_PROFILES["buffett"])
+    investor_label = profile["label"]
     sector = stock_data.get("sector", "")
-    profile = get_sector_profile(sector)
-    weights = profile["scorecard_weights"]
+    sector_profile = get_sector_profile(sector)
+    weights = _combine_investor_and_sector_weights(profile["weights"], sector_profile["scorecard_weights"])
+    thresholds = _get_thresholds_for_investor(investor_key)
 
     metrics = [
         {
             "name": "Earnings Consistency",
-            "score": _score_tiered(_earnings_consistency_pct(stock_data), weights["earnings_consistency"],
-                                     [(0.8, 1.0), (0.6, 0.8), (0.4, 0.6), (0.2, 0.4)]),
+            "metric": "earnings_consistency",
+            "value": _earnings_consistency_pct(stock_data),
+            "score": _score_tiered(_earnings_consistency_pct(stock_data), weights["earnings_consistency"], thresholds["earnings_consistency"]),
             "max": weights["earnings_consistency"],
-            "value": f"{_earnings_consistency_pct(stock_data) * 100:.0f}%",
             "details": "% of years with positive EPS growth",
+            "value_label": _format_pct(_earnings_consistency_pct(stock_data)),
         },
         {
             "name": "ROIC",
-            "score": _score_tiered(_roic(stock_data), weights["roic"],
-                                     [(0.15, 1.0), (0.12, 0.8), (0.10, 0.6), (0.07, 0.4)]),
+            "metric": "roic",
+            "value": _roic(stock_data),
+            "score": _score_tiered(_roic(stock_data), weights["roic"], thresholds["roic"]),
             "max": weights["roic"],
-            "value": f"{_roic(stock_data) * 100:.1f}%",
             "details": "NOPAT / Invested Capital",
+            "value_label": _format_pct(_roic(stock_data)),
         },
         {
             "name": "FCF Growth",
-            "score": _score_tiered(_fcf_cagr(stock_data), weights["fcf_growth"],
-                                     [(0.10, 1.0), (0.07, 0.8), (0.05, 0.6), (0.03, 0.4), (0.0, 0.2)]),
+            "metric": "fcf_growth",
+            "value": _fcf_cagr(stock_data),
+            "score": _score_tiered(_fcf_cagr(stock_data), weights["fcf_growth"], thresholds["fcf_growth"]),
             "max": weights["fcf_growth"],
-            "value": f"{_fcf_cagr(stock_data) * 100:.1f}%",
             "details": "5yr Free Cash Flow CAGR",
+            "value_label": _format_pct(_fcf_cagr(stock_data)),
         },
         {
             "name": "Profit Margin",
-            "score": _score_tiered(_net_margin(stock_data), weights["profit_margin"],
-                                     [(0.20, 1.0), (0.15, 0.8), (0.10, 0.6), (0.05, 0.4)]),
+            "metric": "profit_margin",
+            "value": _net_margin(stock_data),
+            "score": _score_tiered(_net_margin(stock_data), weights["profit_margin"], thresholds["profit_margin"]),
             "max": weights["profit_margin"],
-            "value": f"{_net_margin(stock_data) * 100:.1f}%",
             "details": "Net income / Revenue",
+            "value_label": _format_pct(_net_margin(stock_data)),
         },
         {
             "name": "ROE",
-            "score": _score_tiered(_roe(stock_data), weights["roe"],
-                                     [(0.20, 1.0), (0.15, 0.8), (0.12, 0.6), (0.08, 0.4)]),
+            "metric": "roe",
+            "value": _roe(stock_data),
+            "score": _score_tiered(_roe(stock_data), weights["roe"], thresholds["roe"]),
             "max": weights["roe"],
-            "value": f"{_roe(stock_data) * 100:.1f}%",
             "details": "Net income / Stockholders equity",
+            "value_label": _format_pct(_roe(stock_data)),
         },
         {
             "name": "Debt-to-Equity",
-            "score": _score_tiered_inverse(_debt_to_equity(stock_data), weights["debt_to_equity"],
-                                             [(0.5, 1.0), (1.0, 0.8), (1.5, 0.6), (2.0, 0.4)]),
+            "metric": "debt_to_equity",
+            "value": _debt_to_equity(stock_data),
+            "score": _score_tiered_inverse(_debt_to_equity(stock_data), weights["debt_to_equity"], thresholds["debt_to_equity"]),
             "max": weights["debt_to_equity"],
-            "value": f"{_debt_to_equity(stock_data):.2f}",
             "details": "Total debt / Stockholders equity",
+            "value_label": _format_ratio(_debt_to_equity(stock_data)),
         },
         {
             "name": "Interest Coverage",
-            "score": _score_tiered(_interest_coverage(stock_data), weights["interest_coverage"],
-                                     [(8, 1.0), (5, 0.8), (3, 0.6), (2, 0.4)]),
+            "metric": "interest_coverage",
+            "value": _interest_coverage(stock_data),
+            "score": _score_tiered(_interest_coverage(stock_data), weights["interest_coverage"], thresholds["interest_coverage"]),
             "max": weights["interest_coverage"],
-            "value": f"{_interest_coverage(stock_data):.1f}x",
             "details": "EBIT / Interest Expense",
+            "value_label": _format_multiple(_interest_coverage(stock_data)),
         },
         {
             "name": "Revenue Growth",
-            "score": _score_tiered(_revenue_cagr(stock_data), weights["revenue_growth"],
-                                     [(0.10, 1.0), (0.07, 0.8), (0.05, 0.6), (0.03, 0.4), (0.0, 0.2)]),
+            "metric": "revenue_growth",
+            "value": _revenue_cagr(stock_data),
+            "score": _score_tiered(_revenue_cagr(stock_data), weights["revenue_growth"], thresholds["revenue_growth"]),
             "max": weights["revenue_growth"],
-            "value": f"{_revenue_cagr(stock_data) * 100:.1f}%",
             "details": "5yr Revenue CAGR",
+            "value_label": _format_pct(_revenue_cagr(stock_data)),
         },
     ]
 
-    total_score = sum(m["score"] for m in metrics)
+    total_points = 0
+    available_max = 0
+    for metric in metrics:
+        if metric["score"] is not None:
+            total_points += metric["score"]
+            available_max += metric["max"]
+        else:
+            metric["score"] = None
+            metric["value_label"] = "N/A"
+
+    total_score = round(total_points * 100 / available_max, 1) if available_max else 0
+    grade = _get_grade(total_score)
 
     return {
-        "total_score": round(total_score, 1),
-        "grade": _get_grade(total_score),
+        "investor": investor_key,
+        "investor_label": investor_label,
+        "total_score": total_score,
+        "grade": grade,
+        "grade_explanation": _get_grade_explanation(grade, investor_label),
         "sector": sector,
         "sector_label": _get_sector_label(sector),
-        "metrics": metrics,
+        "metrics": [{
+            "name": metric["name"],
+            "score": metric["score"],
+            "max": metric["max"],
+            "value": metric["value_label"],
+            "details": metric["details"],
+        } for metric in metrics],
     }
 
 
-def _score_tiered(value: float, max_points: float, tiers: list) -> float:
+def _get_thresholds_for_investor(investor: str) -> dict:
+    thresholds = DEFAULT_THRESHOLDS.copy()
+    overrides = INVESTOR_THRESHOLDS.get(investor, {})
+    thresholds.update(overrides)
+    return thresholds
+
+
+def _combine_investor_and_sector_weights(investor_weights: dict, sector_weights: dict) -> dict:
+    combined = {
+        metric: investor_weights.get(metric, 0) * sector_weights.get(metric, 0)
+        for metric in investor_weights
+    }
+    total = sum(combined.values())
+    if total == 0:
+        return sector_weights.copy()
+    return {metric: round(value * 100.0 / total, 2) for metric, value in combined.items()}
+
+
+def _get_grade_explanation(grade: str, investor_label: str) -> str:
+    explanations = {
+        "A": f"Exceptional business by {investor_label} standards",
+        "B": f"Strong business by {investor_label} standards with minor weaknesses",
+        "C": f"Decent business by {investor_label} standards but not a clear opportunity",
+        "D": f"Weak business by {investor_label} standards — proceed with caution",
+        "F": f"Fails {investor_label}'s core criteria — avoid",
+    }
+    return explanations.get(grade, "No grade explanation available")
+
+
+def _score_tiered(value: float | None, max_points: float, tiers: list) -> float | None:
     """tiers = [(threshold, fraction_of_max), ...] sorted descending by threshold."""
-    if max_points == 0:
-        return 0
+    if max_points == 0 or value is None:
+        return None
     for threshold, fraction in tiers:
         if value >= threshold:
             return round(max_points * fraction, 2)
-    return 0
+    return 0.0
 
 
-def _score_tiered_inverse(value: float, max_points: float, tiers: list) -> float:
+def _score_tiered_inverse(value: float | None, max_points: float, tiers: list) -> float | None:
     """For metrics where LOWER is better (e.g. debt-to-equity). tiers = [(threshold, fraction), ...] ascending."""
-    if max_points == 0:
-        return 0
+    if max_points == 0 or value is None:
+        return None
     for threshold, fraction in tiers:
         if value <= threshold:
             return round(max_points * fraction, 2)
-    return 0
+    return 0.0
 
 
 def _get_grade(score: float) -> str:
@@ -111,6 +251,27 @@ def _get_grade(score: float) -> str:
     if score >= 60: return "C"
     if score >= 45: return "D"
     return "F"
+
+
+def _last_valid(series: list[float | None]) -> float | None:
+    if not series:
+        return None
+    for value in reversed(series):
+        if value is not None:
+            return value
+    return None
+
+
+def _format_pct(value: float | None) -> str:
+    return "N/A" if value is None else f"{value * 100:.1f}%"
+
+
+def _format_ratio(value: float | None) -> str:
+    return "N/A" if value is None else f"{value:.2f}"
+
+
+def _format_multiple(value: float | None) -> str:
+    return "N/A" if value is None else f"{value:.1f}x"
 
 
 def _get_sector_label(sector: str) -> str:
@@ -123,26 +284,40 @@ def _get_sector_label(sector: str) -> str:
 
 # --- Metric calculations ---
 
+def _financials(stock_data):
+    return stock_data.get("financials", stock_data)
+
+
 def _net_income_series(stock_data):
-    return stock_data.get("net_income", [])
+    data = _financials(stock_data)
+    return data.get("net_income", [])
+
 
 def _revenue_series(stock_data):
-    return stock_data.get("revenue", [])
+    data = _financials(stock_data)
+    return data.get("revenue", [])
+
 
 def _fcf_series(stock_data):
-    return stock_data.get("free_cash_flow", [])
+    data = _financials(stock_data)
+    return data.get("free_cash_flow", [])
+
 
 def _eps_series(stock_data):
-    return stock_data.get("eps", [])
+    data = _financials(stock_data)
+    return data.get("eps", [])
 
 
 def _cagr(series):
-    if not series or len(series) < 2:
-        return 0
-    start, end = series[0], series[-1]
-    years = len(series) - 1
+    if not series:
+        return None
+    values = [value for value in series if value is not None]
+    if len(values) < 2:
+        return None
+    start, end = values[0], values[-1]
+    years = len(values) - 1
     if start <= 0 or end <= 0:
-        return 0
+        return None
     return (end / start) ** (1 / years) - 1
 
 
@@ -157,65 +332,76 @@ def _fcf_cagr(stock_data):
 def _net_margin(stock_data):
     revenue = _revenue_series(stock_data)
     net_income = _net_income_series(stock_data)
-    if not revenue or not net_income or revenue[-1] == 0:
-        return 0
-    return net_income[-1] / revenue[-1]
+    latest_revenue = _last_valid(revenue)
+    latest_net_income = _last_valid(net_income)
+    if latest_revenue is None or latest_revenue == 0 or latest_net_income is None:
+        return None
+    return latest_net_income / latest_revenue
 
 
 def _roe(stock_data):
     net_income = _net_income_series(stock_data)
-    equity = stock_data.get("stockholders_equity", [])
-    if not net_income or not equity or equity[-1] == 0:
-        return 0
-    return net_income[-1] / equity[-1]
+    data = _financials(stock_data)
+    equity = data.get("stockholders_equity", [])
+    latest_net_income = _last_valid(net_income)
+    latest_equity = _last_valid(equity)
+    if latest_net_income is None or latest_equity is None or latest_equity == 0:
+        return None
+    return latest_net_income / latest_equity
 
 
 def _roic(stock_data):
-    operating_income = stock_data.get("operating_income", [])
-    debt = stock_data.get("total_debt", [])
-    equity = stock_data.get("stockholders_equity", [])
-    cash = stock_data.get("cash", [])
+    data = _financials(stock_data)
+    operating_income = data.get("operating_income", [])
+    debt = data.get("total_debt", [])
+    equity = data.get("stockholders_equity", [])
+    cash = data.get("cash", [])
 
-    if not operating_income or not equity:
-        return 0
+    latest_op_income = _last_valid(operating_income)
+    latest_equity = _last_valid(equity)
+    if latest_op_income is None or latest_equity is None:
+        return None
 
-    latest_op_income = operating_income[-1]
     nopat = latest_op_income * (1 - 0.21)  # 21% tax rate
-
-    latest_debt = debt[-1] if debt else 0
-    latest_equity = equity[-1]
-    latest_cash = cash[-1] if cash else 0
+    latest_debt = _last_valid(debt) or 0
+    latest_cash = _last_valid(cash) or 0
 
     invested_capital = latest_debt + latest_equity - latest_cash
     if invested_capital <= 0:
         invested_capital = latest_debt + latest_equity
 
     if invested_capital == 0:
-        return 0
+        return None
 
     return nopat / invested_capital
 
 
 def _debt_to_equity(stock_data):
-    debt = stock_data.get("total_debt", [])
-    equity = stock_data.get("stockholders_equity", [])
-    if not debt or not equity or equity[-1] == 0:
-        return 0
-    return debt[-1] / equity[-1]
+    data = _financials(stock_data)
+    debt = data.get("total_debt", [])
+    equity = data.get("stockholders_equity", [])
+    latest_debt = _last_valid(debt)
+    latest_equity = _last_valid(equity)
+    if latest_debt is None or latest_equity is None or latest_equity == 0:
+        return None
+    return latest_debt / latest_equity
 
 
 def _interest_coverage(stock_data):
-    ebit = stock_data.get("ebit", [])
-    interest_expense = stock_data.get("interest_expense", [])
-    if not ebit or not interest_expense or interest_expense[-1] == 0:
-        return 10  # assume strong if no debt/interest
-    return ebit[-1] / abs(interest_expense[-1])
+    data = _financials(stock_data)
+    ebit = data.get("ebit", [])
+    interest_expense = data.get("interest_expense", [])
+    latest_ebit = _last_valid(ebit)
+    latest_interest = _last_valid(interest_expense)
+    if latest_ebit is None or latest_interest is None or latest_interest == 0:
+        return None
+    return latest_ebit / abs(latest_interest)
 
 
 def _earnings_consistency_pct(stock_data):
-    eps = _eps_series(stock_data)
-    if not eps or len(eps) < 2:
-        return 0
+    eps = [value for value in _eps_series(stock_data) if value is not None]
+    if len(eps) < 2:
+        return None
     positive_growth_years = sum(
         1 for i in range(1, len(eps)) if eps[i] > eps[i - 1]
     )
@@ -225,8 +411,9 @@ def calculate_scorecard_history(stock_data: dict) -> list:
     Calculate the Buffett Scorecard score for each historical year available.
     Returns a list of {"year": ..., "score": ...} dicts, oldest to newest.
     """
-    revenue = stock_data.get("revenue", [])
-    years = stock_data.get("years", [])
+    data = _financials(stock_data)
+    revenue = data.get("revenue", [])
+    years = data.get("years", [])
 
     if not revenue or len(revenue) < 2:
         return []
@@ -237,16 +424,19 @@ def calculate_scorecard_history(stock_data: dict) -> list:
     for i in range(1, num_years + 1):
         sliced_data = {
             "sector": stock_data.get("sector", ""),
-            "revenue": revenue[:i],
-            "net_income": stock_data.get("net_income", [])[:i],
-            "free_cash_flow": stock_data.get("free_cash_flow", [])[:i],
-            "operating_income": stock_data.get("operating_income", [])[:i],
-            "total_debt": stock_data.get("total_debt", [])[:i],
-            "stockholders_equity": stock_data.get("stockholders_equity", [])[:i],
-            "cash": stock_data.get("cash", [])[:i],
-            "ebit": stock_data.get("ebit", [])[:i],
-            "interest_expense": stock_data.get("interest_expense", [])[:i],
-            "eps": stock_data.get("eps", [])[:i],
+            "financials": {
+                "years": years[:i],
+                "revenue": revenue[:i],
+                "net_income": data.get("net_income", [])[:i],
+                "free_cash_flow": data.get("free_cash_flow", [])[:i],
+                "operating_income": data.get("operating_income", [])[:i],
+                "total_debt": data.get("total_debt", [])[:i],
+                "stockholders_equity": data.get("stockholders_equity", [])[:i],
+                "cash": data.get("cash", [])[:i],
+                "ebit": data.get("ebit", [])[:i],
+                "interest_expense": data.get("interest_expense", [])[:i],
+                "eps": data.get("eps", [])[:i],
+            },
         }
 
         result = calculate_scorecard(sliced_data)
