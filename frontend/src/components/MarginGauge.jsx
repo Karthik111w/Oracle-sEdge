@@ -4,13 +4,15 @@ const MarginGauge = ({ margin }) => {
   const [fillValue, setFillValue] = useState(0);
   
   useEffect(() => {
+    console.debug('MarginGauge build marker: 2026-08-04', margin);
     // Animate on mount
     const timer = setTimeout(() => {
-      // Clamp margin between -50% and 50% for the gauge display
-      let pct = margin.margin_pct;
+      // Safely read margin percentage and clamp between -50% and 50% for the gauge display
+      const rawPct = margin && typeof margin.margin_pct === 'number' ? margin.margin_pct : 0;
+      let pct = rawPct;
       if (pct < -50) pct = -50;
       if (pct > 50) pct = 50;
-      
+
       // Normalize to 0-100 scale where 0 is -50% and 100 is +50%
       const normalized = ((pct + 50) / 100) * 100;
       setFillValue(normalized);
@@ -18,11 +20,15 @@ const MarginGauge = ({ margin }) => {
     return () => clearTimeout(timer);
   }, [margin]);
 
+  // Determine gauge color safely
   let gaugeColor = 'var(--color-text-muted)';
-  if (margin.margin_pct >= 30) gaugeColor = 'var(--color-success)';
-  else if (margin.margin_pct >= 15) gaugeColor = 'var(--color-success)';
-  else if (margin.margin_pct >= 0) gaugeColor = 'var(--color-warning)';
-  else gaugeColor = 'var(--color-danger)';
+  const pctSafe = margin && typeof margin.margin_pct === 'number' ? margin.margin_pct : null;
+  if (pctSafe !== null) {
+    if (pctSafe >= 30) gaugeColor = 'var(--color-success)';
+    else if (pctSafe >= 15) gaugeColor = 'var(--color-success)';
+    else if (pctSafe >= 0) gaugeColor = 'var(--color-warning)';
+    else gaugeColor = 'var(--color-danger)';
+  }
 
   // Calculate SVG arc parameters
   const radius = 80;
@@ -69,10 +75,10 @@ const MarginGauge = ({ margin }) => {
           alignItems: 'center'
         }}>
           <span style={{ fontSize: '2.5rem', fontWeight: 800, color: gaugeColor, lineHeight: '1' }}>
-            {margin.margin_pct > 0 ? '+' : ''}{margin.margin_pct.toFixed(1)}%
+            {pctSafe !== null ? (pctSafe > 0 ? '+' : '') + pctSafe.toFixed(1) + '%' : 'N/A'}
           </span>
           <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '0.25rem' }}>
-            {margin.classification.toUpperCase()}
+            {margin && margin.classification ? String(margin.classification).toUpperCase() : 'UNKNOWN'}
           </span>
         </div>
       </div>
@@ -88,12 +94,12 @@ const MarginGauge = ({ margin }) => {
       }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Current Price</span>
-          <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>${margin.current_price.toFixed(2)}</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>${margin && typeof margin.current_price === 'number' ? margin.current_price.toFixed(2) : 'N/A'}</span>
         </div>
         <div style={{ width: '1px', background: 'var(--color-border)' }}></div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
           <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Intrinsic Value</span>
-          <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-primary)' }}>${margin.intrinsic_value.toFixed(2)}</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-primary)' }}>${margin && typeof margin.intrinsic_value === 'number' ? margin.intrinsic_value.toFixed(2) : 'N/A'}</span>
         </div>
       </div>
     </div>
