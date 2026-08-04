@@ -1,7 +1,19 @@
+import os
+import sys
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from .routers import stock, portfolio
+
+if not __package__:
+    backend_dir = os.path.dirname(__file__)
+    project_root = os.path.dirname(backend_dir)
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    import backend  # noqa: F401
+    from backend.routers import stock, portfolio
+else:
+    from .routers import stock, portfolio
 
 load_dotenv()
 
