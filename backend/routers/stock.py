@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, Request
-from services.stock_data import get_stock_data, get_price_history
-from services.scorecard import calculate_scorecard, calculate_scorecard_history
-from services.dcf import calculate_dcf
-from services.margin_of_safety import calculate_margin_of_safety
-from services.risk_filter import check_risk_flags
-from services.classifier import classify_stock
-from services.ai_report import generate_ai_report
+from ..services.stock_data import get_stock_data, get_price_history
+from ..services.scorecard import calculate_scorecard, calculate_scorecard_history
+from ..services.dcf import calculate_dcf
+from ..services.margin_of_safety import calculate_margin_of_safety
+from ..services.risk_filter import check_risk_flags
+from ..services.classifier import classify_stock
+from ..services.ai_report import generate_ai_report
 
 router = APIRouter(prefix="/api/stock", tags=["Stock"])
 

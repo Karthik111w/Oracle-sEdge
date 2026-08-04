@@ -6,8 +6,8 @@ from scipy.optimize import minimize
 from typing import Optional
 from datetime import datetime, timedelta
 
-from services.stock_data import get_stock_data, get_returns
-from services.scorecard import calculate_scorecard
+from .stock_data import get_stock_data, get_returns
+from .scorecard import calculate_scorecard
 import yfinance as yf
 
 

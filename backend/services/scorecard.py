@@ -1,4 +1,5 @@
-from services.sector_profiles import get_sector_profile
+from .sector_profiles import get_sector_profile
+from . import sector_profiles
 
 
 def calculate_scorecard(stock_data: dict) -> dict:
@@ -114,7 +115,7 @@ def _get_grade(score: float) -> str:
 
 def _get_sector_label(sector: str) -> str:
     profile = get_sector_profile(sector)
-    for key, val in __import__("services.sector_profiles", fromlist=["SECTOR_PROFILES"]).SECTOR_PROFILES.items():
+    for key, val in sector_profiles.SECTOR_PROFILES.items():
         if val is profile:
             return key
     return "Default"

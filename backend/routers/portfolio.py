@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from services.portfolio_optimizer import (
+from ..services.portfolio_optimizer import (
     optimize_portfolio,
     parse_bulk_portfolio_text,
     _get_market_conditions,

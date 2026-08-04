@@ -1,4 +1,4 @@
-from services.sector_profiles import get_sector_profile
+from .sector_profiles import get_sector_profile
 
 
 def calculate_dcf(stock_data: dict) -> dict:
