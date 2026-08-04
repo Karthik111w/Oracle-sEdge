@@ -34,6 +34,14 @@ def calculate_dcf(stock_data: dict, horizon: str = "long") -> dict:
         return _dcf_model(stock_data, profile, horizon)
 
 
+def _get_valuation_params(horizon: str, beta: float, profile: dict) -> tuple[int, float, float]:
+    years = 5 if horizon == "short" else 10
+    base_wacc = _calculate_wacc(beta) + profile.get("wacc_premium", 0.0)
+    wacc = base_wacc + (0.02 if horizon == "short" else 0.0)
+    terminal_rate = 0.015 if horizon == "short" else 0.03
+    return years, wacc, terminal_rate
+
+
 def _dcf_model(stock_data: dict, profile: dict, horizon: str = "long") -> dict:
     fcf = _series(stock_data, "free_cash_flow")
     shares = stock_data.get("shares_outstanding", 1)
@@ -43,13 +51,8 @@ def _dcf_model(stock_data: dict, profile: dict, horizon: str = "long") -> dict:
         return {"error": "Insufficient FCF data"}
 
     latest_fcf = _last_valid(fcf)
-    growth_rate = min(_calculate_cagr(fcf), profile["growth_cap"])
-    wacc = _calculate_wacc(beta) + profile["wacc_premium"]
-    terminal_rate = profile["terminal_rate"]
-    years = 5 if horizon == "short" else 10
-    if horizon == "short":
-        wacc += 0.015
-        terminal_rate += 0.005
+    growth_rate = min(_calculate_cagr(fcf), profile.get("growth_cap", 0.1))
+    years, wacc, terminal_rate = _get_valuation_params(horizon, beta, profile)
 
     projected = []
     for year in range(1, years + 1):
@@ -71,6 +74,7 @@ def _dcf_model(stock_data: dict, profile: dict, horizon: str = "long") -> dict:
         "intrinsic_value": intrinsic_value,
         "wacc": wacc,
         "growth_rate": growth_rate,
+        "terminal_rate": terminal_rate,
         "terminal_value_discounted": terminal_value_discounted,
         "projected_fcf": projected,
         "horizon": horizon,
@@ -87,13 +91,8 @@ def _earnings_based_valuation(stock_data: dict, profile: dict, horizon: str = "l
         return {"error": "Insufficient earnings data for financial valuation"}
 
     latest_earnings = _last_valid(net_income)
-    growth_rate = min(_calculate_cagr(net_income), profile["growth_cap"])
-    discount_rate = _calculate_wacc(beta) + profile["wacc_premium"]
-    terminal_rate = profile["terminal_rate"]
-    years = 5 if horizon == "short" else 10
-    if horizon == "short":
-        discount_rate += 0.015
-        terminal_rate += 0.005
+    growth_rate = min(_calculate_cagr(net_income), profile.get("growth_cap", 0.1))
+    years, discount_rate, terminal_rate = _get_valuation_params(horizon, beta, profile)
 
     projected = []
     for year in range(1, years + 1):
@@ -130,13 +129,8 @@ def _dividend_discount_model(stock_data: dict, profile: dict, horizon: str = "lo
         return _dcf_model(stock_data, profile, horizon)
 
     latest_div = _last_valid(dividends)
-    growth_rate = min(_calculate_cagr(dividends), profile["growth_cap"])
-    discount_rate = _calculate_wacc(beta) + profile["wacc_premium"]
-    terminal_rate = profile["terminal_rate"]
-    years = 5 if horizon == "short" else 10
-    if horizon == "short":
-        discount_rate += 0.015
-        terminal_rate += 0.005
+    growth_rate = min(_calculate_cagr(dividends), profile.get("growth_cap", 0.1))
+    years, discount_rate, terminal_rate = _get_valuation_params(horizon, beta, profile)
 
     projected = []
     for year in range(1, years + 1):
@@ -178,13 +172,8 @@ def _ffo_model(stock_data: dict, profile: dict, horizon: str = "long") -> dict:
         return _dcf_model(stock_data, profile, horizon)
 
     latest_ffo = _last_valid(ffo_series)
-    growth_rate = min(_calculate_cagr(ffo_series), profile["growth_cap"])
-    discount_rate = _calculate_wacc(beta) + profile["wacc_premium"]
-    terminal_rate = profile["terminal_rate"]
-    years = 5 if horizon == "short" else 10
-    if horizon == "short":
-        discount_rate += 0.015
-        terminal_rate += 0.005
+    growth_rate = min(_calculate_cagr(ffo_series), profile.get("growth_cap", 0.1))
+    years, discount_rate, terminal_rate = _get_valuation_params(horizon, beta, profile)
 
     projected = []
     for year in range(1, years + 1):
@@ -226,6 +215,7 @@ def _calculate_cagr(series: list) -> float:
 
 
 def _calculate_wacc(beta: float) -> float:
-    risk_free_rate = 0.045
-    market_premium = 0.055
-    return risk_free_rate + beta * market_premium
+    risk_free_rate = 0.03
+    market_premium = 0.05
+    wacc = risk_free_rate + beta * market_premium
+    return max(wacc, 0.07)

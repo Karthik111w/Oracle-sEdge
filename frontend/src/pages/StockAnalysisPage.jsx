@@ -134,7 +134,7 @@ const StockAnalysisPage = () => {
           <div style={{ fontSize: '2.5rem', fontWeight: 700 }}>
             ${data.stock_data.current_price.toFixed(2)}
           </div>
-          <ClassificationBadge classification={data.classification} />
+          <ClassificationBadge classification={data.classification} classificationLabel={data.classification_label} />
         </div>
       </div>
 

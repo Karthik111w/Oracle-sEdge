@@ -178,6 +178,7 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
 
     total_score = round(total_points * 100 / available_max, 1) if available_max else 0
     grade = _get_grade(total_score)
+    print(f"[DEBUG] scorecard computed: investor={investor_key}, horizon={horizon}, total_score={total_score}, grade={grade}")
 
     return {
         "investor": investor_key,
@@ -208,11 +209,10 @@ def _get_thresholds_for_investor(investor: str) -> dict:
 def _adjust_weights_for_horizon(weights: dict, horizon: str) -> dict:
     adjusted = weights.copy()
     if horizon == "short":
-        adjusted["revenue_growth"] = adjusted.get("revenue_growth", 0) * 1.2
-        adjusted["profit_margin"] = adjusted.get("profit_margin", 0) * 1.15
-    elif horizon == "long":
-        adjusted["earnings_consistency"] = adjusted.get("earnings_consistency", 0) * 1.1
-        adjusted["roic"] = adjusted.get("roic", 0) * 1.1
+        adjusted["revenue_growth"] = adjusted.get("revenue_growth", 0) + 3
+        adjusted["fcf_growth"] = adjusted.get("fcf_growth", 0) + 2
+        adjusted["earnings_consistency"] = max(1, adjusted.get("earnings_consistency", 0) - 2)
+        adjusted["roic"] = max(1, adjusted.get("roic", 0) - 2)
     return adjusted
 
 

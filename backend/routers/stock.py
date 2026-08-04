@@ -11,6 +11,7 @@ router = APIRouter(prefix="/api/stock", tags=["Stock"])
 
 @router.get("/{ticker}/analysis")
 def get_analysis(ticker: str, investor: str = "buffett", horizon: str = "long"):
+    print(f"[DEBUG] stock analysis request: ticker={ticker}, investor={investor}, horizon={horizon}")
     stock_data = get_stock_data(ticker)
     if not stock_data:
         raise HTTPException(status_code=404, detail="Stock not found or data unavailable")
@@ -24,7 +25,7 @@ def get_analysis(ticker: str, investor: str = "buffett", horizon: str = "long"):
         margin = None
 
     risk = check_risk_flags(stock_data)
-    classification_details = classify_stock(scorecard, margin["classification"] if margin else "Unknown", risk["is_avoid"], horizon)
+    classification_details = classify_stock(scorecard, margin["margin_pct"] if margin else -100.0, risk["is_avoid"], horizon)
     scorecard_trend = calculate_scorecard_history(stock_data)
 
     return {
@@ -35,6 +36,7 @@ def get_analysis(ticker: str, investor: str = "buffett", horizon: str = "long"):
         "margin": margin,
         "risk": risk,
         "classification": classification_details["classification"],
+        "classification_label": classification_details["horizon_label"],
         "classification_explanation": classification_details["explanation"],
     }
 
@@ -56,7 +58,7 @@ def get_ai_report_endpoint(ticker: str, request: Request, investor: str = "buffe
         margin = None
 
     risk = check_risk_flags(stock_data)
-    classification_details = classify_stock(scorecard, margin["classification"] if margin else "Unknown", risk["is_avoid"], horizon)
+    classification_details = classify_stock(scorecard, margin["margin_pct"] if margin else -100.0, risk["is_avoid"], horizon)
 
     report_result = generate_ai_report(
         stock_data=stock_data,

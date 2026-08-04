@@ -3,7 +3,7 @@ SECTOR_PROFILES = {
         "model": "dcf",
         "growth_cap": 0.30,
         "terminal_rate": 0.03,
-        "wacc_premium": 0.01,
+        "wacc_premium": 0.0,
         "scorecard_weights": {
             "earnings_consistency": 15,
             "roic": 20,
