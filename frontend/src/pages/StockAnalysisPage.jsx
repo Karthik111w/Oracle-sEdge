@@ -19,20 +19,27 @@ const INVESTOR_OPTIONS = [
   { value: 'munger', label: 'Charlie Munger', description: 'Exceptional businesses at fair prices — quality over everything' },
 ];
 
+const HORIZON_OPTIONS = [
+  { value: 'long', label: 'Long Term', description: 'Focus on durable moats, compounding returns, and conservative valuation.' },
+  { value: 'short', label: 'Short Term', description: 'Focus on near-term momentum, profitability, and conservative downside protection.' },
+];
+
 const StockAnalysisPage = () => {
   const { ticker } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const investorParam = searchParams.get('investor') || 'buffett';
+  const horizonParam = searchParams.get('horizon') || 'long';
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedInvestor, setSelectedInvestor] = useState(investorParam);
+  const [selectedHorizon, setSelectedHorizon] = useState(horizonParam);
 
-  const fetchData = async (investor) => {
+  const fetchData = async (investor, horizon) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getStockAnalysis(ticker, investor);
+      const result = await getStockAnalysis(ticker, investor, horizon);
       setData(result);
     } catch (err) {
       setError(err.message);
@@ -42,14 +49,15 @@ const StockAnalysisPage = () => {
   };
 
   const handleAnalyze = () => {
-    setSearchParams({ investor: selectedInvestor });
-    fetchData(selectedInvestor);
+    setSearchParams({ investor: selectedInvestor, horizon: selectedHorizon });
+    fetchData(selectedInvestor, selectedHorizon);
   };
 
   useEffect(() => {
     setSelectedInvestor(investorParam);
-    fetchData(investorParam);
-  }, [ticker, investorParam]);
+    setSelectedHorizon(horizonParam);
+    fetchData(investorParam, horizonParam);
+  }, [ticker, investorParam, horizonParam]);
 
   if (loading) {
     return (
@@ -147,6 +155,24 @@ const StockAnalysisPage = () => {
             {INVESTOR_OPTIONS.find((option) => option.value === selectedInvestor)?.description}
           </p>
         </div>
+
+        <div>
+          <label htmlFor="horizon-select" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Investment horizon</label>
+          <select
+            id="horizon-select"
+            value={selectedHorizon}
+            onChange={(event) => setSelectedHorizon(event.target.value)}
+            style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-background)' }}
+          >
+            {HORIZON_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <p style={{ margin: '0.75rem 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
+            {HORIZON_OPTIONS.find((option) => option.value === selectedHorizon)?.description}
+          </p>
+        </div>
+
         <button
           onClick={handleAnalyze}
           style={{
@@ -183,7 +209,7 @@ const StockAnalysisPage = () => {
         </div>
 
         {/* Bottom Section: AI Report */}
-        <AIReport ticker={ticker} investor={selectedInvestor} investorLabel={data.scorecard?.investor_label} />
+        <AIReport ticker={ticker} investor={selectedInvestor} horizon={selectedHorizon} investorLabel={data.scorecard?.investor_label} />
       </div>
 
     </div>

@@ -1,21 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getStockAnalysis } from '../api/client';
 import SearchBar from '../components/SearchBar';
 import ScoreCard from '../components/ScoreCard';
 import ScorecardTrend from '../components/ScorecardTrend';
 import LoadingSpinner from '../components/LoadingSpinner';
 
+const INVESTOR_OPTIONS = [
+  { value: 'buffett', label: 'Warren Buffett' },
+  { value: 'lynch', label: 'Peter Lynch' },
+  { value: 'graham', label: 'Benjamin Graham' },
+  { value: 'munger', label: 'Charlie Munger' },
+];
+
 const ComparePage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [leftTicker, setLeftTicker] = useState('AAPL');
   const [rightTicker, setRightTicker] = useState('MSFT');
+  const [selectedInvestor, setSelectedInvestor] = useState(searchParams.get('investor') || 'buffett');
   const [leftData, setLeftData] = useState(null);
   const [rightData, setRightData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  useEffect(() => {
+    const tickers = searchParams.get('tickers');
+    if (tickers) {
+      const [left, right] = tickers.split(',').map(t => t.trim().toUpperCase());
+      if (left) setLeftTicker(left);
+      if (right) setRightTicker(right);
+    }
+    const investor = searchParams.get('investor');
+    if (investor) setSelectedInvestor(investor);
+  }, [searchParams]);
+
   const compare = async (e) => {
     e.preventDefault();
     if (!leftTicker.trim() || !rightTicker.trim()) return;
+    setSearchParams({ investor: selectedInvestor, tickers: `${leftTicker.trim().toUpperCase()},${rightTicker.trim().toUpperCase()}` });
     setLoading(true);
     setError(null);
     setLeftData(null);
@@ -23,8 +45,8 @@ const ComparePage = () => {
 
     try {
       const [left, right] = await Promise.all([
-        getStockAnalysis(leftTicker.trim().toUpperCase()),
-        getStockAnalysis(rightTicker.trim().toUpperCase())
+        getStockAnalysis(leftTicker.trim().toUpperCase(), selectedInvestor),
+        getStockAnalysis(rightTicker.trim().toUpperCase(), selectedInvestor)
       ]);
       setLeftData(left);
       setRightData(right);
@@ -78,12 +100,12 @@ const ComparePage = () => {
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2.5rem', margin: 0 }}>Comparison Mode</h1>
         <p style={{ color: 'var(--color-text-muted)', marginTop: '0.75rem' }}>
-          Compare two companies side-by-side to see which one looks stronger from a Buffett perspective.
+          Compare two companies side-by-side with the selected investor lens.
         </p>
       </div>
 
       <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-        <form onSubmit={compare} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
+        <form onSubmit={compare} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
           <div>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Left ticker</label>
             <input type="text" value={leftTicker} onChange={(e) => setLeftTicker(e.target.value)} style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }} />
@@ -91,6 +113,14 @@ const ComparePage = () => {
           <div>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Right ticker</label>
             <input type="text" value={rightTicker} onChange={(e) => setRightTicker(e.target.value)} style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Investor lens</label>
+            <select value={selectedInvestor} onChange={(e) => setSelectedInvestor(e.target.value)} style={{ width: '100%', padding: '0.9rem 1rem', borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>
+              {INVESTOR_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
           </div>
           <button type="submit" style={{ padding: '0.95rem 1.5rem', borderRadius: '999px', background: 'var(--color-primary)', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Compare</button>
         </form>

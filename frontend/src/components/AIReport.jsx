@@ -3,7 +3,7 @@ import { getAIReport } from '../api/client';
 import { Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const AIReport = ({ ticker, investor = 'buffett', investorLabel = 'Investor' }) => {
+const AIReport = ({ ticker, investor = 'buffett', horizon = 'long', investorLabel = 'Investor' }) => {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -12,7 +12,7 @@ const AIReport = ({ ticker, investor = 'buffett', investorLabel = 'Investor' }) 
     setLoading(true);
     setError(null);
     try {
-      const data = await getAIReport(ticker, investor);
+      const data = await getAIReport(ticker, investor, horizon);
       if (data.error) {
         setError(data.error);
       } else {
@@ -34,7 +34,7 @@ const AIReport = ({ ticker, investor = 'buffett', investorLabel = 'Investor' }) 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <Sparkles size={24} color="var(--color-primary)" />
-          <h2 style={{ margin: 0 }}>{investorLabel ? `${investorLabel}'s Verdict` : 'Investor Verdict'}</h2>
+          <h2 style={{ margin: 0 }}>{investorLabel ? `${investorLabel}'s Verdict` : 'Investor Verdict'}{horizon === 'short' ? ' (Short)' : ' (Long)'}</h2>
         </div>
         <button 
           onClick={fetchReport} 

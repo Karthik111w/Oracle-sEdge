@@ -4,23 +4,25 @@ import { ShieldCheck, ShieldAlert, ArrowRight, ArrowUpRight, ArrowDownRight } fr
 
 const COLORS = ['#d4a853', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#f43f5e', '#84cc16', '#0ea5e9'];
 
-const PortfolioCharts = ({ results }) => {
-  if (!results || !results.holdings) return null;
+const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
+  if (!results || !results.holdings || !results.strategies) return null;
+  const strategy = results.strategies[activeStrategy] || results.strategies.balanced;
+  if (!strategy) return null;
 
   const currentData = results.holdings.map(h => ({
     name: h.ticker,
     value: h.current_weight * 100
   })).filter(h => h.value > 0);
 
-  const optimizedData = results.holdings.map(h => ({
+  const optimizedData = strategy.holdings.map(h => ({
     name: h.ticker,
     value: h.optimized_weight * 100
   })).filter(h => h.value > 0.1); // Filter out tiny weights
 
   const formatPercent = (val) => `${val.toFixed(1)}%`;
 
-  const sharpeDiff = results.optimized_sharpe - results.current_sharpe;
-  const sharpePct = (sharpeDiff / Math.abs(results.current_sharpe)) * 100;
+  const sharpeDiff = strategy.optimized_sharpe - results.current_sharpe;
+  const sharpePct = (sharpeDiff / Math.abs(results.current_sharpe || 1)) * 100;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -45,7 +47,7 @@ const PortfolioCharts = ({ results }) => {
         <div className="card" style={{ padding: '1.5rem' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>Optimized Sharpe Ratio</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>{results.optimized_sharpe.toFixed(2)}</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>{strategy.optimized_sharpe.toFixed(2)}</div>
             {sharpeDiff > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', color: 'var(--color-success)', fontSize: '0.9rem', fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
                 <ArrowUpRight size={16} /> +{sharpePct.toFixed(1)}%

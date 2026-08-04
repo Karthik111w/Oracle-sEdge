@@ -8,6 +8,7 @@ import { AlertCircle, Info } from 'lucide-react';
 const PortfolioPage = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
+  const [activeStrategy, setActiveStrategy] = useState('balanced');
   const [error, setError] = useState(null);
 
   const handleOptimize = async (holdings, cashAvailable = 0, useRecommendations = false, accountValue = 0) => {
@@ -16,6 +17,7 @@ const PortfolioPage = () => {
     try {
       const data = await optimizePortfolio(holdings, cashAvailable, useRecommendations, accountValue);
       setResults(data);
+      setActiveStrategy('balanced');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -68,11 +70,38 @@ const PortfolioPage = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', background: 'rgba(212, 168, 83, 0.1)', border: '1px solid var(--color-primary)', borderRadius: '8px', color: 'var(--color-text)' }}>
               <Info size={20} color="var(--color-primary)" />
               <span style={{ fontSize: '0.95rem' }}>
-                Optimization complete. Stocks with a Buffett Score below 70 were restricted from increasing their portfolio weight.
+                Optimization complete. Choose a strategy to compare short-term, balanced, and long-term recommendations.
               </span>
             </div>
-            
-            <PortfolioCharts results={results} />
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              {Object.entries(results.strategies || {}).map(([key, strategy]) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveStrategy(key)}
+                  style={{
+                    padding: '0.85rem 1.2rem',
+                    borderRadius: '999px',
+                    border: activeStrategy === key ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                    background: activeStrategy === key ? 'var(--color-primary)' : 'transparent',
+                    color: activeStrategy === key ? '#000' : 'var(--color-text)',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                  }}
+                >
+                  {strategy.label}
+                </button>
+              ))}
+            </div>
+
+            {results.strategies?.[activeStrategy] ? (
+              <div>
+                <div style={{ marginBottom: '1rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                  <strong>{results.strategies[activeStrategy].label}</strong> — {results.strategies[activeStrategy].description}
+                </div>
+                <PortfolioCharts results={results} activeStrategy={activeStrategy} />
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

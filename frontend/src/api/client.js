@@ -1,7 +1,7 @@
 const BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
-export async function getStockAnalysis(ticker, investor = 'buffett') {
-  const res = await fetch(`${BASE_URL}/api/stock/${ticker}/analysis?investor=${encodeURIComponent(investor)}`);
+export async function getStockAnalysis(ticker, investor = 'buffett', horizon = 'long') {
+  const res = await fetch(`${BASE_URL}/api/stock/${ticker}/analysis?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`);
   if (!res.ok) {
     const errBody = await res.json().catch(() => null);
     const msg = errBody?.detail || errBody?.error || res.statusText || 'Analysis failed';
@@ -10,13 +10,13 @@ export async function getStockAnalysis(ticker, investor = 'buffett') {
   return res.json();
 }
 
-export async function getAIReport(ticker, investor = 'buffett') {
+export async function getAIReport(ticker, investor = 'buffett', horizon = 'long') {
   const apiKey = localStorage.getItem('gemini_api_key');
   const model = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
   const headers = {};
   if (apiKey) headers['X-Gemini-API-Key'] = apiKey;
   headers['X-Gemini-Model'] = model;
-  const res = await fetch(`${BASE_URL}/api/stock/${ticker}/ai-report`, { headers });
+  const res = await fetch(`${BASE_URL}/api/stock/${ticker}/ai-report?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`, { headers });
   if (!res.ok) throw new Error(`AI report failed: ${res.statusText}`);
   return res.json();
 }

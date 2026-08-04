@@ -81,13 +81,14 @@ def calculate_scorecard(stock_data: dict) -> dict:
     return calculate_scorecard_by_investor(stock_data, "buffett")
 
 
-def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett") -> dict:
+def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett", horizon: str = "long") -> dict:
     investor_key = (investor or "buffett").lower()
     profile = INVESTOR_PROFILES.get(investor_key, INVESTOR_PROFILES["buffett"])
     investor_label = profile["label"]
     sector = stock_data.get("sector", "")
     sector_profile = get_sector_profile(sector)
-    weights = _combine_investor_and_sector_weights(profile["weights"], sector_profile["scorecard_weights"])
+    adjusted_weights = _adjust_weights_for_horizon(profile["weights"], horizon)
+    weights = _combine_investor_and_sector_weights(adjusted_weights, sector_profile["scorecard_weights"])
     thresholds = _get_thresholds_for_investor(investor_key)
 
     metrics = [
@@ -181,6 +182,7 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett")
     return {
         "investor": investor_key,
         "investor_label": investor_label,
+        "horizon": horizon,
         "total_score": total_score,
         "grade": grade,
         "grade_explanation": _get_grade_explanation(grade, investor_label),
@@ -201,6 +203,17 @@ def _get_thresholds_for_investor(investor: str) -> dict:
     overrides = INVESTOR_THRESHOLDS.get(investor, {})
     thresholds.update(overrides)
     return thresholds
+
+
+def _adjust_weights_for_horizon(weights: dict, horizon: str) -> dict:
+    adjusted = weights.copy()
+    if horizon == "short":
+        adjusted["revenue_growth"] = adjusted.get("revenue_growth", 0) * 1.2
+        adjusted["profit_margin"] = adjusted.get("profit_margin", 0) * 1.15
+    elif horizon == "long":
+        adjusted["earnings_consistency"] = adjusted.get("earnings_consistency", 0) * 1.1
+        adjusted["roic"] = adjusted.get("roic", 0) * 1.1
+    return adjusted
 
 
 def _combine_investor_and_sector_weights(investor_weights: dict, sector_weights: dict) -> dict:

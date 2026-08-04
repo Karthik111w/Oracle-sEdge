@@ -274,6 +274,78 @@ def _get_adaptive_recommendations() -> list[str]:
     return recs
 
 
+def _strategy_bounds(current_weights: np.ndarray, scores: list[float], threshold: float, allow_wide: bool = False) -> list[tuple[float, float]]:
+    bounds = []
+    for cur, score in zip(current_weights, scores):
+        if score >= threshold:
+            bounds.append((0.0, 1.0))
+        elif allow_wide:
+            bounds.append((0.0, max(cur, 0.05)))
+        else:
+            bounds.append((0.0, max(cur, 0.01)))
+    return bounds
+
+
+def _minimize_sharpe(x0: np.ndarray, mean_returns: np.ndarray, cov_matrix: np.ndarray, bounds: list[tuple[float, float]]) -> np.ndarray:
+    risk_free_annual = 0.045
+
+    def neg_sharpe(weights: np.ndarray) -> float:
+        port_return = np.dot(weights, mean_returns) * 252
+        port_vol = np.sqrt(np.dot(weights, np.dot(cov_matrix * 252, weights)))
+        if port_vol == 0:
+            return 0.0
+        return -((port_return - risk_free_annual) / port_vol)
+
+    constraints = {"type": "eq", "fun": lambda w: np.sum(w) - 1.0}
+    try:
+        result = minimize(
+            neg_sharpe,
+            x0,
+            method="SLSQP",
+            bounds=bounds,
+            constraints=constraints,
+            options={"maxiter": 1000, "ftol": 1e-10},
+        )
+        optimized = result.x if result.success else x0
+    except Exception:
+        optimized = x0
+
+    optimized = np.maximum(optimized, 0)
+    weight_sum = np.sum(optimized)
+    return optimized / weight_sum if weight_sum > 0 else optimized
+
+
+def _build_strategy_result(name: str, label: str, description: str, tickers: list[str], prices: list[float], shares_list: list[float], market_values: list[float], current_weights: np.ndarray, optimized_weights: np.ndarray, scorecard_scores: list[float], threshold: float, total_value: float, mean_returns: np.ndarray, cov_matrix: np.ndarray) -> dict:
+    holdings_response = []
+    for i, ticker in enumerate(tickers):
+        optimized_shares = round((optimized_weights[i] * total_value) / prices[i], 4) if prices[i] > 0 else 0.0
+        holdings_response.append({
+            "ticker": ticker,
+            "shares": shares_list[i],
+            "price": round(prices[i], 2),
+            "market_value": round(market_values[i], 2),
+            "current_weight": round(float(current_weights[i]), 4),
+            "optimized_weight": round(float(optimized_weights[i]), 4),
+            "optimized_shares": optimized_shares,
+            "scorecard_score": round(scorecard_scores[i], 1),
+            "buffett_approved": scorecard_scores[i] >= threshold,
+        })
+
+    opt_return = float(np.dot(optimized_weights, mean_returns) * 252)
+    opt_vol = float(np.sqrt(np.dot(optimized_weights, np.dot(cov_matrix * 252, optimized_weights))))
+    opt_sharpe = float((opt_return - 0.045) / opt_vol) if opt_vol > 0 else 0.0
+
+    return {
+        "name": name,
+        "label": label,
+        "description": description,
+        "holdings": holdings_response,
+        "optimized_return": round(opt_return, 4),
+        "optimized_volatility": round(opt_vol, 4),
+        "optimized_sharpe": round(opt_sharpe, 4),
+    }
+
+
 def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, cash_available: float = 0.0, account_value: float = 0.0) -> dict:
     """Optimize a portfolio of holdings to maximize Sharpe ratio."""
     if not holdings and not use_recommendations:
@@ -369,70 +441,49 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
 
     buffett_approved = [score >= 70 for score in scorecard_scores]
 
-    # 4. Optimize
-    risk_free_daily = 0.045 / 252
-    risk_free_annual = 0.045
-
-    def neg_sharpe(weights: np.ndarray) -> float:
-        port_return = np.dot(weights, mean_returns) * 252
-        port_vol = np.sqrt(np.dot(weights, np.dot(cov_matrix * 252, weights)))
-        if port_vol == 0:
-            return 0.0
-        sharpe = (port_return - risk_free_annual) / port_vol
-        return -sharpe
-
-    # Constraints: sum of weights = 1
-    constraints = {"type": "eq", "fun": lambda w: np.sum(w) - 1.0}
-
-    # Bounds: (0, 1) for approved stocks, (0, current_weight) for non-approved
-    bounds = []
-    for i in range(n):
-        if buffett_approved[i]:
-            bounds.append((0.0, 1.0))
-        else:
-            # Cap at current weight — don't increase allocation to low-scoring stocks
-            bounds.append((0.0, max(float(current_weights[i]), 0.01)))
-
-    try:
-        result = minimize(
-            neg_sharpe,
-            x0,
-            method="SLSQP",
-            bounds=bounds,
-            constraints=constraints,
-            options={"maxiter": 1000, "ftol": 1e-10},
-        )
-        optimized_weights = result.x if result.success else current_weights
-    except Exception:
-        optimized_weights = current_weights
-
-    # Ensure weights are non-negative and sum to 1
-    optimized_weights = np.maximum(optimized_weights, 0)
-    weight_sum = np.sum(optimized_weights)
-    if weight_sum > 0:
-        optimized_weights = optimized_weights / weight_sum
-
-    # 5. Calculate Sharpe ratios before and after
+    # 4. Run three portfolio optimization versions using Buffett quality thresholds.
     current_return = float(np.dot(current_weights, mean_returns) * 252)
     current_vol = float(np.sqrt(np.dot(current_weights, np.dot(cov_matrix * 252, current_weights))))
-    current_sharpe = float((current_return - risk_free_annual) / current_vol) if current_vol > 0 else 0.0
+    current_sharpe = float((current_return - 0.045) / current_vol) if current_vol > 0 else 0.0
 
-    opt_return = float(np.dot(optimized_weights, mean_returns) * 252)
-    opt_vol = float(np.sqrt(np.dot(optimized_weights, np.dot(cov_matrix * 252, optimized_weights))))
-    opt_sharpe = float((opt_return - risk_free_annual) / opt_vol) if opt_vol > 0 else 0.0
+    strategies = {}
+    strategy_definitions = [
+        ("short_term", "Short Term", "Prioritize higher-scoring stocks and protect near-term volatility.", 80, False),
+        ("balanced", "Balanced", "Blend growth and quality while limiting exposure to lower-score positions.", 70, False),
+        ("long_term", "Long Term", "Reward durable businesses with reasonable conviction for a multi-year horizon.", 60, True),
+    ]
 
-    # Build holdings response
+    for key, label, description, threshold, allow_wide in strategy_definitions:
+        bounds = _strategy_bounds(current_weights, scorecard_scores, threshold, allow_wide)
+        optimized_weights = _minimize_sharpe(x0, mean_returns, cov_matrix, bounds)
+        strategies[key] = _build_strategy_result(
+            key,
+            label,
+            description,
+            tickers,
+            prices,
+            shares_list,
+            market_values,
+            current_weights,
+            optimized_weights,
+            scorecard_scores,
+            threshold,
+            total_value,
+            mean_returns,
+            cov_matrix,
+        )
+
+    # 5. Build the baseline holdings response and strategy summaries.
     holdings_response = []
     for i in range(n):
-        optimized_shares = round((optimized_weights[i] * total_value) / prices[i], 4) if prices[i] > 0 else 0.0
         holdings_response.append({
             "ticker": tickers[i],
             "shares": shares_list[i],
             "price": round(prices[i], 2),
             "market_value": round(market_values[i], 2),
             "current_weight": round(float(current_weights[i]), 4),
-            "optimized_weight": round(float(optimized_weights[i]), 4),
-            "optimized_shares": optimized_shares,
+            "optimized_weight": round(float(current_weights[i]), 4),
+            "optimized_shares": round(shares_list[i], 4),
             "scorecard_score": round(scorecard_scores[i], 1),
             "buffett_approved": buffett_approved[i],
         })
@@ -447,11 +498,9 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
         "account_value": account_value,
         "total_value": account_value,
         "current_sharpe": round(current_sharpe, 4),
-        "optimized_sharpe": round(opt_sharpe, 4),
         "current_return": round(current_return, 4),
-        "optimized_return": round(opt_return, 4),
         "current_volatility": round(current_vol, 4),
-        "optimized_volatility": round(opt_vol, 4),
+        "strategies": strategies,
     }
 
 
