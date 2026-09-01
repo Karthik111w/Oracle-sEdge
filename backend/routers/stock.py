@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from ..services.stock_data import get_stock_data, get_price_history
-from ..services.scorecard import calculate_scorecard_by_investor, calculate_scorecard_history
+from ..services.scorecard import calculate_scorecard_by_investor, calculate_scorecard_history, INVESTOR_PROFILES
 from ..services.dcf import calculate_dcf
 from ..services.margin_of_safety import calculate_margin_of_safety
 from ..services.risk_filter import check_risk_flags
@@ -8,6 +8,23 @@ from ..services.classifier import classify_stock
 from ..services.ai_report import generate_ai_report
 
 router = APIRouter(prefix="/api/stock", tags=["Stock"])
+
+@router.get("/investors")
+def get_investors():
+    """Return all investor profiles with term/philosophy metadata."""
+    return {
+        "investors": [
+            {
+                "key": key,
+                "label": profile["label"],
+                "term": profile.get("term", "long"),
+                "philosophy": profile.get("philosophy", ""),
+                "focus": profile.get("focus", ""),
+            }
+            for key, profile in INVESTOR_PROFILES.items()
+        ]
+    }
+
 
 @router.get("/{ticker}/analysis")
 def get_analysis(ticker: str, investor: str = "buffett", horizon: str = "long"):

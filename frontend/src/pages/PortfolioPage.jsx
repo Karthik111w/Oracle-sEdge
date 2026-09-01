@@ -31,7 +31,7 @@ const PortfolioPage = () => {
         <h1 style={{ fontSize: '2.5rem', margin: '0 0 1rem 0' }}>Portfolio Optimizer</h1>
         <p style={{ fontSize: '1.1rem', color: 'var(--color-text-muted)', maxWidth: '800px', lineHeight: '1.6' }}>
           Input your current holdings to see how you could improve your risk-adjusted returns (Sharpe Ratio). 
-          <strong> The Buffett Rule:</strong> The optimizer will only recommend increasing your allocation for companies that score 70 or higher on our business quality scorecard.
+          <strong> The Quality Rule:</strong> The optimizer will only recommend increasing your allocation for companies that score 70 or higher on our business quality scorecard.
         </p>
       </div>
 

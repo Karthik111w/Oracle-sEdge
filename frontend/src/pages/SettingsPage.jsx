@@ -59,7 +59,7 @@ const SettingsPage = () => {
           <div>
             <h2 style={{ margin: '0 0 0.5rem 0' }}>Google Gemini API Key</h2>
             <p style={{ color: 'var(--color-text-muted)', margin: 0, maxWidth: '600px', lineHeight: '1.5' }}>
-              The AI Stock Report feature uses Google's Gemini 1.5 model to generate Warren Buffett-style analysis. 
+              The AI Stock Report feature uses Google's Gemini models to generate analysis in the voice of master investors (Buffett, Lynch, Graham, Munger, O'Neil, Soros). 
               You need a free API key to use this feature.
             </p>
             <a 

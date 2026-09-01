@@ -8,9 +8,11 @@ import LoadingSpinner from '../components/LoadingSpinner';
 
 const INVESTOR_OPTIONS = [
   { value: 'buffett', label: 'Warren Buffett' },
-  { value: 'lynch', label: 'Peter Lynch' },
-  { value: 'graham', label: 'Benjamin Graham' },
   { value: 'munger', label: 'Charlie Munger' },
+  { value: 'graham', label: 'Benjamin Graham' },
+  { value: 'lynch', label: 'Peter Lynch' },
+  { value: 'oneil', label: "William O'Neil" },
+  { value: 'soros', label: 'George Soros' },
 ];
 
 const ComparePage = () => {
@@ -75,7 +77,7 @@ const ComparePage = () => {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
           <div style={{ padding: '1rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Buffett Score</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{data.scorecard?.investor_label || 'Investor'} Score</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{data.scorecard.total_score}</div>
           </div>
           <div style={{ padding: '1rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>

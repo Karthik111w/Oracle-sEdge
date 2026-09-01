@@ -48,7 +48,20 @@ const ScoreCard = ({ scorecard }) => {
               {scorecard.grade_explanation}
             </div>
           )}
+          {scorecard.investor_sector_note && (
+            <div style={{
+              marginTop: '0.6rem',
+              fontSize: '0.75rem',
+              color: 'var(--color-primary)',
+              opacity: 0.8,
+              fontStyle: 'italic',
+              maxWidth: '28rem',
+            }}>
+              ⚖️ {scorecard.investor_sector_note}
+            </div>
+          )}
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>{scorecard.total_score}</span>
           <span style={{ fontSize: '1rem', color: 'var(--color-text-muted)' }}>/ 100</span>

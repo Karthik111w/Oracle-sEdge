@@ -42,8 +42,7 @@ const HomePage = () => {
           Oracle's Edge
         </h1>
         <p style={{ fontSize: '1.25rem', color: 'var(--color-text-muted)', maxWidth: '600px', margin: '0 auto' }}>
-          Invest like Buffett. Business quality first, stock price second. 
-          Discover intrinsic value with professional DCF models and AI analysis.
+          Invest like the legends. Business quality, growth momentum, and margin of safety analyzed through legendary investor frameworks.
         </p>
       </div>
 
@@ -142,7 +141,7 @@ const HomePage = () => {
             <BarChart3 size={24} />
           </div>
           <h4 style={{ margin: 0 }}>AI Analyst</h4>
-          <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>Powered by Gemini 2.5, get a comprehensive written report explaining the investment case just like Buffett would.</p>
+          <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>Powered by Gemini, get a comprehensive written memo analyzing the stock from the perspective of your chosen legend.</p>
         </div>
       </div>
     </div>

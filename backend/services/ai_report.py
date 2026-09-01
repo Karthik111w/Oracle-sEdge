@@ -40,6 +40,7 @@ def generate_ai_report(
     if not resolved_key:
         return {"report": None, "error": "No Gemini API key configured. Add your key in Settings."}
 
+    investor_label = scorecard.get("investor_label", "Warren Buffett")
     quote_type = stock_data.get("quote_type", "EQUITY")
     
     if quote_type == "ETF":
@@ -51,11 +52,11 @@ def generate_ai_report(
         assets = etf_data.get("total_assets")
         assets_str = f"${assets / 1_000_000_000:.1f}B" if assets is not None else "N/A"
         
-        prompt = f"""You are Warren Buffett analyzing a potential ETF investment. Write exactly 3 paragraphs — no headers, no bullet points, plain prose only.
-Paragraph 1 — Fund Strategy: Assess the fund's strategy, category, and what it represents for a long-term investor.
-Paragraph 2 — Fee Efficiency: Evaluate the expense ratio and asset size. Emphasize the importance of low fees and liquidity in compounding wealth.
-Paragraph 3 — Verdict: Give your final verdict on whether this ETF is a sensible choice for a patient, long-term investor.
-Speak in first person as Warren Buffett. Be direct, opinionated, and reference specific figures. Do not hedge excessively.
+        prompt = f"""You are {investor_label} analyzing a potential ETF investment. Write exactly 3 paragraphs — no headers, no bullet points, plain prose only.
+Paragraph 1 — Fund Strategy: Assess the fund's strategy, category, and what it represents from your investment philosophy.
+Paragraph 2 — Fee Efficiency: Evaluate the expense ratio and asset size. Emphasize the importance of low fees and liquidity.
+Paragraph 3 — Verdict: Give your final verdict on whether this ETF is a sensible choice for an investor following your philosophy.
+Speak in first person as {investor_label}. Be direct, opinionated, and reference specific figures. Do not hedge excessively.
 Fund: {stock_data.get('company_name', 'Unknown')} ({stock_data.get('ticker', 'N/A')}) — {etf_data.get('category', 'Unknown')}
 Scorecard: {scorecard.get('total_score', 0)}/100 ({scorecard.get('grade', 'N/A')})
 Key metrics: Expense Ratio {er_str}, Yield {yield_str}, Assets {assets_str}
@@ -149,11 +150,11 @@ Current price: ${stock_data.get('current_price', 0):.2f}"""
         safe_dcf = dcf or {}
         business_description = stock_data.get("business_description", "N/A")
 
-        prompt = f"""You are Warren Buffett writing an investment memo. Write exactly 3 paragraphs — no headers, no bullet points, plain prose only.
-Paragraph 1 — Business Quality & Moat: Describe what this company actually does, whether the business is simple enough to understand, and whether it has a durable competitive advantage. Consider pricing power, brand strength, switching costs, network effects, and whether this business will likely be stronger or weaker in 10 years. Do not just restate the metrics — think like a business owner.
-Paragraph 2 — Financial Strength & Earnings Quality: Assess the profitability, free cash flow generation, return on invested capital, and debt levels. Comment on whether the earnings are consistent and trustworthy or lumpy and unreliable. Reference specific numbers. Flag anything that looks unusual or unsustainable.
-Paragraph 3 — Valuation Verdict & Long-Term Conviction: State clearly whether you would buy this business today, and why. Reference the margin of safety. Consider whether the intrinsic value estimate is reliable given the earnings quality. End with a one-sentence conviction statement — would you hold this for 10 years or pass entirely?
-Speak in first person as Warren Buffett. Be direct and opinionated. Reference specific financial figures. Do not hedge excessively. Think like a business owner evaluating whether to buy the whole company, not a trader looking at a chart.
+        prompt = f"""You are {investor_label} writing an investment memo. Write exactly 3 paragraphs — no headers, no bullet points, plain prose only.
+Paragraph 1 — Business Quality & Moat: Describe what this company actually does, whether the business is simple enough to understand, and whether it has a durable competitive advantage. Consider pricing power, brand strength, switching costs, network effects, and how you evaluate this industry according to your investment philosophy.
+Paragraph 2 — Financial Strength & Earnings Quality: Assess the profitability, free cash flow generation, return on invested capital/equity, and debt levels according to your evaluation criteria. Reference specific numbers. Flag anything that looks unusual or unsustainable.
+Paragraph 3 — Valuation Verdict & Conviction: State clearly whether you would buy this business today under your framework, and why. Reference the margin of safety. End with a one-sentence conviction statement summarizing your verdict.
+Speak in first person as {investor_label}. Be direct and opinionated. Reference specific financial figures. Do not hedge excessively. Think like a disciplined investor evaluating whether to buy this business according to your methodology.
 Company: {stock_data.get('company_name', 'Unknown')} ({stock_data.get('ticker', 'N/A')}) — {stock_data.get('sector', 'Unknown')} — {stock_data.get('industry', 'Unknown')}
 What the company does: {business_description}
 Scorecard: {scorecard.get('total_score', 0)}/100 ({scorecard.get('grade', 'N/A')})

@@ -104,7 +104,7 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
               <th style={{ padding: '1rem', fontWeight: 600 }}>Current Wgt</th>
               <th style={{ padding: '1rem', fontWeight: 600 }}>Optimized Wgt</th>
               <th style={{ padding: '1rem', fontWeight: 600 }}>Change</th>
-              <th style={{ padding: '1rem', fontWeight: 600 }}>Buffett Score</th>
+              <th style={{ padding: '1rem', fontWeight: 600 }}>Quality Score</th>
               <th style={{ padding: '1rem', fontWeight: 600 }}>Status</th>
             </tr>
           </thead>

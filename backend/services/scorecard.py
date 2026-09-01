@@ -1,9 +1,13 @@
 from .sector_profiles import get_sector_profile
 from . import sector_profiles
+from .investor_sector_weights import get_investor_sector_weights, _normalize_sector
 
 INVESTOR_PROFILES = {
     "buffett": {
         "label": "Warren Buffett",
+        "term": "long",
+        "philosophy": "Buy wonderful companies at fair prices and hold forever",
+        "focus": "Business quality, moat, and intrinsic value",
         "weights": {
             "earnings_consistency": 1,
             "roic": 1,
@@ -15,21 +19,27 @@ INVESTOR_PROFILES = {
             "revenue_growth": 1,
         },
     },
-    "lynch": {
-        "label": "Peter Lynch",
+    "munger": {
+        "label": "Charlie Munger",
+        "term": "long",
+        "philosophy": "Exceptional businesses at fair prices — quality over everything",
+        "focus": "High ROIC, wide moat, pricing power",
         "weights": {
-            "revenue_growth": 25,
+            "roic": 25,
             "earnings_consistency": 20,
+            "profit_margin": 18,
             "fcf_growth": 15,
-            "profit_margin": 15,
             "roe": 10,
-            "roic": 8,
-            "debt_to_equity": 5,
-            "interest_coverage": 2,
+            "debt_to_equity": 7,
+            "interest_coverage": 4,
+            "revenue_growth": 1,
         },
     },
     "graham": {
         "label": "Benjamin Graham",
+        "term": "long",
+        "philosophy": "Deep value and balance sheet safety — buy with a large margin of safety",
+        "focus": "Debt safety, earnings consistency, conservative valuation",
         "weights": {
             "debt_to_equity": 25,
             "earnings_consistency": 25,
@@ -41,17 +51,52 @@ INVESTOR_PROFILES = {
             "fcf_growth": 2,
         },
     },
-    "munger": {
-        "label": "Charlie Munger",
+    "lynch": {
+        "label": "Peter Lynch",
+        "term": "short",
+        "philosophy": "Find fast growers before Wall Street does — GARP investing",
+        "focus": "Revenue acceleration, earnings growth, PEG ratio",
         "weights": {
-            "roic": 25,
+            "revenue_growth": 25,
             "earnings_consistency": 20,
-            "profit_margin": 18,
             "fcf_growth": 15,
+            "profit_margin": 15,
             "roe": 10,
-            "debt_to_equity": 7,
-            "interest_coverage": 4,
-            "revenue_growth": 1,
+            "roic": 8,
+            "debt_to_equity": 5,
+            "interest_coverage": 2,
+        },
+    },
+    "oneil": {
+        "label": "William O'Neil",
+        "term": "short",
+        "philosophy": "Buy the strongest earnings growth leaders breaking out to new highs",
+        "focus": "CAN SLIM — earnings acceleration, revenue momentum, market leadership",
+        "weights": {
+            "revenue_growth": 30,
+            "earnings_consistency": 25,
+            "fcf_growth": 20,
+            "profit_margin": 15,
+            "roe": 5,
+            "roic": 3,
+            "debt_to_equity": 1,
+            "interest_coverage": 1,
+        },
+    },
+    "soros": {
+        "label": "George Soros",
+        "term": "short",
+        "philosophy": "Identify macro shifts early and ride reflexive momentum before the crowd",
+        "focus": "Revenue momentum, FCF acceleration, macro trend alignment",
+        "weights": {
+            "revenue_growth": 35,
+            "fcf_growth": 25,
+            "profit_margin": 15,
+            "earnings_consistency": 10,
+            "roe": 8,
+            "roic": 5,
+            "debt_to_equity": 1,
+            "interest_coverage": 1,
         },
     },
 }
@@ -74,6 +119,17 @@ INVESTOR_THRESHOLDS = {
     "graham": {
         "debt_to_equity": [(0.5, 1.0), (1.0, 0.8), (1.5, 0.6), (2.0, 0.4)],
     },
+    "oneil": {
+        # CAN SLIM demands very high growth — bar is much higher
+        "revenue_growth": [(0.25, 1.0), (0.15, 0.8), (0.10, 0.6), (0.05, 0.4)],
+        "earnings_consistency": [(0.80, 1.0), (0.70, 0.8), (0.60, 0.6), (0.50, 0.4)],
+        "fcf_growth": [(0.20, 1.0), (0.12, 0.8), (0.07, 0.6), (0.03, 0.4), (0.0, 0.2)],
+    },
+    "soros": {
+        # Soros cares most about revenue momentum — bar is high
+        "revenue_growth": [(0.20, 1.0), (0.12, 0.8), (0.08, 0.6), (0.04, 0.4)],
+        "fcf_growth": [(0.15, 1.0), (0.10, 0.8), (0.05, 0.6), (0.02, 0.4), (0.0, 0.2)],
+    },
 }
 
 
@@ -86,9 +142,11 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
     profile = INVESTOR_PROFILES.get(investor_key, INVESTOR_PROFILES["buffett"])
     investor_label = profile["label"]
     sector = stock_data.get("sector", "")
-    sector_profile = get_sector_profile(sector)
-    adjusted_weights = _adjust_weights_for_horizon(profile["weights"], horizon)
-    weights = _combine_investor_and_sector_weights(adjusted_weights, sector_profile["scorecard_weights"])
+
+    # Use research-backed investor × sector weights
+    weights = get_investor_sector_weights(investor_key, sector, horizon)
+    canonical_sector = _normalize_sector(sector)
+    has_specific_sector = bool(canonical_sector)
     thresholds = _get_thresholds_for_investor(investor_key)
 
     metrics = [
@@ -189,6 +247,11 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
         "grade_explanation": _get_grade_explanation(grade, investor_label),
         "sector": sector,
         "sector_label": _get_sector_label(sector),
+        "investor_sector_note": (
+            f"Weights calibrated to {investor_label}'s documented approach to {canonical_sector or 'this'} sector"
+            if has_specific_sector
+            else f"Using {investor_label}'s default weights (sector unrecognised)"
+        ),
         "metrics": [{
             "name": metric["name"],
             "score": metric["score"],

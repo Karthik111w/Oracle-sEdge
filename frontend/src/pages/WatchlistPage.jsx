@@ -55,7 +55,7 @@ const WatchlistPage = () => {
         <div>
           <h1 style={{ margin: 0, fontSize: '2.5rem' }}>Watchlist</h1>
           <p style={{ margin: '0.5rem 0 0', color: 'var(--color-text-muted)' }}>
-            Save tickers you want to monitor over time. Buffett watches companies before he buys.
+            Save tickers you want to monitor over time. Track quality and valuations before taking a position.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>

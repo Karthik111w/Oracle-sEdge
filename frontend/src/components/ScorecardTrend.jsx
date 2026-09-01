@@ -12,7 +12,7 @@ const ScorecardTrend = ({ trend }) => {
         <div>
           <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Scorecard Trend</h3>
           <p style={{ margin: '0.5rem 0 0', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
-            Historical Buffett score over the last {chartData.length} years.
+            Historical business quality score over the last {chartData.length} years.
           </p>
         </div>
       </div>
