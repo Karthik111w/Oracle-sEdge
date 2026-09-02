@@ -1,106 +1,107 @@
 import React, { useEffect, useState } from 'react';
+import { ShieldCheck } from 'lucide-react';
 
 const MarginGauge = ({ margin }) => {
   const [fillValue, setFillValue] = useState(0);
-  
-  useEffect(() => {
-    console.debug('MarginGauge build marker: 2026-08-04', margin);
-    // Animate on mount
-    const timer = setTimeout(() => {
-      // Safely read margin percentage and clamp between -50% and 50% for the gauge display
-      const rawPct = margin && typeof margin.margin_pct === 'number' ? margin.margin_pct : 0;
-      let pct = rawPct;
-      if (pct < -50) pct = -50;
-      if (pct > 50) pct = 50;
 
-      // Normalize to 0-100 scale where 0 is -50% and 100 is +50%
-      const normalized = ((pct + 50) / 100) * 100;
-      setFillValue(normalized);
+  const rawPct = margin && typeof margin.margin_pct === 'number' ? margin.margin_pct : 0;
+  const pctSafe = margin && typeof margin.margin_pct === 'number' ? margin.margin_pct : null;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      let pct = rawPct;
+      if (pct < 0) pct = 0;
+      if (pct > 100) pct = 100;
+      setFillValue(pct);
     }, 100);
     return () => clearTimeout(timer);
-  }, [margin]);
+  }, [rawPct]);
 
-  // Determine gauge color safely
-  let gaugeColor = 'var(--color-text-muted)';
-  const pctSafe = margin && typeof margin.margin_pct === 'number' ? margin.margin_pct : null;
+  // Determine gauge color
+  let gaugeColor = '#10b981'; // Teal/Green by default
   if (pctSafe !== null) {
-    if (pctSafe >= 30) gaugeColor = 'var(--color-success)';
-    else if (pctSafe >= 15) gaugeColor = 'var(--color-success)';
-    else if (pctSafe >= 0) gaugeColor = 'var(--color-warning)';
-    else gaugeColor = 'var(--color-danger)';
+    if (pctSafe >= 30) gaugeColor = '#06b6d4'; // Cyan
+    else if (pctSafe >= 15) gaugeColor = '#10b981'; // Green
+    else if (pctSafe >= 0) gaugeColor = '#f59e0b'; // Amber
+    else gaugeColor = '#ef4444'; // Red
   }
 
-  // Calculate SVG arc parameters
-  const radius = 80;
-  const circumference = radius * Math.PI;
+  // Ring gauge SVG calculations
+  const size = 110;
+  const strokeWidth = 10;
+  const center = size / 2;
+  const radius = center - strokeWidth;
+  const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (fillValue / 100) * circumference;
 
+  let descriptionText = "No valuation margin available for this security.";
+  if (pctSafe !== null) {
+    if (pctSafe >= 30) {
+      descriptionText = "The stock appears to be trading significantly below our estimated intrinsic value, offering a strong margin of safety.";
+    } else if (pctSafe >= 15) {
+      descriptionText = "The stock appears to be trading below our estimated intrinsic value, offering a reasonable margin of safety.";
+    } else if (pctSafe >= 0) {
+      descriptionText = "The stock is trading near fair value. Exercise discipline when allocating capital.";
+    } else {
+      descriptionText = "The stock appears to be trading above our estimated intrinsic value, presenting premium valuation risk.";
+    }
+  }
+
   return (
-    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', height: '100%' }}>
-      <h3 style={{ margin: 0, fontSize: '1.25rem', width: '100%', textAlign: 'left' }}>Margin of Safety</h3>
-      
-      <div style={{ position: 'relative', width: '200px', height: '110px', marginTop: '1rem' }}>
-        <svg viewBox="0 0 200 110" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-          {/* Background Arc */}
-          <path 
-            d="M 10,100 A 90,90 0 0,1 190,100" 
-            fill="none" 
-            stroke="var(--color-border)" 
-            strokeWidth="16" 
-            strokeLinecap="round" 
-          />
-          {/* Colored Fill Arc */}
-          <path 
-            d="M 10,100 A 90,90 0 0,1 190,100" 
-            fill="none" 
-            stroke={gaugeColor} 
-            strokeWidth="16" 
-            strokeLinecap="round" 
-            style={{
-              strokeDasharray: circumference,
-              strokeDashoffset: strokeDashoffset,
-              transition: 'stroke-dashoffset 1.5s ease-out, stroke 0.5s'
-            }}
-          />
-        </svg>
+    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <h3 style={{ margin: 0, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <ShieldCheck size={18} color="var(--color-teal)" /> Margin of Safety
+      </h3>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '0.5rem' }}>
         
-        <div style={{ 
-          position: 'absolute', 
-          bottom: '0', 
-          left: '0', 
-          right: '0', 
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center'
-        }}>
-          <span style={{ fontSize: '2.5rem', fontWeight: 800, color: gaugeColor, lineHeight: '1' }}>
-            {pctSafe !== null ? (pctSafe > 0 ? '+' : '') + pctSafe.toFixed(1) + '%' : 'N/A'}
-          </span>
-          <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '0.25rem' }}>
-            {margin && margin.classification ? String(margin.classification).toUpperCase() : 'UNKNOWN'}
-          </span>
+        {/* Donut Circular Gauge */}
+        <div style={{ position: 'relative', width: `${size}px`, height: `${size}px`, flexShrink: 0 }}>
+          <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+            {/* Track Circle */}
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              fill="transparent"
+              stroke="rgba(255, 255, 255, 0.08)"
+              strokeWidth={strokeWidth}
+            />
+            {/* Indicator Circle */}
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              fill="transparent"
+              stroke={gaugeColor}
+              strokeWidth={strokeWidth}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              style={{ transition: 'stroke-dashoffset 1.2s ease-out' }}
+            />
+          </svg>
+
+          {/* Centered Percentage */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.4rem',
+            fontWeight: 800,
+            color: gaugeColor
+          }}>
+            {pctSafe !== null ? `${Math.round(pctSafe)}%` : 'N/A'}
+          </div>
         </div>
-      </div>
-      
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        width: '100%', 
-        background: 'rgba(255,255,255,0.03)', 
-        padding: '1rem', 
-        borderRadius: '8px',
-        marginTop: 'auto'
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Current Price</span>
-          <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>${margin && typeof margin.current_price === 'number' ? margin.current_price.toFixed(2) : 'N/A'}</span>
+
+        {/* Text Description on Right */}
+        <div style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
+          {descriptionText}
         </div>
-        <div style={{ width: '1px', background: 'var(--color-border)' }}></div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Intrinsic Value</span>
-          <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-primary)' }}>${margin && typeof margin.intrinsic_value === 'number' ? margin.intrinsic_value.toFixed(2) : 'N/A'}</span>
-        </div>
+
       </div>
     </div>
   );
