@@ -1,7 +1,8 @@
 const BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
 export async function getStockAnalysis(ticker, investor = 'buffett', horizon = 'long') {
-  const res = await fetch(`${BASE_URL}/api/stock/${ticker}/analysis?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`);
+  const cleanTicker = (ticker || '').trim().toUpperCase().replace('.', '-');
+  const res = await fetch(`${BASE_URL}/api/stock/${cleanTicker}/analysis?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`);
   if (!res.ok) {
     const errBody = await res.json().catch(() => null);
     const msg = errBody?.detail || errBody?.error || res.statusText || 'Analysis failed';

@@ -49,6 +49,10 @@ def get_stock_data(ticker: str) -> Optional[dict]:
 
     Returns None if the ticker is invalid or no data is available.
     """
+    if not ticker:
+        return None
+    ticker = str(ticker).strip().upper().replace(".", "-")
+
     try:
         t = yf.Ticker(ticker)
 
