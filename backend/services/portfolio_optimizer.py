@@ -310,14 +310,16 @@ def _get_adaptive_recommendations(investor: str = "buffett", horizon: str = "lon
 
 
 def _strategy_bounds(current_weights: np.ndarray, scores: list[float], threshold: float, allow_wide: bool = False) -> list[tuple[float, float]]:
+    max_position = 0.20
     bounds = []
     for cur, score in zip(current_weights, scores):
         if score >= threshold:
-            bounds.append((0.0, 1.0))
+            upper = max_position
         elif allow_wide:
-            bounds.append((0.0, max(cur, 0.05)))
+            upper = min(max_position, max(cur, 0.05))
         else:
-            bounds.append((0.0, max(cur, 0.01)))
+            upper = min(max_position, max(cur, 0.01))
+        bounds.append((0.0, upper))
     return bounds
 
 

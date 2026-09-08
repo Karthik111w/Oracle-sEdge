@@ -1,3 +1,5 @@
+import numpy as np
+
 from backend.services import portfolio_optimizer
 from backend.services.sector_profiles import get_sector_profile, SECTOR_PROFILES
 from backend.services.risk_filter import check_risk_flags
@@ -48,6 +50,18 @@ def test_classify_stock_does_not_auto_avoid_on_risk_flag():
     result = classify_stock({"total_score": 90, "investor_label": "Buffett", "is_etf": False}, 10.0, True, "long")
     assert result["classification"] in {"Watchlist", "Hold"}
     assert result["classification"] != "Avoid"
+
+
+def test_strategy_bounds_cap_each_asset_at_twenty_percent():
+    bounds = portfolio_optimizer._strategy_bounds(
+        np.array([0.4, 0.3, 0.2]),
+        [95.0, 85.0, 40.0],
+        80.0,
+        allow_wide=True,
+    )
+    assert bounds[0][1] == 0.2
+    assert bounds[1][1] == 0.2
+    assert bounds[2][1] == 0.2
 
 
 def test_cost_of_equity_name_and_formula_are_present():
