@@ -12,9 +12,18 @@ def classify_stock(scorecard: dict, margin_pct: float, is_avoid: bool, horizon: 
         scorecard_score = 0
     investor_label = scorecard.get("investor_label", "Investor")
 
-    if is_avoid or scorecard_score < 60:
+    if scorecard_score < 60:
         classification = "Avoid"
-        explanation = f"Avoid due to risk flags or weak {investor_label} score."
+        explanation = f"Avoid due to weak {investor_label} score."
+    elif is_avoid and scorecard_score >= 90:
+        classification = "Watchlist"
+        explanation = f"Strong {investor_label} score, but risk flags warrant caution and a closer valuation check."
+    elif is_avoid and scorecard_score >= 75:
+        classification = "Hold"
+        explanation = f"Solid {investor_label} score, but risk flags mean hold until the balance sheet or earnings profile improves."
+    elif is_avoid:
+        classification = "Hold"
+        explanation = f"Risk flags require caution, but the score is not weak enough to justify a full avoid rating."
     elif scorecard_score >= 90 and margin_pct >= -10:
         classification = "Buy"
         explanation = f"Exceptional {investor_label} score with only modest premium risk; this remains a buy opportunity."

@@ -49,7 +49,7 @@ const DCFChart = ({ dcf }) => {
         </div>
         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Discount Rate</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text)' }}>{formatPercent(dcf.wacc)}</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text)' }}>{formatPercent(dcf.discount_rate ?? dcf.wacc ?? 0)}</div>
         </div>
         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Est. Growth Rate</div>

@@ -45,10 +45,10 @@ def calculate_dcf(stock_data: dict, horizon: str = "long") -> dict:
 
 def _get_valuation_params(horizon: str, beta: float, profile: dict) -> tuple[int, float, float]:
     years = 5 if horizon == "short" else 10
-    base_wacc = _calculate_wacc(beta) + profile.get("wacc_premium", 0.0)
-    wacc = base_wacc + (0.02 if horizon == "short" else 0.0)
+    base_cost_of_equity = _calculate_cost_of_equity(beta) + profile.get("wacc_premium", 0.0)
+    discount_rate = base_cost_of_equity + (0.02 if horizon == "short" else 0.0)
     terminal_rate = 0.015 if horizon == "short" else 0.03
-    return years, wacc, terminal_rate
+    return years, discount_rate, terminal_rate
 
 
 def _dcf_model(stock_data: dict, profile: dict, horizon: str = "long") -> dict:
@@ -61,17 +61,17 @@ def _dcf_model(stock_data: dict, profile: dict, horizon: str = "long") -> dict:
 
     latest_fcf = _last_valid(fcf)
     growth_rate = min(_calculate_cagr(fcf), profile.get("growth_cap", 0.1))
-    years, wacc, terminal_rate = _get_valuation_params(horizon, beta, profile)
+    years, discount_rate, terminal_rate = _get_valuation_params(horizon, beta, profile)
 
     projected = []
     for year in range(1, years + 1):
         fcf_year = latest_fcf * ((1 + growth_rate) ** year)
-        discounted = fcf_year / ((1 + wacc) ** year)
+        discounted = fcf_year / ((1 + discount_rate) ** year)
         projected.append({"year": year, "fcf": fcf_year, "discounted_fcf": discounted})
 
     terminal_base = latest_fcf * ((1 + growth_rate) ** (years + 1))
-    terminal_value = terminal_base / (wacc - terminal_rate)
-    terminal_value_discounted = terminal_value / ((1 + wacc) ** years)
+    terminal_value = terminal_base / (discount_rate - terminal_rate)
+    terminal_value_discounted = terminal_value / ((1 + discount_rate) ** years)
 
     total_pv = sum(p["discounted_fcf"] for p in projected) + terminal_value_discounted
     intrinsic_value = total_pv / shares
@@ -81,7 +81,7 @@ def _dcf_model(stock_data: dict, profile: dict, horizon: str = "long") -> dict:
         "model_label": "Discounted Cash Flow (DCF)",
         "model_explanation": f"{('Short-term' if horizon == 'short' else 'Long-term')} DCF projection for {stock_data.get('sector', 'this sector')}.",
         "intrinsic_value": intrinsic_value,
-        "wacc": wacc,
+        "discount_rate": discount_rate,
         "growth_rate": growth_rate,
         "terminal_rate": terminal_rate,
         "terminal_value_discounted": terminal_value_discounted,
@@ -121,7 +121,7 @@ def _earnings_based_valuation(stock_data: dict, profile: dict, horizon: str = "l
         "model_label": "Earnings-Based Valuation",
         "model_explanation": "Banks and financials are valued on earnings power and book value — FCF is not meaningful for leveraged financial institutions.",
         "intrinsic_value": intrinsic_value,
-        "wacc": discount_rate,
+        "discount_rate": discount_rate,
         "growth_rate": growth_rate,
         "terminal_value_discounted": terminal_value_discounted,
         "projected_fcf": projected,
@@ -159,7 +159,7 @@ def _dividend_discount_model(stock_data: dict, profile: dict, horizon: str = "lo
         "model_label": "Dividend Discount Model (DDM)",
         "model_explanation": "Utilities with stable regulated dividends are best valued by discounting future dividend streams — more reliable than FCF for this sector.",
         "intrinsic_value": intrinsic_value,
-        "wacc": discount_rate,
+        "discount_rate": discount_rate,
         "growth_rate": growth_rate,
         "terminal_value_discounted": terminal_value_discounted,
         "projected_fcf": projected,
@@ -202,7 +202,7 @@ def _ffo_model(stock_data: dict, profile: dict, horizon: str = "long") -> dict:
         "model_label": "Funds From Operations (FFO) Model",
         "model_explanation": "REITs are valued on FFO — adds back depreciation to net income since real estate depreciation doesn't reflect true cash generation.",
         "intrinsic_value": intrinsic_value,
-        "wacc": discount_rate,
+        "discount_rate": discount_rate,
         "growth_rate": growth_rate,
         "terminal_value_discounted": terminal_value_discounted,
         "projected_fcf": projected,
@@ -223,8 +223,8 @@ def _calculate_cagr(series: list) -> float:
         return 0.05
 
 
-def _calculate_wacc(beta: float) -> float:
+def _calculate_cost_of_equity(beta: float) -> float:
     risk_free_rate = 0.03
     market_premium = 0.05
-    wacc = risk_free_rate + beta * market_premium
-    return max(wacc, 0.07)
+    cost_of_equity = risk_free_rate + beta * market_premium
+    return max(cost_of_equity, 0.07)

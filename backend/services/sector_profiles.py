@@ -31,7 +31,7 @@ SECTOR_PROFILES = {
             "revenue_growth": 25,
         }
     },
-    "Consumer Staples": {
+    "Consumer Defensive": {
         "model": "dcf",
         "growth_cap": 0.12,
         "terminal_rate": 0.025,
@@ -127,6 +127,22 @@ SECTOR_PROFILES = {
             "revenue_growth": 5,
         }
     },
+    "Basic Materials": {
+        "model": "dcf",
+        "growth_cap": 0.15,
+        "terminal_rate": 0.025,
+        "wacc_premium": 0.01,
+        "scorecard_weights": {
+            "earnings_consistency": 20,
+            "roic": 18,
+            "fcf_growth": 15,
+            "profit_margin": 12,
+            "roe": 12,
+            "debt_to_equity": 10,
+            "interest_coverage": 8,
+            "revenue_growth": 5,
+        }
+    },
     "Communication Services": {
         "model": "dcf",
         "growth_cap": 0.20,
@@ -143,7 +159,7 @@ SECTOR_PROFILES = {
             "revenue_growth": 4,
         }
     },
-    "Consumer Discretionary": {
+    "Consumer Cyclical": {
         "model": "dcf",
         "growth_cap": 0.20,
         "terminal_rate": 0.03,
@@ -177,11 +193,23 @@ SECTOR_PROFILES = {
     },
 }
 
+
 def get_sector_profile(sector: str) -> dict:
-    """Match sector string from yFinance to a profile."""
+    """Match sector string from yFinance to a profile using the canonical sector normalizer."""
     if not sector:
         return SECTOR_PROFILES["Default"]
+
+    try:
+        from .investor_sector_weights import _normalize_sector
+        normalized = _normalize_sector(sector)
+    except Exception:
+        normalized = sector.strip()
+
+    if normalized in SECTOR_PROFILES:
+        return SECTOR_PROFILES[normalized]
+
     for key in SECTOR_PROFILES:
-        if key.lower() in sector.lower() or sector.lower() in key.lower():
+        if key.lower() == normalized.lower():
             return SECTOR_PROFILES[key]
+
     return SECTOR_PROFILES["Default"]

@@ -41,7 +41,7 @@ def get_analysis(ticker: str, investor: str = "buffett", horizon: str = "long"):
     else:
         margin = None
 
-    risk = check_risk_flags(stock_data)
+    risk = check_risk_flags(stock_data, sector=stock_data.get("sector", ""))
     classification_details = classify_stock(scorecard, margin["margin_pct"] if margin else -100.0, risk["is_avoid"], horizon)
     scorecard_trend = calculate_scorecard_history(stock_data)
 
@@ -74,7 +74,7 @@ def get_ai_report_endpoint(ticker: str, request: Request, investor: str = "buffe
     else:
         margin = None
 
-    risk = check_risk_flags(stock_data)
+    risk = check_risk_flags(stock_data, sector=stock_data.get("sector", ""))
     classification_details = classify_stock(scorecard, margin["margin_pct"] if margin else -100.0, risk["is_avoid"], horizon)
 
     report_result = generate_ai_report(

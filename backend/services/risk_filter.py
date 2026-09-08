@@ -1,11 +1,26 @@
 from typing import Optional
 
 
-def check_risk_flags(stock_data: dict) -> dict:
+def _debt_threshold_for_sector(sector: str) -> float:
+    """Use higher D/E thresholds for leverage-heavy sectors where debt is normal."""
+    try:
+        from .investor_sector_weights import _normalize_sector
+        normalized = _normalize_sector(sector or "")
+    except Exception:
+        normalized = (sector or "").strip()
+
+    if normalized in {"Financial Services", "Real Estate", "Utilities"}:
+        return 3.0
+    if normalized == "Basic Materials":
+        return 2.5
+    return 2.0
+
+
+def check_risk_flags(stock_data: dict, sector: str = "") -> dict:
     """Check for red flags that should trigger an 'Avoid' classification.
 
     Flags:
-    1. Debt-to-equity > 2.0
+    1. Debt-to-equity exceeds a sector-aware threshold
     2. Latest free cash flow is negative
     3. Earnings declined 3+ consecutive years
     4. Interest coverage ratio < 2.0
@@ -20,14 +35,15 @@ def check_risk_flags(stock_data: dict) -> dict:
 
     flags: list[dict] = []
 
-    # 1. Debt-to-equity > 2.0
+    # 1. Debt-to-equity exceeds a sector-aware threshold
     latest_debt = _latest(total_debt)
     latest_equity = _latest(equity)
     de_ratio = _safe_div(latest_debt, latest_equity)
-    if de_ratio is not None and de_ratio > 2.0:
+    debt_threshold = _debt_threshold_for_sector(sector or stock_data.get("sector", ""))
+    if de_ratio is not None and de_ratio > debt_threshold:
         flags.append({
             "flag": "High Debt",
-            "description": "Debt-to-equity ratio exceeds 2.0",
+            "description": f"Debt-to-equity ratio exceeds {debt_threshold:.1f}",
             "value": f"{de_ratio:.2f}",
         })
 
