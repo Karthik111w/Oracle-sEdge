@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, X, PieChart, Zap, TrendingUp, Gauge } from 'lucide-react';
 import { getMarketConditions, parseBulkHoldings } from '../api/client';
 
-const PortfolioForm = ({ onSubmit, loading }) => {
+const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', selectedHorizon = 'long' }) => {
   const [holdings, setHoldings] = useState([
     { ticker: 'AAPL', shares: 10 },
     { ticker: 'MSFT', shares: 5 },
@@ -51,9 +51,13 @@ const PortfolioForm = ({ onSubmit, loading }) => {
   }, [accountValue]);
 
   useEffect(() => {
+    setMarketConditions(null);
+  }, [selectedInvestor, selectedHorizon]);
+
+  useEffect(() => {
     if (useRecommendations && !marketConditions && !conditionsLoading) {
       setConditionsLoading(true);
-      getMarketConditions()
+      getMarketConditions(selectedInvestor, selectedHorizon)
         .then(data => {
           setMarketConditions(data);
           setConditionsLoading(false);
@@ -63,7 +67,7 @@ const PortfolioForm = ({ onSubmit, loading }) => {
           setConditionsLoading(false);
         });
     }
-  }, [useRecommendations, marketConditions, conditionsLoading]);
+  }, [useRecommendations, marketConditions, conditionsLoading, selectedInvestor, selectedHorizon]);
 
   const handleHoldingChange = (index, field, value) => {
     const newHoldings = [...holdings];

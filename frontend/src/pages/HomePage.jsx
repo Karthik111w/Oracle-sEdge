@@ -72,11 +72,11 @@ const HomePage = () => {
           margin: '0 0 1rem 0',
           position: 'relative',
           zIndex: 1,
-          color: '#ffffff'
+          color: 'var(--text-heading)'
         }}>
           Investment analysis<br />
           <span style={{ 
-            background: 'linear-gradient(135deg, #ffffff 0%, #22d3ee 100%)',
+            background: 'linear-gradient(135deg, var(--text-heading) 0%, var(--color-teal) 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent'
           }}>
@@ -84,7 +84,7 @@ const HomePage = () => {
           </span>
         </h1>
 
-        <p style={{ fontSize: '1.2rem', color: 'var(--color-text-secondary)', maxWidth: '640px', margin: '0 auto', lineHeight: '1.6', position: 'relative', zIndex: 1 }}>
+        <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', maxWidth: '640px', margin: '0 auto', lineHeight: '1.6', position: 'relative', zIndex: 1 }}>
           Make smarter decisions with legendary investment principles, advanced DCF models, and AI-powered insights.
         </p>
       </div>
@@ -98,7 +98,7 @@ const HomePage = () => {
       <div style={{ marginBottom: '3.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <h3 style={{ fontSize: '1.15rem', margin: 0, fontWeight: 700 }}>Popular Analysis</h3>
-          <Link to="/compare" style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <Link to="/compare" style={{ color: 'var(--text-muted)', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             View all <ChevronRight size={14} />
           </Link>
         </div>
@@ -122,13 +122,13 @@ const HomePage = () => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>{pick.ticker}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>{pick.name}</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-heading)' }}>{pick.ticker}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{pick.name}</div>
                 </div>
                 <span style={{ 
                   padding: '0.2rem 0.6rem', 
                   borderRadius: '6px', 
-                  background: 'rgba(16, 185, 129, 0.15)', 
+                  background: 'var(--color-success-bg)', 
                   color: 'var(--color-success)', 
                   fontWeight: 700, 
                   fontSize: '0.85rem' 
@@ -143,7 +143,7 @@ const HomePage = () => {
                   <path
                     d={`M 0 35 Q 20 25, 40 28 T 80 15 L 100 5`}
                     fill="none"
-                    stroke="#10b981"
+                    stroke="var(--color-success)"
                     strokeWidth="2.5"
                     strokeLinecap="round"
                   />
@@ -161,7 +161,7 @@ const HomePage = () => {
         <div className="card" style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Recently Viewed</h3>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>View all</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>View all</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -177,19 +177,19 @@ const HomePage = () => {
                     alignItems: 'center', 
                     padding: '0.75rem 1rem', 
                     borderRadius: '10px', 
-                    background: 'rgba(255, 255, 255, 0.02)', 
+                    background: 'var(--bg-row)', 
                     border: '1px solid var(--border-color)',
                     textDecoration: 'none',
-                    color: 'var(--color-text)'
+                    color: 'var(--text-primary)'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>
                       {item.ticker[0]}
                     </div>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.ticker}</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>{item.name}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{item.name}</div>
                     </div>
                   </div>
                   
@@ -215,7 +215,7 @@ const HomePage = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
             {marketSnapshot.map(m => (
-              <div key={m.name} style={{ background: 'rgba(255,255,255,0.02)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+              <div key={m.name} style={{ background: 'var(--bg-row)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{m.name}</div>
                 <div style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0.25rem 0' }}>{m.value}</div>
                 <div style={{ fontSize: '0.82rem', fontWeight: 700, color: m.positive ? 'var(--color-success)' : 'var(--color-danger)' }}>

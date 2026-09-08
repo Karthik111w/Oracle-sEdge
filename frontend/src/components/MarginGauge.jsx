@@ -64,7 +64,7 @@ const MarginGauge = ({ margin }) => {
               cy={center}
               r={radius}
               fill="transparent"
-              stroke="rgba(255, 255, 255, 0.08)"
+              stroke="var(--border-color)"
               strokeWidth={strokeWidth}
             />
             {/* Indicator Circle */}

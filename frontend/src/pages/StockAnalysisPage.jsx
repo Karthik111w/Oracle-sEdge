@@ -130,8 +130,8 @@ const StockAnalysisPage = () => {
 
   // Data for the side-by-side DCF vertical bar chart
   const dcfBarData = [
-    { name: 'Market Price', value: currentPrice, color: '#06b6d4' },
-    { name: 'Intrinsic Value', value: intrinsicValue, color: '#d4a853' },
+    { name: 'Market Price', value: currentPrice, color: 'var(--color-teal)' },
+    { name: 'Intrinsic Value', value: intrinsicValue, color: 'var(--color-gold)' },
   ];
 
   return (
@@ -200,7 +200,7 @@ const StockAnalysisPage = () => {
             </span>
             <div style={{ 
               display: 'flex', 
-              background: 'rgba(15, 23, 42, 0.9)', 
+              background: 'var(--bg-pill-group)', 
               padding: '4px', 
               borderRadius: '12px', 
               border: '1px solid var(--border-color)' 
@@ -217,9 +217,9 @@ const StockAnalysisPage = () => {
                       border: 'none',
                       fontSize: '0.88rem',
                       fontWeight: isActive ? 700 : 500,
-                      background: isActive ? 'linear-gradient(135deg, var(--color-gold), #b8922f)' : 'transparent',
-                      color: isActive ? '#0f172a' : 'var(--color-text-secondary)',
-                      boxShadow: isActive ? '0 0 16px rgba(212, 168, 83, 0.35)' : 'none',
+                      background: isActive ? 'linear-gradient(135deg, var(--color-gold), var(--color-gold-dark))' : 'transparent',
+                      color: isActive ? 'var(--text-inverse)' : 'var(--text-secondary)',
+                      boxShadow: isActive ? '0 0 16px var(--color-gold-glow)' : 'none',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
                       whiteSpace: 'nowrap'
@@ -239,7 +239,7 @@ const StockAnalysisPage = () => {
             </span>
             <div style={{ 
               display: 'flex', 
-              background: 'rgba(15, 23, 42, 0.9)', 
+              background: 'var(--bg-pill-group)', 
               padding: '4px', 
               borderRadius: '12px', 
               border: '1px solid var(--border-color)' 
@@ -256,9 +256,9 @@ const StockAnalysisPage = () => {
                       border: 'none',
                       fontSize: '0.88rem',
                       fontWeight: isActive ? 700 : 500,
-                      background: isActive ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : 'transparent',
-                      color: isActive ? '#ffffff' : 'var(--color-text-secondary)',
-                      boxShadow: isActive ? '0 0 16px rgba(6, 182, 212, 0.35)' : 'none',
+                      background: isActive ? 'linear-gradient(135deg, var(--color-teal), var(--color-teal-light))' : 'transparent',
+                      color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                      boxShadow: isActive ? '0 0 16px var(--color-teal-glow)' : 'none',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
@@ -309,7 +309,7 @@ const StockAnalysisPage = () => {
                     <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
                     <Tooltip 
                       formatter={(val) => [`$${val.toFixed(2)}`, 'Value']} 
-                      contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px' }}
+                      contentStyle={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }}
                     />
                     <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={45}>
                       {dcfBarData.map((entry, index) => (
@@ -320,7 +320,7 @@ const StockAnalysisPage = () => {
                 </ResponsiveContainer>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-around', background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-around', background: 'var(--bg-row)', padding: '0.75rem', borderRadius: '8px' }}>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Market Price</div>
                   <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-teal)' }}>${currentPrice.toFixed(2)}</div>

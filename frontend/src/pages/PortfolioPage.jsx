@@ -90,7 +90,7 @@ const PortfolioPage = () => {
             <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
               Investor Lens
             </span>
-            <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.9)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', background: 'var(--bg-pill-group)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
               {INVESTOR_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -101,9 +101,9 @@ const PortfolioPage = () => {
                     border: 'none',
                     fontSize: '0.82rem',
                     fontWeight: selectedInvestor === opt.value ? 700 : 500,
-                    background: selectedInvestor === opt.value ? 'linear-gradient(135deg, var(--color-gold), #b8922f)' : 'transparent',
-                    color: selectedInvestor === opt.value ? '#0f172a' : 'var(--color-text-secondary)',
-                    boxShadow: selectedInvestor === opt.value ? '0 0 12px rgba(212, 168, 83, 0.35)' : 'none',
+                    background: selectedInvestor === opt.value ? 'linear-gradient(135deg, var(--color-gold), var(--color-gold-dark))' : 'transparent',
+                    color: selectedInvestor === opt.value ? 'var(--text-inverse)' : 'var(--text-secondary)',
+                    boxShadow: selectedInvestor === opt.value ? '0 0 12px var(--color-gold-glow)' : 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                   }}
@@ -118,7 +118,7 @@ const PortfolioPage = () => {
             <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
               Horizon
             </span>
-            <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.9)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', background: 'var(--bg-pill-group)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
               {HORIZON_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -129,9 +129,9 @@ const PortfolioPage = () => {
                     border: 'none',
                     fontSize: '0.82rem',
                     fontWeight: selectedHorizon === opt.value ? 700 : 500,
-                    background: selectedHorizon === opt.value ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : 'transparent',
-                    color: selectedHorizon === opt.value ? '#ffffff' : 'var(--color-text-secondary)',
-                    boxShadow: selectedHorizon === opt.value ? '0 0 12px rgba(6, 182, 212, 0.35)' : 'none',
+                    background: selectedHorizon === opt.value ? 'linear-gradient(135deg, var(--color-teal), var(--color-teal-light))' : 'transparent',
+                    color: selectedHorizon === opt.value ? '#ffffff' : 'var(--text-secondary)',
+                    boxShadow: selectedHorizon === opt.value ? '0 0 12px var(--color-teal-glow)' : 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                   }}
@@ -165,7 +165,12 @@ const PortfolioPage = () => {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '3rem' }}>
-        <PortfolioForm onSubmit={handleOptimize} loading={loading} />
+        <PortfolioForm
+          onSubmit={handleOptimize}
+          loading={loading}
+          selectedInvestor={selectedInvestor}
+          selectedHorizon={selectedHorizon}
+        />
         
         {loading ? (
           <div className="card" style={{ padding: '4rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>

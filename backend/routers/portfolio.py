@@ -51,11 +51,11 @@ def parse_bulk_portfolio_endpoint(request: BulkParseRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/market-conditions")
-def get_market_conditions_endpoint():
+def get_market_conditions_endpoint(investor: str = "buffett", horizon: str = "long"):
     """Get current market conditions and adaptive recommendations."""
     try:
         conditions = _get_market_conditions()
-        recommendations = _get_adaptive_recommendations()
+        recommendations = _get_adaptive_recommendations(investor=investor, horizon=horizon)
         return {
             "market_trend": conditions.get("trend"),
             "volatility": conditions.get("volatility"),

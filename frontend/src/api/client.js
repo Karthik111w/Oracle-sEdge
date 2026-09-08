@@ -63,8 +63,8 @@ export async function parseBulkHoldings(rawText) {
   return res.json();
 }
 
-export async function getMarketConditions() {
-  const res = await fetch(`${BASE_URL}/api/portfolio/market-conditions`);
+export async function getMarketConditions(investor = 'buffett', horizon = 'long') {
+  const res = await fetch(`${BASE_URL}/api/portfolio/market-conditions?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`);
   if (!res.ok) throw new Error(`Market conditions failed: ${res.statusText}`);
   return res.json();
 }

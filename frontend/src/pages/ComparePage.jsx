@@ -87,7 +87,7 @@ const ComparePage = () => {
         </div>
 
         {/* Investor Lens Pill Buttons */}
-        <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.9)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', background: 'var(--bg-pill-group)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
           {INVESTOR_OPTIONS.map((opt) => {
             const isActive = selectedInvestor === opt.value;
             return (
@@ -157,7 +157,7 @@ const ComparePage = () => {
             {/* Header Ticker Titles */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 1fr', gap: '1rem', alignItems: 'center', marginBottom: '2rem', textAlign: 'center' }}>
               <div>
-                <h2 style={{ fontSize: '2.2rem', margin: 0, fontWeight: 900, color: '#ffffff' }}>{leftData.stock_data.ticker}</h2>
+                <h2 style={{ fontSize: '2.2rem', margin: 0, fontWeight: 900, color: 'var(--text-heading)' }}>{leftData.stock_data.ticker}</h2>
                 <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{leftData.stock_data.company_name}</div>
               </div>
 
@@ -166,7 +166,7 @@ const ComparePage = () => {
               </div>
 
               <div>
-                <h2 style={{ fontSize: '2.2rem', margin: 0, fontWeight: 900, color: '#ffffff' }}>{rightData.stock_data.ticker}</h2>
+                <h2 style={{ fontSize: '2.2rem', margin: 0, fontWeight: 900, color: 'var(--text-heading)' }}>{rightData.stock_data.ticker}</h2>
                 <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{rightData.stock_data.company_name}</div>
               </div>
             </div>

@@ -20,6 +20,17 @@ STOPWORDS = {
 
 TICKER_TOKEN_RE = re.compile(r'\b[A-Z0-9]{1,5}(?:[.-][A-Z0-9]{1,5})?\b')
 
+# Starter universe for each investor lens. Some names may not have stable yfinance/fundamental coverage,
+# so each ticker is scored individually and skipped gracefully if it fails the data pipeline.
+INVESTOR_CANDIDATE_UNIVERSE = {
+    "buffett": ["BRK-B", "AAPL", "KO", "AXP", "MCO", "V", "MA", "COST", "JNJ", "PG"],
+    "munger": ["BRK-B", "COST", "MCO", "V", "MA", "AAPL", "JNJ"],
+    "graham": ["JNJ", "PG", "KO", "MO", "VZ", "T", "GIS", "KHC", "PFE", "CVX"],
+    "lynch": ["COST", "SBUX", "NKE", "LULU", "CMG", "TJX", "ULTA", "DECK"],
+    "oneil": ["NVDA", "AVGO", "TSLA", "PLTR", "CRWD", "NOW", "ANET", "MELI"],
+    "soros": ["NVDA", "AAPL", "TSLA", "META", "GS", "JPM", "XOM", "FCX"],
+}
+
 
 def _normalize_ticker_token(token: str) -> str:
     return token.strip().upper()
@@ -239,39 +250,63 @@ def _get_market_conditions() -> dict:
         return {"trend": "neutral", "volatility": "medium", "market_return_90d": 0.0}
 
 
-def _get_adaptive_recommendations() -> list[str]:
-    """Get adaptive recommendations based on current market conditions.
-    
-    Bull market (strong growth): Growth & tech-heavy
-    Neutral market (balanced): Mix of growth & quality & dividends
-    Bear market (defensive): Defensive & high dividend
-    High volatility: Quality & dividend-paying
+def _score_percentile_thresholds(scores: list[float]) -> tuple[float, float, float]:
+    """Return the 75th, 50th, and 25th percentiles for a set of scorecard scores."""
+    if not scores:
+        return (80.0, 70.0, 60.0)
+    arr = np.asarray(scores, dtype=float)
+    q75, q50, q25 = np.percentile(arr, [75, 50, 25])
+    return (float(q75), float(q50), float(q25))
+
+
+def _get_adaptive_recommendations(investor: str = "buffett", horizon: str = "long", top_n: int = 6) -> list[str]:
+    """Score an investor-specific ticker universe using the existing scorecard model.
+
+    Market trend/volatility only adds a small tie-break nudge; it does not gate eligibility.
     """
+    investor_key = (investor or "buffett").lower()
+    candidate_pool = INVESTOR_CANDIDATE_UNIVERSE.get(investor_key, INVESTOR_CANDIDATE_UNIVERSE["buffett"])
+    if top_n <= 0:
+        return []
+
     conditions = _get_market_conditions()
     trend = conditions.get("trend", "neutral")
     volatility = conditions.get("volatility", "medium")
-    
-    # Define stock pools by strategy
-    growth_stocks = ["AAPL", "MSFT", "NVDA", "GOOGL", "TSLA"]  # Growth & tech
-    quality_stocks = ["BRK-B", "JNJ", "PG", "V", "MA"]  # Quality & moats
-    dividend_stocks = ["KO", "PG", "JNJ", "V", "MCD"]  # High dividend/stable
-    defensive_stocks = ["BRK-B", "PG", "JNJ", "KO", "MO"]  # Defensive plays
-    
-    # Select based on market conditions
-    if trend == "bull" and volatility == "low":
-        # Strong bull market: go for growth
-        recs = ["AAPL", "MSFT", "NVDA", "GOOGL", "V"]
-    elif trend == "bull" and volatility in ("medium", "high"):
-        # Bull but volatile: balance growth with quality
-        recs = ["AAPL", "MSFT", "BRK-B", "V", "JNJ"]
-    elif trend == "bear" or volatility == "high":
-        # Bear market or high volatility: defensive + quality
-        recs = ["BRK-B", "JNJ", "PG", "KO", "V"]
-    else:
-        # Neutral: balanced mix (original recommendation)
-        recs = ["AAPL", "BRK-B", "MSFT", "JNJ", "V", "COST"]
-    
-    return recs
+
+    trend_boosts = {
+        "bull": {"AAPL", "MSFT", "NVDA", "AVGO", "META", "AMZN", "COST", "BRK-B", "V"},
+        "bear": {"BRK-B", "JNJ", "PG", "KO", "VZ", "CVX", "XOM", "MO", "WMT"},
+        "neutral": {"AAPL", "BRK-B", "V", "COST", "JNJ", "MSFT"},
+    }
+    volatility_boosts = {"low": {"AAPL", "MSFT", "NVDA", "BRK-B", "COST"}, "medium": {"AAPL", "V", "BRK-B", "COST"}, "high": {"BRK-B", "JNJ", "PG", "KO", "V"}}
+
+    scored: list[tuple[str, float]] = []
+    for ticker in candidate_pool:
+        try:
+            stock_data = get_stock_data(ticker)
+            if not stock_data:
+                continue
+
+            scorecard = calculate_scorecard_by_investor(stock_data, investor=investor_key, horizon=horizon)
+            total_score = scorecard.get("total_score")
+            if total_score is None:
+                continue
+
+            adjusted_score = float(total_score)
+            if ticker in trend_boosts.get(trend, set()):
+                adjusted_score += 2.0
+            if ticker in volatility_boosts.get(volatility, set()):
+                adjusted_score += 1.0
+
+            scored.append((ticker, adjusted_score))
+        except Exception:
+            continue
+
+    if not scored:
+        return candidate_pool[:top_n]
+
+    scored.sort(key=lambda item: (-item[1], item[0]))
+    return [ticker for ticker, _ in scored[:top_n]]
 
 
 def _strategy_bounds(current_weights: np.ndarray, scores: list[float], threshold: float, allow_wide: bool = False) -> list[tuple[float, float]]:
@@ -355,7 +390,7 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
 
     if use_recommendations:
         # Get adaptive recommendations based on market conditions
-        recs = _get_adaptive_recommendations()
+        recs = _get_adaptive_recommendations(investor=investor, horizon=horizon)
         existing = set(h["ticker"].upper() for h in holdings)
         for r in recs:
             if r not in existing:
@@ -411,7 +446,8 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
         x0 = current_weights.copy()
 
     # 2. Fetch returns
-    returns_df = get_returns(tickers, period="2y")
+    period = "6mo" if horizon == "short" else "2y"
+    returns_df = get_returns(tickers, period=period)
     if returns_df.empty or len(returns_df) < 30:
         return _empty_result()
 
@@ -454,10 +490,11 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
     current_sharpe = float((current_return - 0.045) / current_vol) if current_vol > 0 else 0.0
 
     strategies = {}
+    strategy_thresholds = _score_percentile_thresholds(scorecard_scores)
     strategy_definitions = [
-        ("short_term", "Short Term", "Prioritize higher-scoring stocks and protect near-term volatility.", 80, False),
-        ("balanced", "Balanced", "Blend growth and quality while limiting exposure to lower-score positions.", 70, False),
-        ("long_term", "Long Term", "Reward durable businesses with reasonable conviction for a multi-year horizon.", 60, True),
+        ("short_term", "Short Term", "Prioritize higher-scoring stocks and protect near-term volatility.", strategy_thresholds[0], False),
+        ("balanced", "Balanced", "Blend growth and quality while limiting exposure to lower-score positions.", strategy_thresholds[1], False),
+        ("long_term", "Long Term", "Reward durable businesses with reasonable conviction for a multi-year horizon.", strategy_thresholds[2], True),
     ]
 
     for key, label, description, threshold, allow_wide in strategy_definitions:
