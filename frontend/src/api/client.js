@@ -28,7 +28,7 @@ export async function getPriceHistory(ticker, period = '5y') {
   return res.json();
 }
 
-export async function optimizePortfolio(holdings, cashAvailable = 0, useRecommendations = false, accountValue = 0) {
+export async function optimizePortfolio(holdings, cashAvailable = 0, useRecommendations = false, accountValue = 0, investor = 'buffett', horizon = 'long') {
   const res = await fetch(`${BASE_URL}/api/portfolio/optimize`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -37,6 +37,8 @@ export async function optimizePortfolio(holdings, cashAvailable = 0, useRecommen
       cash_available: Number(cashAvailable) || 0,
       account_value: Number(accountValue) || 0,
       use_recommendations: useRecommendations,
+      investor,
+      horizon,
     }),
   });
   if (!res.ok) {

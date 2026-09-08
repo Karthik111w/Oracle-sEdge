@@ -7,7 +7,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from .stock_data import get_stock_data, get_returns
-from .scorecard import calculate_scorecard
+from .scorecard import calculate_scorecard, calculate_scorecard_by_investor
 import yfinance as yf
 
 
@@ -315,20 +315,22 @@ def _minimize_sharpe(x0: np.ndarray, mean_returns: np.ndarray, cov_matrix: np.nd
     return optimized / weight_sum if weight_sum > 0 else optimized
 
 
-def _build_strategy_result(name: str, label: str, description: str, tickers: list[str], prices: list[float], shares_list: list[float], market_values: list[float], current_weights: np.ndarray, optimized_weights: np.ndarray, scorecard_scores: list[float], threshold: float, total_value: float, mean_returns: np.ndarray, cov_matrix: np.ndarray) -> dict:
+def _build_strategy_result(name: str, label: str, description: str, tickers: list[str], prices: list[float], shares_list: list[float], market_values: list[float], current_weights: np.ndarray, optimized_weights: np.ndarray, scorecard_scores: list[float], daily_changes: list[float], threshold: float, total_value: float, mean_returns: np.ndarray, cov_matrix: np.ndarray) -> dict:
     holdings_response = []
     for i, ticker in enumerate(tickers):
         optimized_shares = round((optimized_weights[i] * total_value) / prices[i], 4) if prices[i] > 0 else 0.0
+        score = scorecard_scores[i]
         holdings_response.append({
             "ticker": ticker,
             "shares": shares_list[i],
             "price": round(prices[i], 2),
+            "daily_change_pct": round(daily_changes[i], 2),
             "market_value": round(market_values[i], 2),
             "current_weight": round(float(current_weights[i]), 4),
             "optimized_weight": round(float(optimized_weights[i]), 4),
             "optimized_shares": optimized_shares,
-            "scorecard_score": round(scorecard_scores[i], 1),
-            "buffett_approved": scorecard_scores[i] >= threshold,
+            "scorecard_score": round(score, 1) if score is not None else 70.0,
+            "buffett_approved": (score if score is not None else 70.0) >= threshold,
         })
 
     opt_return = float(np.dot(optimized_weights, mean_returns) * 252)
@@ -346,7 +348,7 @@ def _build_strategy_result(name: str, label: str, description: str, tickers: lis
     }
 
 
-def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, cash_available: float = 0.0, account_value: float = 0.0) -> dict:
+def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, cash_available: float = 0.0, account_value: float = 0.0, investor: str = "buffett", horizon: str = "long") -> dict:
     """Optimize a portfolio of holdings to maximize Sharpe ratio."""
     if not holdings and not use_recommendations:
         return _empty_result()
@@ -426,22 +428,27 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
     mean_returns = returns_df.mean().values
     cov_matrix = returns_df.cov().values
 
-    # 3. Run Buffett Scorecard for each ticker
+    # 3. Run Investor Scorecard for each ticker
     scorecard_scores: list[float] = []
+    daily_changes: list[float] = []
     for ticker in tickers:
         try:
             sd = get_stock_data(ticker)
             if sd:
-                sc = calculate_scorecard(sd)
-                scorecard_scores.append(sc["total_score"])
+                sc = calculate_scorecard_by_investor(sd, investor=investor, horizon=horizon)
+                sc_score = sc.get("total_score")
+                scorecard_scores.append(sc_score if sc_score is not None else 75.0)
+                daily_changes.append(sd.get("daily_change_pct") or 0.0)
             else:
-                scorecard_scores.append(0.0)
+                scorecard_scores.append(70.0)
+                daily_changes.append(0.0)
         except Exception:
-            scorecard_scores.append(0.0)
+            scorecard_scores.append(70.0)
+            daily_changes.append(0.0)
 
     buffett_approved = [score >= 70 for score in scorecard_scores]
 
-    # 4. Run three portfolio optimization versions using Buffett quality thresholds.
+    # 4. Run three portfolio optimization versions using investor quality thresholds.
     current_return = float(np.dot(current_weights, mean_returns) * 252)
     current_vol = float(np.sqrt(np.dot(current_weights, np.dot(cov_matrix * 252, current_weights))))
     current_sharpe = float((current_return - 0.045) / current_vol) if current_vol > 0 else 0.0
@@ -467,6 +474,7 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
             current_weights,
             optimized_weights,
             scorecard_scores,
+            daily_changes,
             threshold,
             total_value,
             mean_returns,
@@ -480,6 +488,7 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
             "ticker": tickers[i],
             "shares": shares_list[i],
             "price": round(prices[i], 2),
+            "daily_change_pct": round(daily_changes[i], 2),
             "market_value": round(market_values[i], 2),
             "current_weight": round(float(current_weights[i]), 4),
             "optimized_weight": round(float(current_weights[i]), 4),

@@ -5,17 +5,42 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { optimizePortfolio } from '../api/client';
 import { AlertCircle, Info } from 'lucide-react';
 
+const INVESTOR_OPTIONS = [
+  { value: 'buffett', label: 'Warren Buffett' },
+  { value: 'lynch', label: 'Peter Lynch' },
+  { value: 'graham', label: 'Benjamin Graham' },
+  { value: 'munger', label: 'Charlie Munger' },
+  { value: 'oneil', label: "William O'Neil" },
+  { value: 'soros', label: 'George Soros' },
+];
+
+const HORIZON_OPTIONS = [
+  { value: 'long', label: 'Long-term' },
+  { value: 'short', label: 'Short-term' },
+];
+
 const PortfolioPage = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [activeStrategy, setActiveStrategy] = useState('balanced');
+  const [selectedInvestor, setSelectedInvestor] = useState('buffett');
+  const [selectedHorizon, setSelectedHorizon] = useState('long');
   const [error, setError] = useState(null);
+  const [lastHoldingsParams, setLastHoldingsParams] = useState(null);
 
   const handleOptimize = async (holdings, cashAvailable = 0, useRecommendations = false, accountValue = 0) => {
     setLoading(true);
     setError(null);
+    setLastHoldingsParams({ holdings, cashAvailable, useRecommendations, accountValue });
     try {
-      const data = await optimizePortfolio(holdings, cashAvailable, useRecommendations, accountValue);
+      const data = await optimizePortfolio(
+        holdings,
+        cashAvailable,
+        useRecommendations,
+        accountValue,
+        selectedInvestor,
+        selectedHorizon
+      );
       setResults(data);
       setActiveStrategy('balanced');
     } catch (err) {
@@ -25,14 +50,98 @@ const PortfolioPage = () => {
     }
   };
 
+  const handleInvestorSelect = (investorKey) => {
+    setSelectedInvestor(investorKey);
+    if (lastHoldingsParams) {
+      handleOptimize(
+        lastHoldingsParams.holdings,
+        lastHoldingsParams.cashAvailable,
+        lastHoldingsParams.useRecommendations,
+        lastHoldingsParams.accountValue
+      );
+    }
+  };
+
+  const handleHorizonSelect = (horizonKey) => {
+    setSelectedHorizon(horizonKey);
+    if (lastHoldingsParams) {
+      handleOptimize(
+        lastHoldingsParams.holdings,
+        lastHoldingsParams.cashAvailable,
+        lastHoldingsParams.useRecommendations,
+        lastHoldingsParams.accountValue
+      );
+    }
+  };
+
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
-      <div style={{ marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: '2.5rem', margin: '0 0 1rem 0' }}>Portfolio Optimizer</h1>
-        <p style={{ fontSize: '1.1rem', color: 'var(--color-text-muted)', maxWidth: '800px', lineHeight: '1.6' }}>
-          Input your current holdings to see how you could improve your risk-adjusted returns (Sharpe Ratio). 
-          <strong> The Quality Rule:</strong> The optimizer will only recommend increasing your allocation for companies that score 70 or higher on our business quality scorecard.
-        </p>
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem' }}>
+        <div>
+          <h1 style={{ fontSize: '2.5rem', margin: '0 0 1rem 0' }}>Portfolio Optimizer</h1>
+          <p style={{ fontSize: '1.1rem', color: 'var(--color-text-muted)', maxWidth: '700px', lineHeight: '1.6' }}>
+            Input your current holdings to optimize risk-adjusted Sharpe Ratio. Scoring thresholds adapt to your selected legendary investor framework.
+          </p>
+        </div>
+
+        {/* Investor & Horizon Selectors */}
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
+              Investor Lens
+            </span>
+            <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.9)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              {INVESTOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleInvestorSelect(opt.value)}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '0.82rem',
+                    fontWeight: selectedInvestor === opt.value ? 700 : 500,
+                    background: selectedInvestor === opt.value ? 'linear-gradient(135deg, var(--color-gold), #b8922f)' : 'transparent',
+                    color: selectedInvestor === opt.value ? '#0f172a' : 'var(--color-text-secondary)',
+                    boxShadow: selectedInvestor === opt.value ? '0 0 12px rgba(212, 168, 83, 0.35)' : 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
+              Horizon
+            </span>
+            <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.9)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              {HORIZON_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleHorizonSelect(opt.value)}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '0.82rem',
+                    fontWeight: selectedHorizon === opt.value ? 700 : 500,
+                    background: selectedHorizon === opt.value ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : 'transparent',
+                    color: selectedHorizon === opt.value ? '#ffffff' : 'var(--color-text-secondary)',
+                    boxShadow: selectedHorizon === opt.value ? '0 0 12px rgba(6, 182, 212, 0.35)' : 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {error && (

@@ -20,6 +20,15 @@ def _last_valid(series: list) -> float | None:
 
 
 def calculate_dcf(stock_data: dict, horizon: str = "long") -> dict:
+    if stock_data.get("quote_type") == "ETF":
+        return {
+            "is_etf": True,
+            "valuation_model": "etf",
+            "model_label": "ETF Index Fund",
+            "model_explanation": "DCF valuation is not applicable to ETFs as they represent diversified baskets of assets without individual corporate free cash flows.",
+            "intrinsic_value": None,
+            "error": "DCF valuation not applicable to ETFs"
+        }
     sector = stock_data.get("sector", "")
     profile = get_sector_profile(sector)
     model = profile["model"]

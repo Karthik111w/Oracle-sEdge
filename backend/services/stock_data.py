@@ -129,6 +129,13 @@ def get_stock_data(ticker: str) -> Optional[dict]:
 
         # --- Extract scalar info ---
         current_price = _to_float(getattr(fast, "last_price", None))
+        previous_close = _to_float(getattr(fast, "previous_close", None))
+        daily_change_pct = None
+        if current_price and previous_close and previous_close > 0:
+            daily_change_pct = (current_price - previous_close) / previous_close * 100
+        elif info.get("regularMarketChangePercent"):
+            daily_change_pct = _to_float(info.get("regularMarketChangePercent"))
+        
         market_cap = _to_float(getattr(fast, "market_cap", None))
         shares_outstanding = _to_float(getattr(fast, "shares", None))
         beta = _to_float(info.get("beta"))
@@ -144,7 +151,7 @@ def get_stock_data(ticker: str) -> Optional[dict]:
         category = info.get("category")
         ytd_return = _to_float(info.get("ytdReturn"))
         five_year_return = _to_float(info.get("fiveYearAverageReturn"))
-        total_assets = _to_float(info.get("totalAssets"))
+        etf_total_assets = _to_float(info.get("totalAssets"))
 
         return {
             "ticker": ticker.upper(),
@@ -153,6 +160,7 @@ def get_stock_data(ticker: str) -> Optional[dict]:
             "industry": industry,
             "quote_type": quote_type,
             "current_price": current_price,
+            "daily_change_pct": daily_change_pct,
             "market_cap": market_cap,
             "shares_outstanding": shares_outstanding,
             "beta": beta if beta is not None else 1.0,
@@ -163,7 +171,7 @@ def get_stock_data(ticker: str) -> Optional[dict]:
                 "category": category,
                 "ytd_return": ytd_return,
                 "five_year_return": five_year_return,
-                "total_assets": total_assets
+                "total_assets": etf_total_assets
             } if quote_type == "ETF" else None,
             "financials": {
                 "years": year_strings,

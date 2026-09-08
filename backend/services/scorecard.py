@@ -143,6 +143,23 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
     investor_label = profile["label"]
     sector = stock_data.get("sector", "")
 
+    if stock_data.get("quote_type") == "ETF":
+        etf = stock_data.get("etf_data") or {}
+        return {
+            "investor": investor_key,
+            "investor_label": investor_label,
+            "horizon": horizon,
+            "total_score": None,
+            "grade": "ETF",
+            "grade_explanation": "Exchange-Traded Funds (ETFs) represent diversified baskets of assets. Fundamental ratio scorecards apply to corporate balance sheets.",
+            "sector": stock_data.get("sector") or "ETF / Fund",
+            "sector_label": "ETF / Fund",
+            "investor_sector_note": "Fundamental ratio scorecard skipped for ETF index asset.",
+            "metrics": [],
+            "is_etf": True,
+            "etf_data": etf
+        }
+
     # Use research-backed investor × sector weights
     weights = get_investor_sector_weights(investor_key, sector, horizon)
     canonical_sector = _normalize_sector(sector)

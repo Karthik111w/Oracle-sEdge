@@ -69,6 +69,30 @@ const StockAnalysisPage = () => {
     fetchData(investorParam, horizonParam);
   }, [ticker, investorParam, horizonParam]);
 
+  useEffect(() => {
+    if (data && data.stock_data) {
+      const sd = data.stock_data;
+      const changeVal = sd.daily_change_pct;
+      const isPos = changeVal === null || changeVal === undefined ? true : changeVal >= 0;
+      const changeStr = changeVal === null || changeVal === undefined ? 'N/A' : `${isPos ? '+' : ''}${changeVal.toFixed(2)}%`;
+      const item = {
+        ticker: sd.ticker,
+        name: sd.company_name,
+        price: sd.current_price ? `$${sd.current_price.toFixed(2)}` : 'N/A',
+        change: changeStr,
+        changeVal: changeVal ?? 0,
+      };
+      try {
+        const saved = JSON.parse(localStorage.getItem('recently_viewed') || '[]');
+        const filtered = saved.filter((x) => x.ticker !== item.ticker);
+        const updated = [item, ...filtered].slice(0, 6);
+        localStorage.setItem('recently_viewed', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [data]);
+
   if (loading) {
     return (
       <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -101,6 +125,8 @@ const StockAnalysisPage = () => {
   const currentPrice = data.stock_data?.current_price || 0;
   const intrinsicValue = data.dcf?.intrinsic_value || 0;
   const marginPct = data.margin?.margin_pct ?? 0;
+  const dailyChangePct = data.stock_data?.daily_change_pct;
+  const isDailyPos = dailyChangePct === null || dailyChangePct === undefined ? true : dailyChangePct >= 0;
 
   // Data for the side-by-side DCF vertical bar chart
   const dcfBarData = [
@@ -151,12 +177,12 @@ const StockAnalysisPage = () => {
             <span style={{ 
               padding: '0.2rem 0.6rem', 
               borderRadius: '6px', 
-              background: 'rgba(16, 185, 129, 0.15)', 
-              color: 'var(--color-success)', 
+              background: isDailyPos ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', 
+              color: isDailyPos ? 'var(--color-success)' : 'var(--color-danger)', 
               fontWeight: 700, 
               fontSize: '0.95rem' 
             }}>
-              +2.34%
+              {dailyChangePct === null || dailyChangePct === undefined ? 'N/A' : `${isDailyPos ? '+' : ''}${dailyChangePct.toFixed(2)}%`}
             </span>
             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
               Market closed • {data.stock_data.sector} • {data.stock_data.industry}

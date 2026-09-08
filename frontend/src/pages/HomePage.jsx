@@ -10,11 +10,7 @@ const HomePage = () => {
     { ticker: 'MSFT', name: 'Microsoft Corp.', change: '+15.2%', points: [15, 18, 22, 28, 25, 32, 38, 42, 50] }
   ];
 
-  const recentlyViewed = [
-    { ticker: 'AAPL', name: 'Apple Inc.', price: '$192.65', change: '+12.4%' },
-    { ticker: 'MSFT', name: 'Microsoft Corp.', price: '$415.32', change: '+15.2%' },
-    { ticker: 'VOO', name: 'Vanguard S&P 500 ETF', price: '$498.71', change: '+6.3%' }
-  ];
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
 
   const marketSnapshot = [
     { name: 'S&P 500', value: '5,241.53', change: '+1.23%', positive: true },
@@ -26,10 +22,25 @@ const HomePage = () => {
   const [watchlist, setWatchlist] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('watchlist_tickers');
-    if (saved) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('recently_viewed') || '[]');
+      if (saved && saved.length > 0) {
+        setRecentlyViewed(saved);
+      } else {
+        setRecentlyViewed([
+          { ticker: 'AAPL', name: 'Apple Inc.', price: '$192.65', change: '+12.4%', changeVal: 12.4 },
+          { ticker: 'MSFT', name: 'Microsoft Corp.', price: '$415.32', change: '+15.2%', changeVal: 15.2 },
+          { ticker: 'VOO', name: 'Vanguard S&P 500 ETF', price: '$498.71', change: '+6.3%', changeVal: 6.3 }
+        ]);
+      }
+    } catch {
+      setRecentlyViewed([]);
+    }
+
+    const savedWatchlist = localStorage.getItem('watchlist_tickers');
+    if (savedWatchlist) {
       try {
-        setWatchlist(JSON.parse(saved));
+        setWatchlist(JSON.parse(savedWatchlist));
       } catch {
         setWatchlist([]);
       }
@@ -154,39 +165,42 @@ const HomePage = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {recentlyViewed.map(item => (
-              <Link 
-                key={item.ticker} 
-                to={`/stock/${item.ticker}`} 
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  padding: '0.75rem 1rem', 
-                  borderRadius: '10px', 
-                  background: 'rgba(255, 255, 255, 0.02)', 
-                  border: '1px solid var(--border-color)',
-                  textDecoration: 'none',
-                  color: 'var(--color-text)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>
-                    {item.ticker[0]}
+            {recentlyViewed.map(item => {
+              const isNeg = item.change?.startsWith('-') || item.changeVal < 0;
+              return (
+                <Link 
+                  key={item.ticker} 
+                  to={`/stock/${item.ticker}`} 
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '0.75rem 1rem', 
+                    borderRadius: '10px', 
+                    background: 'rgba(255, 255, 255, 0.02)', 
+                    border: '1px solid var(--border-color)',
+                    textDecoration: 'none',
+                    color: 'var(--color-text)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>
+                      {item.ticker[0]}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.ticker}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>{item.name}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.ticker}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>{item.name}</div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{item.price}</span>
+                    <span style={{ color: isNeg ? 'var(--color-danger)' : 'var(--color-success)', fontSize: '0.85rem', fontWeight: 700 }}>{item.change}</span>
+                    <ChevronRight size={14} color="var(--color-text-muted)" />
                   </div>
-                </div>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{item.price}</span>
-                  <span style={{ color: 'var(--color-success)', fontSize: '0.85rem', fontWeight: 700 }}>{item.change}</span>
-                  <ChevronRight size={14} color="var(--color-text-muted)" />
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         </div>
 

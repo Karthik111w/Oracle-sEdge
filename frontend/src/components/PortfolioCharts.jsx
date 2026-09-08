@@ -51,6 +51,8 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
           <tbody>
             {results.holdings.map((h, i) => {
               const val = (h.shares * h.price) || 0;
+              const changeVal = h.daily_change_pct ?? h.change_pct ?? 0;
+              const isPos = changeVal >= 0;
               return (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '1rem 1.5rem', fontWeight: 800, fontSize: '1.05rem', color: '#ffffff' }}>
@@ -59,8 +61,8 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
                   <td style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>{h.shares.toFixed(2)}</td>
                   <td style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>${h.price.toFixed(2)}</td>
                   <td style={{ padding: '1rem', fontWeight: 700 }}>${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td style={{ padding: '1rem 1.5rem', textAlign: 'right', fontWeight: 700, color: 'var(--color-success)' }}>
-                    +2.34%
+                  <td style={{ padding: '1rem 1.5rem', textAlign: 'right', fontWeight: 700, color: isPos ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                    {isPos ? '+' : ''}{changeVal.toFixed(2)}%
                   </td>
                 </tr>
               );

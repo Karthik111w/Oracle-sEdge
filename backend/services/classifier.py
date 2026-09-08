@@ -1,6 +1,15 @@
 def classify_stock(scorecard: dict, margin_pct: float, is_avoid: bool, horizon: str = "long") -> dict:
     """Classify a stock into Buy / Watchlist / Hold / Avoid using investor framework scoring."""
-    scorecard_score = scorecard.get("total_score", 0)
+    if scorecard.get("is_etf"):
+        return {
+            "classification": "ETF Index",
+            "horizon_label": "ETF Index",
+            "explanation": "Exchange-Traded Fund representing a diversified asset basket.",
+        }
+
+    scorecard_score = scorecard.get("total_score")
+    if scorecard_score is None:
+        scorecard_score = 0
     investor_label = scorecard.get("investor_label", "Investor")
 
     if is_avoid or scorecard_score < 60:

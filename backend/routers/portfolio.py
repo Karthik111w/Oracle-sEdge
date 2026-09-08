@@ -18,6 +18,8 @@ class PortfolioRequest(BaseModel):
     cash_available: float = 0.0
     account_value: float = 0.0
     use_recommendations: bool = False
+    investor: str = "buffett"
+    horizon: str = "long"
 
 class BulkParseRequest(BaseModel):
     raw_text: str
@@ -30,7 +32,9 @@ def optimize_portfolio_endpoint(request: PortfolioRequest):
             holdings_dict,
             request.use_recommendations,
             request.cash_available,
-            request.account_value
+            request.account_value,
+            investor=request.investor,
+            horizon=request.horizon
         )
         return result
     except ValueError as e:
