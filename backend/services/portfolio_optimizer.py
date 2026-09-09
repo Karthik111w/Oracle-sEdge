@@ -309,6 +309,16 @@ def _get_adaptive_recommendations(investor: str = "buffett", horizon: str = "lon
     return [ticker for ticker, _ in scored[:top_n]]
 
 
+def _enforce_max_position_weight(weights: np.ndarray, max_weight: float = 0.20) -> np.ndarray:
+    clipped = np.clip(np.asarray(weights, dtype=float), 0.0, max_weight)
+    total = clipped.sum()
+    if total <= 0:
+        return clipped
+    if total == 1.0:
+        return clipped
+    return clipped / total
+
+
 def _strategy_bounds(current_weights: np.ndarray, scores: list[float], threshold: float, allow_wide: bool = False) -> list[tuple[float, float]]:
     max_position = 0.20
     bounds = []
@@ -348,6 +358,7 @@ def _minimize_sharpe(x0: np.ndarray, mean_returns: np.ndarray, cov_matrix: np.nd
         optimized = x0
 
     optimized = np.maximum(optimized, 0)
+    optimized = _enforce_max_position_weight(optimized)
     weight_sum = np.sum(optimized)
     return optimized / weight_sum if weight_sum > 0 else optimized
 

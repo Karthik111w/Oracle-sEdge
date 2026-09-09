@@ -44,10 +44,16 @@ def calculate_dcf(stock_data: dict, horizon: str = "long") -> dict:
 
 
 def _get_valuation_params(horizon: str, beta: float, profile: dict) -> tuple[int, float, float]:
-    years = 5 if horizon == "short" else 10
+    horizon_key = (horizon or "balanced").lower()
+    if horizon_key == "short":
+        years, discount_adjustment, terminal_rate = 5, 0.02, 0.015
+    elif horizon_key == "balanced":
+        years, discount_adjustment, terminal_rate = 7, 0.01, 0.0225
+    else:
+        years, discount_adjustment, terminal_rate = 10, 0.0, 0.03
+
     base_cost_of_equity = _calculate_cost_of_equity(beta) + profile.get("wacc_premium", 0.0)
-    discount_rate = base_cost_of_equity + (0.02 if horizon == "short" else 0.0)
-    terminal_rate = 0.015 if horizon == "short" else 0.03
+    discount_rate = base_cost_of_equity + discount_adjustment
     return years, discount_rate, terminal_rate
 
 

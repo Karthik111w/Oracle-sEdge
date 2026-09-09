@@ -5,6 +5,8 @@ from backend.services.sector_profiles import get_sector_profile, SECTOR_PROFILES
 from backend.services.risk_filter import check_risk_flags
 from backend.services.classifier import classify_stock
 from backend.services.dcf import _calculate_cost_of_equity
+from backend.services.investor_sector_weights import get_investor_sector_weights, _apply_horizon
+from backend.services.scorecard import _get_thresholds_for_investor
 
 
 def test_adaptive_recommendations_accepts_investor_and_horizon():
@@ -62,6 +64,23 @@ def test_strategy_bounds_cap_each_asset_at_twenty_percent():
     assert bounds[0][1] == 0.2
     assert bounds[1][1] == 0.2
     assert bounds[2][1] == 0.2
+
+
+def test_balanced_horizon_keeps_base_weights_and_short_uses_momentum_tilt():
+    base = {"revenue_growth": 10.0, "fcf_growth": 10.0, "earnings_consistency": 10.0, "profit_margin": 10.0, "roe": 10.0, "roic": 10.0, "debt_to_equity": 10.0, "interest_coverage": 10.0}
+    balanced = _apply_horizon(base, "buffett", "balanced")
+    short = _apply_horizon(base, "buffett", "short")
+    long = _apply_horizon(base, "buffett", "long")
+    assert balanced == base
+    assert short["revenue_growth"] > balanced["revenue_growth"]
+    assert long["roic"] > balanced["roic"]
+
+
+def test_horizon_thresholds_diverge_by_investor_and_horizon():
+    short = _get_thresholds_for_investor("buffett", "short")
+    balanced = _get_thresholds_for_investor("buffett", "balanced")
+    assert short["revenue_growth"][0][0] > balanced["revenue_growth"][0][0]
+    assert short["fcf_growth"][0][0] > balanced["fcf_growth"][0][0]
 
 
 def test_cost_of_equity_name_and_formula_are_present():

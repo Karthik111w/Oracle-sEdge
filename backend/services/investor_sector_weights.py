@@ -892,28 +892,47 @@ def _normalize_sector(sector: str) -> str:
 
 # ---------------------------------------------------------------------------
 # HORIZON ADJUSTMENT
-# Short-term investors boost revenue_growth and fcf_growth,
-# and reduce patience-based metrics (earnings_consistency, roic).
-# Applied proportionally then renormalized.
+# Balanced is the neutral base matrix. Long tilts toward durability and
+# short tilts toward momentum. The same investor-sector matrix remains the
+# baseline; only the multipliers change by horizon.
 # ---------------------------------------------------------------------------
-_SHORT_TERM_MULTIPLIERS: dict[str, float] = {
-    "revenue_growth":       1.25,
-    "fcf_growth":           1.20,
-    "earnings_consistency": 0.80,
-    "roic":                 0.85,
-    "profit_margin":        1.00,
-    "roe":                  1.00,
-    "debt_to_equity":       1.00,
-    "interest_coverage":    1.00,
+_HORIZON_MULTIPLIERS: dict[str, dict[str, dict[str, float]]] = {
+    "buffett": {
+        "long":  {"revenue_growth": 0.85, "fcf_growth": 1.10, "earnings_consistency": 1.20, "profit_margin": 1.10, "roe": 1.10, "roic": 1.25, "debt_to_equity": 1.10, "interest_coverage": 1.10},
+        "short": {"revenue_growth": 1.20, "fcf_growth": 1.15, "earnings_consistency": 0.85, "profit_margin": 1.00, "roe": 1.00, "roic": 0.85, "debt_to_equity": 0.95, "interest_coverage": 0.95},
+    },
+    "munger": {
+        "long":  {"revenue_growth": 0.80, "fcf_growth": 1.10, "earnings_consistency": 1.15, "profit_margin": 1.20, "roe": 1.10, "roic": 1.35, "debt_to_equity": 1.05, "interest_coverage": 1.05},
+        "short": {"revenue_growth": 1.10, "fcf_growth": 1.10, "earnings_consistency": 0.90, "profit_margin": 1.10, "roe": 1.00, "roic": 1.00, "debt_to_equity": 1.00, "interest_coverage": 1.00},
+    },
+    "graham": {
+        "long":  {"revenue_growth": 0.80, "fcf_growth": 1.00, "earnings_consistency": 1.25, "profit_margin": 1.05, "roe": 1.05, "roic": 1.00, "debt_to_equity": 1.25, "interest_coverage": 1.25},
+        "short": {"revenue_growth": 1.05, "fcf_growth": 1.00, "earnings_consistency": 1.00, "profit_margin": 1.00, "roe": 1.00, "roic": 1.00, "debt_to_equity": 1.15, "interest_coverage": 1.15},
+    },
+    "lynch": {
+        "long":  {"revenue_growth": 1.05, "fcf_growth": 1.10, "earnings_consistency": 1.15, "profit_margin": 1.05, "roe": 1.05, "roic": 1.10, "debt_to_equity": 1.05, "interest_coverage": 1.00},
+        "short": {"revenue_growth": 1.30, "fcf_growth": 1.20, "earnings_consistency": 0.85, "profit_margin": 0.95, "roe": 0.95, "roic": 0.85, "debt_to_equity": 0.95, "interest_coverage": 0.90},
+    },
+    "oneil": {
+        "long":  {"revenue_growth": 0.90, "fcf_growth": 1.05, "earnings_consistency": 1.10, "profit_margin": 1.10, "roe": 1.15, "roic": 1.00, "debt_to_equity": 1.00, "interest_coverage": 1.00},
+        "short": {"revenue_growth": 1.35, "fcf_growth": 1.25, "earnings_consistency": 0.80, "profit_margin": 1.00, "roe": 1.05, "roic": 0.85, "debt_to_equity": 0.90, "interest_coverage": 0.85},
+    },
+    "soros": {
+        "long":  {"revenue_growth": 0.95, "fcf_growth": 1.05, "earnings_consistency": 1.10, "profit_margin": 1.05, "roe": 1.05, "roic": 1.05, "debt_to_equity": 1.05, "interest_coverage": 1.05},
+        "short": {"revenue_growth": 1.40, "fcf_growth": 1.30, "earnings_consistency": 0.75, "profit_margin": 0.95, "roe": 1.00, "roic": 0.85, "debt_to_equity": 1.05, "interest_coverage": 0.90},
+    },
 }
 
 
-def _apply_horizon(weights: dict[str, int], horizon: str) -> dict[str, float]:
-    """Apply horizon multipliers and return adjusted (un-normalized) weights."""
-    if horizon != "short":
+def _apply_horizon(weights: dict[str, int], investor_key: str, horizon: str) -> dict[str, float]:
+    """Apply per-investor horizon multipliers. Balanced keeps the base matrix unchanged."""
+    horizon_key = (horizon or "balanced").lower()
+    if horizon_key == "balanced":
         return {k: float(v) for k, v in weights.items()}
-    adjusted = {k: v * _SHORT_TERM_MULTIPLIERS.get(k, 1.0) for k, v in weights.items()}
-    return adjusted
+    mults = _HORIZON_MULTIPLIERS.get((investor_key or "buffett").lower(), {}).get(horizon_key)
+    if not mults:
+        return {k: float(v) for k, v in weights.items()}
+    return {k: v * mults.get(k, 1.0) for k, v in weights.items()}
 
 
 # ---------------------------------------------------------------------------
@@ -951,7 +970,7 @@ def get_investor_sector_weights(
         }
 
     # Apply horizon adjustment
-    adjusted = _apply_horizon(raw_weights, horizon)
+    adjusted = _apply_horizon(raw_weights, investor_key, horizon)
 
     # Normalize to 100
     total = sum(adjusted.values())

@@ -112,6 +112,24 @@ DEFAULT_THRESHOLDS = {
     "revenue_growth": [(0.06, 1.0), (0.03, 0.8), (0.015, 0.6), (0.01, 0.4), (0.0, 0.2)],
 }
 
+HORIZON_THRESHOLDS = {
+    "long": {
+        "revenue_growth": [(0.10, 1.0), (0.06, 0.8), (0.03, 0.6), (0.01, 0.4)],
+        "fcf_growth": [(0.08, 1.0), (0.05, 0.8), (0.03, 0.6), (0.01, 0.4), (0.0, 0.2)],
+        "earnings_consistency": [(0.70, 1.0), (0.60, 0.8), (0.45, 0.6), (0.30, 0.4)],
+    },
+    "balanced": {
+        "revenue_growth": [(0.15, 1.0), (0.10, 0.8), (0.06, 0.6), (0.03, 0.4)],
+        "fcf_growth": [(0.12, 1.0), (0.08, 0.8), (0.04, 0.6), (0.02, 0.4), (0.0, 0.2)],
+        "earnings_consistency": [(0.65, 1.0), (0.55, 0.8), (0.40, 0.6), (0.25, 0.4)],
+    },
+    "short": {
+        "revenue_growth": [(0.25, 1.0), (0.18, 0.8), (0.12, 0.6), (0.06, 0.4)],
+        "fcf_growth": [(0.20, 1.0), (0.12, 0.8), (0.07, 0.6), (0.03, 0.4), (0.0, 0.2)],
+        "earnings_consistency": [(0.55, 1.0), (0.45, 0.8), (0.35, 0.6), (0.20, 0.4)],
+    },
+}
+
 INVESTOR_THRESHOLDS = {
     "lynch": {
         "revenue_growth": [(0.15, 1.0), (0.10, 0.8), (0.07, 0.6), (0.05, 0.4)],
@@ -120,13 +138,11 @@ INVESTOR_THRESHOLDS = {
         "debt_to_equity": [(0.5, 1.0), (1.0, 0.8), (1.5, 0.6), (2.0, 0.4)],
     },
     "oneil": {
-        # CAN SLIM demands very high growth — bar is much higher
         "revenue_growth": [(0.25, 1.0), (0.15, 0.8), (0.10, 0.6), (0.05, 0.4)],
         "earnings_consistency": [(0.80, 1.0), (0.70, 0.8), (0.60, 0.6), (0.50, 0.4)],
         "fcf_growth": [(0.20, 1.0), (0.12, 0.8), (0.07, 0.6), (0.03, 0.4), (0.0, 0.2)],
     },
     "soros": {
-        # Soros cares most about revenue momentum — bar is high
         "revenue_growth": [(0.20, 1.0), (0.12, 0.8), (0.08, 0.6), (0.04, 0.4)],
         "fcf_growth": [(0.15, 1.0), (0.10, 0.8), (0.05, 0.6), (0.02, 0.4), (0.0, 0.2)],
     },
@@ -160,11 +176,13 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
             "etf_data": etf
         }
 
-    # Use research-backed investor × sector weights
     weights = get_investor_sector_weights(investor_key, sector, horizon)
     canonical_sector = _normalize_sector(sector)
     has_specific_sector = bool(canonical_sector)
-    thresholds = _get_thresholds_for_investor(investor_key)
+    thresholds = _get_thresholds_for_investor(investor_key, horizon)
+
+    revenue_value = _revenue_growth_value(stock_data, horizon)
+    fcf_value = _fcf_growth_value(stock_data, horizon)
 
     metrics = [
         {
@@ -188,11 +206,11 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
         {
             "name": "FCF Growth",
             "metric": "fcf_growth",
-            "value": _fcf_cagr(stock_data),
-            "score": _score_tiered(_fcf_cagr(stock_data), weights["fcf_growth"], thresholds["fcf_growth"]),
+            "value": fcf_value,
+            "score": _score_tiered(fcf_value, weights["fcf_growth"], thresholds["fcf_growth"]),
             "max": weights["fcf_growth"],
-            "details": "5yr Free Cash Flow CAGR",
-            "value_label": _format_pct(_fcf_cagr(stock_data)),
+            "details": "Latest TTM FCF YoY" if horizon == "short" else "5yr Free Cash Flow CAGR",
+            "value_label": _format_pct(fcf_value),
         },
         {
             "name": "Profit Margin",
@@ -233,11 +251,11 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
         {
             "name": "Revenue Growth",
             "metric": "revenue_growth",
-            "value": _revenue_cagr(stock_data),
-            "score": _score_tiered(_revenue_cagr(stock_data), weights["revenue_growth"], thresholds["revenue_growth"]),
+            "value": revenue_value,
+            "score": _score_tiered(revenue_value, weights["revenue_growth"], thresholds["revenue_growth"]),
             "max": weights["revenue_growth"],
-            "details": "5yr Revenue CAGR",
-            "value_label": _format_pct(_revenue_cagr(stock_data)),
+            "details": "Latest TTM revenue YoY" if horizon == "short" else "5yr Revenue CAGR",
+            "value_label": _format_pct(revenue_value),
         },
     ]
 
@@ -253,7 +271,6 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
 
     total_score = round(total_points * 100 / available_max, 1) if available_max else 0
     grade = _get_grade(total_score)
-    print(f"[DEBUG] scorecard computed: investor={investor_key}, horizon={horizon}, total_score={total_score}, grade={grade}")
 
     return {
         "investor": investor_key,
@@ -279,9 +296,36 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
     }
 
 
-def _get_thresholds_for_investor(investor: str) -> dict:
+def _recent_growth(series: list[float]) -> float | None:
+    if len(series) < 2:
+        return None
+    prior = series[-2]
+    current = series[-1]
+    if prior in (None, 0):
+        return None
+    return (current - prior) / abs(prior)
+
+
+def _revenue_growth_value(stock_data: dict, horizon: str = "balanced") -> float | None:
+    if (horizon or "balanced").lower() != "short":
+        return _revenue_cagr(stock_data)
+    series = stock_data.get("financials", {}).get("revenue", [])
+    value = _recent_growth(series)
+    return value if value is not None else _revenue_cagr(stock_data)
+
+
+def _fcf_growth_value(stock_data: dict, horizon: str = "balanced") -> float | None:
+    if (horizon or "balanced").lower() != "short":
+        return _fcf_cagr(stock_data)
+    series = stock_data.get("financials", {}).get("free_cash_flow", [])
+    value = _recent_growth(series)
+    return value if value is not None else _fcf_cagr(stock_data)
+
+
+def _get_thresholds_for_investor(investor: str, horizon: str = "balanced") -> dict:
     thresholds = DEFAULT_THRESHOLDS.copy()
-    overrides = INVESTOR_THRESHOLDS.get(investor, {})
+    thresholds.update(HORIZON_THRESHOLDS.get((horizon or "balanced").lower(), {}))
+    overrides = INVESTOR_THRESHOLDS.get((investor or "").lower(), {})
     thresholds.update(overrides)
     return thresholds
 
