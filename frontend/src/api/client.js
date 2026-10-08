@@ -1,4 +1,11 @@
-const BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+// Local dev (npm run dev) talks to your local backend.
+// Production builds (Vercel) talk to the Render backend.
+// VITE_API_BASE set in Vercel's env vars overrides both.
+const PROD_API = 'https://REPLACE-WITH-YOUR-RENDER-URL.onrender.com';
+const BASE_URL = (
+  import.meta.env.VITE_API_BASE ||
+  (import.meta.env.DEV ? 'http://localhost:8000' : PROD_API)
+).replace(/\/+$/, '');
 
 export async function getStockAnalysis(ticker, investor = 'buffett', horizon = 'long') {
   const cleanTicker = (ticker || '').trim().toUpperCase().replace('.', '-');

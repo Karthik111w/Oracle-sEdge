@@ -30,6 +30,16 @@ app.add_middleware(
 app.include_router(stock.router)
 app.include_router(portfolio.router)
 
+@app.get("/")
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    # Lets the server start with just `python backend/main.py`.
+    # Render (and most hosts) pass the port in through $PORT.
+    import uvicorn
+
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
