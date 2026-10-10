@@ -61,12 +61,12 @@ const DCFChart = ({ dcf }) => {
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: '300px', width: '100%', marginTop: '1rem' }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div style={{ width: '100%', marginTop: '1rem' }}>
+        <ResponsiveContainer width="100%" height={300}>
           <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis dataKey="year" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(val) => `$${val}M`} />
+            <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(val) => (Math.abs(val) >= 1000 ? `$${(val / 1000).toFixed(0)}B` : `$${val}M`)} />
             <Tooltip
               contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text)' }}
               itemStyle={{ color: 'var(--color-text)' }}

@@ -1,15 +1,11 @@
-// Local dev (npm run dev) talks to your local backend.
-// Production builds (Vercel) talk to the Render backend.
-// VITE_API_BASE set in Vercel's env vars overrides both.
-const PROD_API = 'https://REPLACE-WITH-YOUR-RENDER-URL.onrender.com';
-const BASE_URL = (
-  import.meta.env.VITE_API_BASE ||
-  (import.meta.env.DEV ? 'http://localhost:8000' : PROD_API)
-).replace(/\/+$/, '');
+// In local Vite dev, requests should go through the Vite proxy at /api.
+// In production, set VITE_API_BASE to your live Render backend URL.
+const BASE_URL = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
+const withBase = (path) => (BASE_URL ? `${BASE_URL}${path}` : path);
 
 export async function getStockAnalysis(ticker, investor = 'buffett', horizon = 'long') {
   const cleanTicker = (ticker || '').trim().toUpperCase().replace('.', '-');
-  const res = await fetch(`${BASE_URL}/api/stock/${cleanTicker}/analysis?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`);
+  const res = await fetch(withBase(`/api/stock/${cleanTicker}/analysis?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`));
   if (!res.ok) {
     const errBody = await res.json().catch(() => null);
     const msg = errBody?.detail || errBody?.error || res.statusText || 'Analysis failed';
@@ -24,19 +20,19 @@ export async function getAIReport(ticker, investor = 'buffett', horizon = 'long'
   const headers = {};
   if (apiKey) headers['X-Gemini-API-Key'] = apiKey;
   headers['X-Gemini-Model'] = model;
-  const res = await fetch(`${BASE_URL}/api/stock/${ticker}/ai-report?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`, { headers });
+  const res = await fetch(withBase(`/api/stock/${ticker}/ai-report?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`), { headers });
   if (!res.ok) throw new Error(`AI report failed: ${res.statusText}`);
   return res.json();
 }
 
 export async function getPriceHistory(ticker, period = '5y') {
-  const res = await fetch(`${BASE_URL}/api/stock/${ticker}/price-history?period=${period}`);
+  const res = await fetch(withBase(`/api/stock/${ticker}/price-history?period=${period}`));
   if (!res.ok) throw new Error(`Price history failed: ${res.statusText}`);
   return res.json();
 }
 
 export async function optimizePortfolio(holdings, cashAvailable = 0, useRecommendations = false, accountValue = 0, investor = 'buffett', horizon = 'long') {
-  const res = await fetch(`${BASE_URL}/api/portfolio/optimize`, {
+  const res = await fetch(withBase('/api/portfolio/optimize'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -57,7 +53,7 @@ export async function optimizePortfolio(holdings, cashAvailable = 0, useRecommen
 }
 
 export async function parseBulkHoldings(rawText) {
-  const res = await fetch(`${BASE_URL}/api/portfolio/parse-bulk`, {
+  const res = await fetch(withBase('/api/portfolio/parse-bulk'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ raw_text: rawText }),
@@ -71,7 +67,7 @@ export async function parseBulkHoldings(rawText) {
 }
 
 export async function getMarketConditions(investor = 'buffett', horizon = 'long') {
-  const res = await fetch(`${BASE_URL}/api/portfolio/market-conditions?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`);
+  const res = await fetch(withBase(`/api/portfolio/market-conditions?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`));
   if (!res.ok) throw new Error(`Market conditions failed: ${res.statusText}`);
   return res.json();
 }

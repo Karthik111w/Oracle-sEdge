@@ -4,6 +4,7 @@ import { getStockAnalysis } from '../api/client';
 import SearchBar from '../components/SearchBar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Sparkles, ShieldAlert, CheckCircle2, ArrowLeft } from 'lucide-react';
+import SegmentedControl from '../components/SegmentedControl';
 
 const INVESTOR_OPTIONS = [
   { value: 'buffett', label: 'Warren Buffett' },
@@ -75,10 +76,10 @@ const ComparePage = () => {
   }, []);
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem clamp(1rem, 3vw, 2rem)' }}>
       
       {/* Header */}
-      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
         <div>
           <h1 style={{ fontSize: '2.5rem', margin: 0, fontWeight: 900 }}>Compare</h1>
           <p style={{ color: 'var(--color-text-muted)', marginTop: '0.4rem', fontSize: '1rem' }}>
@@ -86,44 +87,24 @@ const ComparePage = () => {
           </p>
         </div>
 
-        {/* Investor Lens Pill Buttons */}
-        <div style={{ display: 'flex', background: 'var(--bg-pill-group)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-          {INVESTOR_OPTIONS.map((opt) => {
-            const isActive = selectedInvestor === opt.value;
-            return (
-              <button
-                key={opt.value}
-                onClick={() => handleInvestorSelect(opt.value)}
-                style={{
-                  padding: '0.6rem 1rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '0.88rem',
-                  fontWeight: isActive ? 700 : 500,
-                  background: isActive ? 'linear-gradient(135deg, var(--color-gold), #b8922f)' : 'transparent',
-                  color: isActive ? '#0f172a' : 'var(--color-text-secondary)',
-                  boxShadow: isActive ? '0 0 16px rgba(212, 168, 83, 0.35)' : 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* Investor Lens */}
+        <SegmentedControl
+          id="compare-investor"
+          options={INVESTOR_OPTIONS}
+          value={selectedInvestor}
+          onChange={handleInvestorSelect}
+        />
       </div>
 
       {/* Input Search Form */}
       <div className="card" style={{ padding: '1.25rem 1.5rem', marginBottom: '2rem' }}>
-        <form onSubmit={handleCompareSubmit} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <form onSubmit={handleCompareSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
           <input
             type="text"
             value={leftTicker}
             onChange={(e) => setLeftTicker(e.target.value)}
             placeholder="Left Ticker (e.g. AAPL)"
-            style={{ flex: 1, padding: '0.75rem 1rem', borderRadius: '8px' }}
+            style={{ flex: '1 1 140px', minWidth: 0, padding: '0.75rem 1rem', borderRadius: '8px' }}
           />
           <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>VS</span>
           <input
@@ -131,7 +112,7 @@ const ComparePage = () => {
             value={rightTicker}
             onChange={(e) => setRightTicker(e.target.value)}
             placeholder="Right Ticker (e.g. MSFT)"
-            style={{ flex: 1, padding: '0.75rem 1rem', borderRadius: '8px' }}
+            style={{ flex: '1 1 140px', minWidth: 0, padding: '0.75rem 1rem', borderRadius: '8px' }}
           />
           <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px' }}>
             Compare
@@ -152,10 +133,10 @@ const ComparePage = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
           {/* Main Comparison Table matching Image 4 */}
-          <div className="card" style={{ padding: '2rem', border: '1px solid var(--border-color)' }}>
+          <div className="card" style={{ padding: 'clamp(1.1rem, 4vw, 2rem)', border: '1px solid var(--border-color)' }}>
             
             {/* Header Ticker Titles */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 1fr', gap: '1rem', alignItems: 'center', marginBottom: '2rem', textAlign: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 120px) minmax(0, 1fr)', gap: '1rem', alignItems: 'center', marginBottom: '2rem', textAlign: 'center' }}>
               <div>
                 <h2 style={{ fontSize: '2.2rem', margin: 0, fontWeight: 900, color: 'var(--text-heading)' }}>{leftData.stock_data.ticker}</h2>
                 <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{leftData.stock_data.company_name}</div>
@@ -175,21 +156,21 @@ const ComparePage = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               
               {/* Row: P/E Ratio */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 1fr', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}>34.2</div>
                 <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>P/E Ratio</div>
                 <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}>36.1</div>
               </div>
 
               {/* Row: ROE */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 1fr', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-teal)' }}>145.6%</div>
                 <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>ROE</div>
                 <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}>39.2%</div>
               </div>
 
               {/* Row: Margin of Safety */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 1fr', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ textAlign: 'center' }}>
                   <span style={{ padding: '0.3rem 0.8rem', borderRadius: '6px', background: 'rgba(6, 182, 212, 0.2)', color: 'var(--color-teal)', fontWeight: 700 }}>
                     {leftData.margin?.margin_pct ? `${leftData.margin.margin_pct.toFixed(0)}%` : '28%'}
@@ -204,7 +185,7 @@ const ComparePage = () => {
               </div>
 
               {/* Row: Business Quality */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 1fr', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-gold)' }}>
                   {leftData.scorecard.grade}
                 </div>
@@ -215,7 +196,7 @@ const ComparePage = () => {
               </div>
 
               {/* Row: DCF Value */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 1fr', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}>
                   ${leftData.dcf?.intrinsic_value ? leftData.dcf.intrinsic_value.toFixed(2) : '245.00'}
                 </div>
@@ -226,7 +207,7 @@ const ComparePage = () => {
               </div>
 
               {/* Row: Classification */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 1fr', alignItems: 'center', padding: '0.75rem 0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0' }}>
                 <div style={{ textAlign: 'center' }}>
                   <span style={{ padding: '0.4rem 1rem', borderRadius: '999px', background: 'rgba(6, 182, 212, 0.2)', color: 'var(--color-teal)', fontWeight: 700, fontSize: '0.9rem' }}>
                     {leftData.classification}
@@ -244,7 +225,7 @@ const ComparePage = () => {
           </div>
 
           {/* Bottom Row: Side-by-Side AI Report & Risk Flags */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))', gap: '1.5rem' }}>
             
             {/* AI Comparison Summary */}
             <div className="card" style={{ padding: '1.5rem' }}>
@@ -264,7 +245,7 @@ const ComparePage = () => {
                 <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Risk Flags</h3>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem' }}>
                 <div>
                   <div style={{ fontWeight: 800, marginBottom: '0.5rem', color: 'var(--color-teal)' }}>{leftData.stock_data.ticker}</div>
                   <ul style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>

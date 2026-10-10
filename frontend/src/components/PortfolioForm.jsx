@@ -131,14 +131,14 @@ const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', select
   };
 
   return (
-    <div className="card" style={{ padding: '2rem' }}>
+    <div className="card" style={{ padding: 'clamp(1.1rem, 4vw, 2rem)' }}>
       <h3 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <PieChart size={24} color="var(--color-primary)" />
         Current Holdings
       </h3>
       
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: '1rem', marginBottom: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 40px', gap: '1rem', marginBottom: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
           <div>Ticker Symbol</div>
           <div>Number of Shares</div>
           <div></div>
@@ -146,7 +146,7 @@ const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', select
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
           {holdings.map((holding, index) => (
-            <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: '1rem', alignItems: 'center' }}>
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 40px', gap: '1rem', alignItems: 'center' }}>
               <input
                 type="text"
                 placeholder="e.g. AAPL"
@@ -198,7 +198,7 @@ const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', select
             </div>
           ))}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', alignItems: 'center' }}>
             <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>Total Account Value</div>
             <input
               type="number"
@@ -217,7 +217,7 @@ const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', select
               }}
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', alignItems: 'center' }}>
             <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>Available Cash</div>
             <input
               type="number"
@@ -258,7 +258,7 @@ const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', select
               {bulkError && <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{bulkError}</span>}
             </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <button 
               type="button" 
               onClick={addRow}
@@ -277,7 +277,7 @@ const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', select
               <Plus size={16} /> Add Row
             </button>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem 2rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
                 <input
                   type="checkbox"

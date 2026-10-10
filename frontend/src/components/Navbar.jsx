@@ -1,85 +1,54 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { Settings, TrendingUp } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 
+const LINKS = [
+  { to: '/', label: 'Home' },
+  { to: '/portfolio', label: 'Portfolio' },
+  { to: '/watchlist', label: 'Watchlist' },
+  { to: '/compare', label: 'Compare' },
+];
+
+const pillSpring = { type: 'spring', stiffness: 420, damping: 34 };
+
 const Navbar = () => {
-  const location = useLocation();
+  const { pathname } = useLocation();
+  const isActive = (to) => (to === '/' ? pathname === '/' : pathname.startsWith(to));
 
   return (
-    <nav className="navbar" style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-      backdropFilter: 'blur(20px)',
-      background: 'var(--color-surface)',
-      borderBottom: '1px solid var(--color-border)',
-      padding: '1rem 2rem',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center'
-    }}>
-      <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'var(--color-text)' }}>
-        <div style={{ color: 'var(--color-primary)' }}>
-          <TrendingUp size={28} />
-        </div>
-        <span style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.02em' }}>Oracle's Edge</span>
+    <header className="topnav">
+      <Link to="/" className="topnav-brand">
+        <motion.span
+          className="topnav-logo"
+          whileHover={{ rotate: -8, scale: 1.08 }}
+          transition={pillSpring}
+        >
+          <TrendingUp size={20} strokeWidth={2.5} />
+        </motion.span>
+        <span>Oracle's Edge</span>
       </Link>
-      
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        <Link 
-          to="/" 
-          style={{ 
-            textDecoration: 'none', 
-            color: location.pathname === '/' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            fontWeight: 500,
-            transition: 'color 0.2s'
-          }}
-        >
-          Home
-        </Link>
-        <Link 
-          to="/portfolio" 
-          style={{ 
-            textDecoration: 'none', 
-            color: location.pathname === '/portfolio' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            fontWeight: 500,
-            transition: 'color 0.2s'
-          }}
-        >
-          Portfolio
-        </Link>
-        <Link 
-          to="/watchlist" 
-          style={{ 
-            textDecoration: 'none', 
-            color: location.pathname === '/watchlist' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            fontWeight: 500,
-            transition: 'color 0.2s'
-          }}
-        >
-          Watchlist
-        </Link>
-        <Link 
-          to="/compare" 
-          style={{ 
-            textDecoration: 'none', 
-            color: location.pathname === '/compare' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            fontWeight: 500,
-            transition: 'color 0.2s'
-          }}
-        >
-          Compare
-        </Link>
-        
-        <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', margin: '0 0.5rem' }}></div>
-        
-        <Link to="/settings" style={{ color: location.pathname === '/settings' ? 'var(--color-primary)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
-          <Settings size={20} />
+
+      <nav className="topnav-links" aria-label="Main">
+        {LINKS.map(({ to, label }) => {
+          const active = isActive(to);
+          return (
+            <Link key={to} to={to} className={`topnav-link${active ? ' is-active' : ''}`} aria-current={active ? 'page' : undefined}>
+              {active && <motion.span layoutId="topnav-pill" className="topnav-pill" transition={pillSpring} />}
+              <span className="topnav-label">{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="topnav-actions">
+        <Link to="/settings" className={`topnav-icon${isActive('/settings') ? ' is-active' : ''}`} aria-label="Settings">
+          <Settings size={19} />
         </Link>
         <ThemeToggle />
       </div>
-    </nav>
+    </header>
   );
 };
 

@@ -4,6 +4,7 @@ import PortfolioCharts from '../components/PortfolioCharts';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { optimizePortfolio } from '../api/client';
 import { AlertCircle, Info } from 'lucide-react';
+import SegmentedControl from '../components/SegmentedControl';
 
 const INVESTOR_OPTIONS = [
   { value: 'buffett', label: 'Warren Buffett' },
@@ -75,72 +76,32 @@ const PortfolioPage = () => {
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem clamp(1rem, 3vw, 2rem)' }}>
       <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '2.5rem', margin: '0 0 1rem 0' }}>Portfolio Optimizer</h1>
+          <h1 style={{ fontSize: 'clamp(2rem, 6vw, 2.5rem)', margin: '0 0 1rem 0' }}>Portfolio Optimizer</h1>
           <p style={{ fontSize: '1.1rem', color: 'var(--color-text-muted)', maxWidth: '700px', lineHeight: '1.6' }}>
             Input your current holdings to optimize risk-adjusted Sharpe Ratio. Scoring thresholds adapt to your selected legendary investor framework.
           </p>
         </div>
 
         {/* Investor & Horizon Selectors */}
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
-              Investor Lens
-            </span>
-            <div style={{ display: 'flex', background: 'var(--bg-pill-group)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-              {INVESTOR_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => handleInvestorSelect(opt.value)}
-                  style={{
-                    padding: '0.5rem 0.85rem',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontSize: '0.82rem',
-                    fontWeight: selectedInvestor === opt.value ? 700 : 500,
-                    background: selectedInvestor === opt.value ? 'linear-gradient(135deg, var(--color-gold), var(--color-gold-dark))' : 'transparent',
-                    color: selectedInvestor === opt.value ? 'var(--text-inverse)' : 'var(--text-secondary)',
-                    boxShadow: selectedInvestor === opt.value ? '0 0 12px var(--color-gold-glow)' : 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
-              Horizon
-            </span>
-            <div style={{ display: 'flex', background: 'var(--bg-pill-group)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-              {HORIZON_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => handleHorizonSelect(opt.value)}
-                  style={{
-                    padding: '0.5rem 0.85rem',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontSize: '0.82rem',
-                    fontWeight: selectedHorizon === opt.value ? 700 : 500,
-                    background: selectedHorizon === opt.value ? 'linear-gradient(135deg, var(--color-teal), var(--color-teal-light))' : 'transparent',
-                    color: selectedHorizon === opt.value ? '#ffffff' : 'var(--text-secondary)',
-                    boxShadow: selectedHorizon === opt.value ? '0 0 12px var(--color-teal-glow)' : 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
+          <SegmentedControl
+            id="portfolio-investor"
+            label="Investor Lens"
+            options={INVESTOR_OPTIONS}
+            value={selectedInvestor}
+            onChange={handleInvestorSelect}
+          />
+          <SegmentedControl
+            id="portfolio-horizon"
+            label="Horizon"
+            options={HORIZON_OPTIONS}
+            value={selectedHorizon}
+            onChange={handleHorizonSelect}
+            tone="teal"
+          />
         </div>
       </div>
 

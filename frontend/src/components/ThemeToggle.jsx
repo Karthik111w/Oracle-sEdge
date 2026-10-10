@@ -1,30 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Sun, Moon } from 'lucide-react';
+import { useTheme } from '../theme';
 
 const ThemeToggle = () => {
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('theme') || 'dark';
-  });
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  };
+  const { theme, toggleTheme } = useTheme();
 
   return (
-    <button
+    <motion.button
       onClick={toggleTheme}
-      className="btn btn-icon"
+      className="topnav-icon"
       aria-label="Toggle theme"
       title="Toggle theme"
-      style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px', color: 'var(--color-text)' }}
+      whileTap={{ scale: 0.88 }}
     >
-      {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-    </button>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={theme}
+          initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
+          animate={{ rotate: 0, opacity: 1, scale: 1 }}
+          exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
+          transition={{ duration: 0.2 }}
+          style={{ display: 'flex' }}
+        >
+          {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
+        </motion.span>
+      </AnimatePresence>
+    </motion.button>
   );
 };
 

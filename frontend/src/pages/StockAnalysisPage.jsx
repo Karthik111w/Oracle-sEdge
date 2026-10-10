@@ -10,6 +10,7 @@ import RiskFlags from '../components/RiskFlags';
 import AIReport from '../components/AIReport';
 import ClassificationBadge from '../components/ClassificationBadge';
 import SearchBar from '../components/SearchBar';
+import SegmentedControl from '../components/SegmentedControl';
 import { ArrowLeft, AlertCircle, Info, DollarSign, ShieldAlert, Sparkles } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 
@@ -135,15 +136,15 @@ const StockAnalysisPage = () => {
   ];
 
   return (
-    <div style={{ maxWidth: '1380px', margin: '0 auto', padding: '1.5rem 2rem' }}>
+    <div style={{ maxWidth: '1380px', margin: '0 auto', padding: '1.5rem clamp(1rem, 3vw, 2rem)' }}>
       
       {/* Search & Back Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontWeight: 500 }}>
           <ArrowLeft size={16} /> Back to Search
         </Link>
-        <div style={{ width: '320px' }}>
-          <SearchBar />
+        <div style={{ width: 'min(380px, 100%)' }}>
+          <SearchBar compact placeholder="Analyze another ticker" />
         </div>
       </div>
 
@@ -155,7 +156,7 @@ const StockAnalysisPage = () => {
         flexWrap: 'wrap',
         gap: '1.5rem',
         marginBottom: '2rem',
-        padding: '1.5rem 2rem',
+        padding: 'clamp(1.1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 2rem)',
         background: 'var(--glass-bg)',
         borderRadius: '16px',
         border: '1px solid var(--border-color)',
@@ -163,14 +164,14 @@ const StockAnalysisPage = () => {
         boxShadow: 'var(--shadow-md)'
       }}>
         {/* Left Side: Stock Identity */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem' }}>
-            <h1 style={{ margin: 0, fontSize: '3rem', fontWeight: 900, letterSpacing: '-0.03em' }}>{data.stock_data.ticker}</h1>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '1rem' }}>
+            <h1 style={{ margin: 0, fontSize: 'clamp(2.2rem, 7vw, 3rem)', fontWeight: 900, letterSpacing: '-0.03em' }}>{data.stock_data.ticker}</h1>
             <span style={{ fontSize: '1.4rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
               {data.stock_data.company_name}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem 1rem', marginTop: '0.25rem' }}>
             <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-teal)' }}>
               ${currentPrice.toFixed(2)}
             </span>
@@ -190,93 +191,30 @@ const StockAnalysisPage = () => {
           </div>
         </div>
 
-        {/* Right Side: Dual Pill Group Selectors */}
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          
-          {/* Investor Lens Selector Pill Container */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
-              Investor Lens
-            </span>
-            <div style={{ 
-              display: 'flex', 
-              background: 'var(--bg-pill-group)', 
-              padding: '4px', 
-              borderRadius: '12px', 
-              border: '1px solid var(--border-color)' 
-            }}>
-              {INVESTOR_OPTIONS.map((opt) => {
-                const isActive = selectedInvestor === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => handleInvestorSelect(opt.value)}
-                    style={{
-                      padding: '0.6rem 1.1rem',
-                      borderRadius: '8px',
-                      border: 'none',
-                      fontSize: '0.88rem',
-                      fontWeight: isActive ? 700 : 500,
-                      background: isActive ? 'linear-gradient(135deg, var(--color-gold), var(--color-gold-dark))' : 'transparent',
-                      color: isActive ? 'var(--text-inverse)' : 'var(--text-secondary)',
-                      boxShadow: isActive ? '0 0 16px var(--color-gold-glow)' : 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Time Horizon Selector Pill Container */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)' }}>
-              Time Horizon
-            </span>
-            <div style={{ 
-              display: 'flex', 
-              background: 'var(--bg-pill-group)', 
-              padding: '4px', 
-              borderRadius: '12px', 
-              border: '1px solid var(--border-color)' 
-            }}>
-              {HORIZON_OPTIONS.map((opt) => {
-                const isActive = selectedHorizon === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => handleHorizonSelect(opt.value)}
-                    style={{
-                      padding: '0.6rem 1.1rem',
-                      borderRadius: '8px',
-                      border: 'none',
-                      fontSize: '0.88rem',
-                      fontWeight: isActive ? 700 : 500,
-                      background: isActive ? 'linear-gradient(135deg, var(--color-teal), var(--color-teal-light))' : 'transparent',
-                      color: isActive ? '#ffffff' : 'var(--text-secondary)',
-                      boxShadow: isActive ? '0 0 16px var(--color-teal-glow)' : 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
+        {/* Right Side: Lens + Horizon selectors */}
+        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
+          <SegmentedControl
+            id="investor"
+            label="Investor Lens"
+            options={INVESTOR_OPTIONS}
+            value={selectedInvestor}
+            onChange={handleInvestorSelect}
+          />
+          <SegmentedControl
+            id="horizon"
+            label="Time Horizon"
+            options={HORIZON_OPTIONS}
+            value={selectedHorizon}
+            onChange={handleHorizonSelect}
+            tone="teal"
+          />
         </div>
       </div>
 
       {/* Main 3-Column Desktop Grid Layout */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', 
         gap: '1.5rem',
         alignItems: 'stretch'
       }}>

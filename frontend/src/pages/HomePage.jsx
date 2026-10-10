@@ -1,9 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import SearchBar from '../components/SearchBar';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, Shield, BarChart3, Star, ArrowUpRight, ArrowDownRight, ChevronRight, Activity } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
+import { ChevronRight, Activity, Sparkles } from 'lucide-react';
+import SearchBar from '../components/SearchBar';
+import { useTheme } from '../theme';
+
+// three.js is heavy; keep it out of the main bundle and load it after first paint.
+const HeroScene = lazy(() => import('../components/HeroScene'));
+
+const MotionLink = motion.create(Link);
+
+const ease = [0.22, 1, 0.36, 1];
+
+const heroStagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease } },
+};
+
+const gridStagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
+const cardIn = {
+  hidden: { opacity: 0, y: 28, scale: 0.98 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.55, ease } },
+};
+
+const cardHover = { y: -6, transition: { type: 'spring', stiffness: 300, damping: 22 } };
+
+const LEGENDS = ['Buffett', 'Munger', 'Graham', 'Lynch', "O'Neil", 'Soros'];
+
+function sparklinePath(points, width = 200, height = 40, pad = 4) {
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const span = max - min || 1;
+  const step = width / (points.length - 1);
+  return points
+    .map((p, i) => {
+      const x = i * step;
+      const y = height - pad - ((p - min) / span) * (height - pad * 2);
+      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(' ');
+}
+
+function Sparkline({ id, points, positive = true }) {
+  const line = sparklinePath(points);
+  const area = `${line} L 200 40 L 0 40 Z`;
+  const color = positive ? 'var(--color-success)' : 'var(--color-danger)';
+  return (
+    <svg className="spark" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={`spark-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <motion.path
+        d={area}
+        fill={`url(#spark-${id})`}
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 0.5 }}
+      />
+      <motion.path
+        d={line}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        initial={{ pathLength: 0 }}
+        whileInView={{ pathLength: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.2, ease: 'easeInOut', delay: 0.2 }}
+      />
+    </svg>
+  );
+}
 
 const HomePage = () => {
+  const { theme } = useTheme();
+  const reduceMotion = useReducedMotion();
+
   const popularPicks = [
     { ticker: 'AAPL', name: 'Apple Inc.', change: '+12.4%', points: [10, 15, 12, 18, 22, 28, 35, 32, 40] },
     { ticker: 'BRK-B', name: 'Berkshire Hathaway', change: '+8.7%', points: [20, 22, 25, 23, 28, 30, 32, 34, 38] },
@@ -18,8 +104,6 @@ const HomePage = () => {
     { name: 'DOW JONES', value: '39,872.99', change: '+0.98%', positive: true },
     { name: 'VIX', value: '12.45', change: '-2.35%', positive: false }
   ];
-
-  const [watchlist, setWatchlist] = useState([]);
 
   useEffect(() => {
     try {
@@ -36,198 +120,148 @@ const HomePage = () => {
     } catch {
       setRecentlyViewed([]);
     }
-
-    const savedWatchlist = localStorage.getItem('watchlist_tickers');
-    if (savedWatchlist) {
-      try {
-        setWatchlist(JSON.parse(savedWatchlist));
-      } catch {
-        setWatchlist([]);
-      }
-    }
   }, []);
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '3rem 2rem' }}>
-      
-      {/* Hero Section with Ambient Teal Glow */}
-      <div style={{ textAlign: 'center', marginBottom: '3.5rem', position: 'relative' }}>
-        <div style={{
-          position: 'absolute',
-          top: '-40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '320px',
-          height: '180px',
-          background: 'radial-gradient(ellipse at center, rgba(6, 182, 212, 0.22) 0%, rgba(6, 182, 212, 0) 70%)',
-          filter: 'blur(30px)',
-          pointerEvents: 'none',
-          zIndex: 0
-        }}></div>
-
-        <h1 style={{ 
-          fontSize: '3.8rem', 
-          fontWeight: 900, 
-          letterSpacing: '-0.03em', 
-          margin: '0 0 1rem 0',
-          position: 'relative',
-          zIndex: 1,
-          color: 'var(--text-heading)'
-        }}>
-          Investment analysis<br />
-          <span style={{ 
-            background: 'linear-gradient(135deg, var(--text-heading) 0%, var(--color-teal) 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
-          }}>
-            through the eyes of legends
-          </span>
-        </h1>
-
-        <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', maxWidth: '640px', margin: '0 auto', lineHeight: '1.6', position: 'relative', zIndex: 1 }}>
-          Make smarter decisions with legendary investment principles, advanced DCF models, and AI-powered insights.
-        </p>
-      </div>
-
-      {/* Prominent Search Bar */}
-      <div style={{ marginBottom: '4rem' }}>
-        <SearchBar placeholder="Search any stock ticker..." />
-      </div>
-
-      {/* Popular Analysis Section with Sparklines */}
-      <div style={{ marginBottom: '3.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <h3 style={{ fontSize: '1.15rem', margin: 0, fontWeight: 700 }}>Popular Analysis</h3>
-          <Link to="/compare" style={{ color: 'var(--text-muted)', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            View all <ChevronRight size={14} />
-          </Link>
+    <div className="home">
+      {/* Hero: 3D growth field behind the headline */}
+      <section className="home-hero">
+        <div className="home-hero-scene" aria-hidden="true">
+          <Suspense fallback={null}>
+            <HeroScene theme={theme} animate={!reduceMotion} />
+          </Suspense>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
-          {popularPicks.map(pick => (
-            <Link 
-              key={pick.ticker} 
-              to={`/stock/${pick.ticker}`}
-              className="card"
-              style={{ 
-                textDecoration: 'none', 
-                padding: '1.25rem 1.5rem', 
-                display: 'flex', 
-                flexDirection: 'column',
-                gap: '1rem',
-                transition: 'all 0.25s ease',
-                position: 'relative',
-                overflow: 'hidden'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-heading)' }}>{pick.ticker}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{pick.name}</div>
-                </div>
-                <span style={{ 
-                  padding: '0.2rem 0.6rem', 
-                  borderRadius: '6px', 
-                  background: 'var(--color-success-bg)', 
-                  color: 'var(--color-success)', 
-                  fontWeight: 700, 
-                  fontSize: '0.85rem' 
-                }}>
-                  {pick.change}
-                </span>
-              </div>
+        <motion.div className="home-hero-content" variants={heroStagger} initial="hidden" animate="visible">
+          <motion.div variants={fadeUp} className="home-eyebrow">
+            <Sparkles size={14} /> Value investing, quantified
+          </motion.div>
 
-              {/* Mini Sparkline SVG */}
-              <div style={{ height: '40px', width: '100%' }}>
-                <svg width="100%" height="100%" viewBox="0 0 100 40" preserveAspectRatio="none">
-                  <path
-                    d={`M 0 35 Q 20 25, 40 28 T 80 15 L 100 5`}
-                    fill="none"
-                    stroke="var(--color-success)"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+          <motion.h1 variants={fadeUp} className="home-title">
+            Investment analysis
+            <br />
+            <span className="home-title-accent">through the eyes of legends</span>
+          </motion.h1>
 
-      {/* Bottom Split Row: Recently Viewed vs Market Snapshot */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '1.5rem' }}>
-        
-        {/* Recently Viewed */}
-        <div className="card" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Recently Viewed</h3>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>View all</span>
-          </div>
+          <motion.p variants={fadeUp} className="home-subtitle">
+            Make smarter decisions with legendary investment principles, advanced DCF models, and AI-powered insights.
+          </motion.p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {recentlyViewed.map(item => {
-              const isNeg = item.change?.startsWith('-') || item.changeVal < 0;
-              return (
-                <Link 
-                  key={item.ticker} 
-                  to={`/stock/${item.ticker}`} 
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    padding: '0.75rem 1rem', 
-                    borderRadius: '10px', 
-                    background: 'var(--bg-row)', 
-                    border: '1px solid var(--border-color)',
-                    textDecoration: 'none',
-                    color: 'var(--text-primary)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>
-                      {item.ticker[0]}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.ticker}</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{item.name}</div>
-                    </div>
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{item.price}</span>
-                    <span style={{ color: isNeg ? 'var(--color-danger)' : 'var(--color-success)', fontSize: '0.85rem', fontWeight: 700 }}>{item.change}</span>
-                    <ChevronRight size={14} color="var(--color-text-muted)" />
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
+          <motion.div variants={fadeUp} className="home-search">
+            <SearchBar placeholder="Search any stock ticker…" />
+          </motion.div>
 
-        {/* Market Snapshot */}
-        <div className="card" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Activity size={16} color="var(--color-teal)" /> Market Snapshot
-            </h3>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>As of 10:30 AM ET</span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-            {marketSnapshot.map(m => (
-              <div key={m.name} style={{ background: 'var(--bg-row)', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{m.name}</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0.25rem 0' }}>{m.value}</div>
-                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: m.positive ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                  {m.change}
-                </div>
-              </div>
+          <motion.div variants={fadeUp} className="home-legends">
+            <span className="home-legends-label">Lenses</span>
+            {LEGENDS.map((name) => (
+              <span key={name} className="home-legend-chip">{name}</span>
             ))}
+          </motion.div>
+        </motion.div>
+      </section>
+
+      <div className="home-body">
+        {/* Popular Analysis */}
+        <section>
+          <div className="home-section-head">
+            <h3>Popular Analysis</h3>
+            <Link to="/compare" className="home-section-link">
+              View all <ChevronRight size={14} />
+            </Link>
           </div>
-        </div>
 
+          <motion.div
+            className="home-picks"
+            variants={gridStagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.3 }}
+          >
+            {popularPicks.map((pick) => (
+              <MotionLink
+                key={pick.ticker}
+                to={`/stock/${pick.ticker}`}
+                className="card home-pick"
+                variants={cardIn}
+                whileHover={cardHover}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="home-pick-head">
+                  <div>
+                    <div className="home-pick-ticker">{pick.ticker}</div>
+                    <div className="home-pick-name">{pick.name}</div>
+                  </div>
+                  <span className="home-change-pill">{pick.change}</span>
+                </div>
+                <Sparkline id={pick.ticker} points={pick.points} />
+              </MotionLink>
+            ))}
+          </motion.div>
+        </section>
+
+        {/* Recently Viewed vs Market Snapshot */}
+        <motion.div
+          className="home-split"
+          variants={gridStagger}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+        >
+          <motion.div className="card home-panel" variants={cardIn}>
+            <div className="home-section-head">
+              <h3>Recently Viewed</h3>
+              <Link to="/watchlist" className="home-section-link">View all</Link>
+            </div>
+
+            <div className="home-rows">
+              {recentlyViewed.map((item) => {
+                const isNeg = item.change?.startsWith('-') || item.changeVal < 0;
+                return (
+                  <MotionLink
+                    key={item.ticker}
+                    to={`/stock/${item.ticker}`}
+                    className="home-row"
+                    whileHover={{ x: 4 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  >
+                    <div className="home-row-left">
+                      <div className="home-row-avatar">{item.ticker[0]}</div>
+                      <div className="home-row-text">
+                        <div className="home-row-ticker">{item.ticker}</div>
+                        <div className="home-row-name">{item.name}</div>
+                      </div>
+                    </div>
+                    <div className="home-row-right">
+                      <span className="home-row-price">{item.price}</span>
+                      <span className={isNeg ? 'is-neg' : 'is-pos'}>{item.change}</span>
+                      <ChevronRight size={14} className="home-row-chevron" />
+                    </div>
+                  </MotionLink>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          <motion.div className="card home-panel" variants={cardIn}>
+            <div className="home-section-head">
+              <h3 className="home-snapshot-title">
+                <Activity size={16} /> Market Snapshot
+              </h3>
+              <span className="home-muted">As of 10:30 AM ET</span>
+            </div>
+
+            <div className="home-snapshot-grid">
+              {marketSnapshot.map((m) => (
+                <div key={m.name} className="home-stat">
+                  <div className="home-stat-label">{m.name}</div>
+                  <div className="home-stat-value">{m.value}</div>
+                  <div className={m.positive ? 'is-pos' : 'is-neg'}>{m.change}</div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </motion.div>
       </div>
-
     </div>
   );
 };

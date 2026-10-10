@@ -48,13 +48,13 @@ const SettingsPage = () => {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem 2rem' }}>
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem clamp(1rem, 3vw, 2rem)' }}>
       <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <Key size={32} color="var(--color-primary)" />
         Settings
       </h1>
 
-      <div className="card" style={{ padding: '2rem' }}>
+      <div className="card" style={{ padding: 'clamp(1.1rem, 4vw, 2rem)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
           <div>
             <h2 style={{ margin: '0 0 0.5rem 0' }}>Google Gemini API Key</h2>
@@ -94,7 +94,8 @@ const SettingsPage = () => {
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="AIzaSy..."
               style={{
-                flex: 1,
+                flex: '1 1 0',
+                minWidth: 0,
                 padding: '0.75rem 3rem 0.75rem 1rem',
                 borderRadius: '8px',
                 border: '1px solid var(--color-border)',

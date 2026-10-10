@@ -72,7 +72,7 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
       </div>
 
       {/* Summary Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '1.5rem' }}>
         <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Total Account Value</span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem' }}>
@@ -94,7 +94,7 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
       </div>
 
       {/* Allocation Donut Chart & Backtest Optimization Line Chart */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: '1.5rem' }}>
         
         {/* Allocation Donut Chart */}
         <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
