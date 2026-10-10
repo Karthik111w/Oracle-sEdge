@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
+import { useLenis } from 'lenis/react';
 import { ThemeProvider } from './theme';
 import Navbar from './components/Navbar';
+import SmoothScroll from './components/SmoothScroll';
 import HomePage from './pages/HomePage';
 import StockAnalysisPage from './pages/StockAnalysisPage';
 import PortfolioPage from './pages/PortfolioPage';
@@ -12,16 +14,23 @@ import ErrorPage from './pages/ErrorPage';
 
 function AnimatedRoutes() {
   const location = useLocation();
+  const lenis = useLenis();
+
+  const scrollTop = () => {
+    if (lenis) lenis.scrollTo(0, { immediate: true });
+    else window.scrollTo(0, 0);
+  };
 
   return (
     <AnimatePresence mode="wait" initial={false}>
+      {/* Opacity only: a transform here would break position: sticky and GSAP pinning below. */}
       <motion.div
         key={location.pathname}
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        onAnimationStart={() => window.scrollTo(0, 0)}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        onAnimationStart={scrollTop}
       >
         <Routes location={location}>
           <Route path="/" element={<HomePage />} />
@@ -42,8 +51,10 @@ function App() {
     <ThemeProvider>
       <MotionConfig reducedMotion="user">
         <BrowserRouter>
+          <SmoothScroll />
+          <a href="#main" className="skip-link">Skip to content</a>
           <Navbar />
-          <main className="main-content">
+          <main id="main" className="main-content" tabIndex={-1}>
             <AnimatedRoutes />
           </main>
         </BrowserRouter>

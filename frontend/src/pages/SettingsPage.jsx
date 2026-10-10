@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Key, Eye, EyeOff, CheckCircle, ExternalLink, Trash2 } from 'lucide-react';
+import SegmentedControl from '../components/SegmentedControl';
+import { useTheme } from '../theme';
+
+const APPEARANCE_OPTIONS = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
 
 const SettingsPage = () => {
+  const { preference, setPreference } = useTheme();
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [hasKey, setHasKey] = useState(false);
@@ -79,7 +88,7 @@ const SettingsPage = () => {
               background: hasKey ? 'var(--color-success)' : 'var(--color-text-muted)',
               boxShadow: hasKey ? '0 0 10px var(--color-success)' : 'none'
             }}></div>
-            <span style={{ fontSize: '0.9rem', color: hasKey ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+            <span style={{ fontSize: '0.9rem', whiteSpace: 'nowrap', color: hasKey ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
               {hasKey ? 'Configured' : 'Not Configured'}
             </span>
           </div>
@@ -88,39 +97,41 @@ const SettingsPage = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>API Key</label>
           <div style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
-            <input
-              type={showKey ? "text" : "password"}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="AIzaSy..."
-              style={{
-                flex: '1 1 0',
-                minWidth: 0,
-                padding: '0.75rem 3rem 0.75rem 1rem',
-                borderRadius: '8px',
-                border: '1px solid var(--color-border)',
-                background: 'rgba(0,0,0,0.2)',
-                color: 'var(--color-text)',
-                fontFamily: 'monospace',
-                fontSize: '1rem'
-              }}
-            />
-            <button 
-              type="button"
-              onClick={() => setShowKey(!showKey)}
-              style={{
-                position: 'absolute',
-                right: '11rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--color-text-muted)',
-                cursor: 'pointer'
-              }}
-            >
-              {showKey ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
+            <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0, display: 'flex' }}>
+              <input
+                type={showKey ? "text" : "password"}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="AIzaSy..."
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 3rem 0.75rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'rgba(0,0,0,0.2)',
+                  color: 'var(--color-text)',
+                  fontFamily: 'monospace',
+                  fontSize: '1rem'
+                }}
+              />
+              <button 
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                aria-label={showKey ? 'Hide API key' : 'Show API key'}
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--color-text-muted)',
+                  cursor: 'pointer'
+                }}
+              >
+                {showKey ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
             <button className="btn" onClick={handleSave} disabled={!apiKey.trim()} style={{ minWidth: '100px' }}>
               Save
             </button>
@@ -201,6 +212,19 @@ const SettingsPage = () => {
             💡 <strong>Tip:</strong> Gemini 2.5 Flash offers the best balance of speed and quality. If it is unavailable for your key, the app will automatically fall back to Gemini 1.5 Flash.
           </p>
         </div>
+      </div>
+
+      <div className="card" style={{ padding: 'clamp(1.1rem, 4vw, 2rem)', marginTop: '1.5rem' }}>
+        <h2 style={{ margin: '0 0 0.5rem 0' }}>Appearance</h2>
+        <p style={{ color: 'var(--color-text-muted)', margin: '0 0 1rem 0' }}>
+          System follows your device's light or dark setting.
+        </p>
+        <SegmentedControl
+          id="appearance"
+          options={APPEARANCE_OPTIONS}
+          value={preference}
+          onChange={setPreference}
+        />
       </div>
     </div>
   );

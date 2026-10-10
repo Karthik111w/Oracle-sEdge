@@ -30,9 +30,8 @@ const SearchBar = ({ initialValue = '', placeholder = 'Enter stock ticker (e.g.,
       <motion.button
         type="submit"
         className="ticker-search-btn"
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.96 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.1 }}
       >
         <span>Analyze</span>
         <ArrowRight size={16} aria-hidden="true" />

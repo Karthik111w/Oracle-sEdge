@@ -2,7 +2,6 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Settings, TrendingUp } from 'lucide-react';
-import ThemeToggle from './ThemeToggle';
 
 const LINKS = [
   { to: '/', label: 'Home' },
@@ -11,7 +10,7 @@ const LINKS = [
   { to: '/compare', label: 'Compare' },
 ];
 
-const pillSpring = { type: 'spring', stiffness: 420, damping: 34 };
+const pillSpring = { type: 'spring', stiffness: 500, damping: 40 };
 
 const Navbar = () => {
   const { pathname } = useLocation();
@@ -20,14 +19,8 @@ const Navbar = () => {
   return (
     <header className="topnav">
       <Link to="/" className="topnav-brand">
-        <motion.span
-          className="topnav-logo"
-          whileHover={{ rotate: -8, scale: 1.08 }}
-          transition={pillSpring}
-        >
-          <TrendingUp size={20} strokeWidth={2.5} />
-        </motion.span>
-        <span>Oracle's Edge</span>
+        <TrendingUp size={26} className="topnav-logo" aria-hidden="true" />
+        <span className="topnav-name">Oracle's Edge</span>
       </Link>
 
       <nav className="topnav-links" aria-label="Main">
@@ -46,7 +39,6 @@ const Navbar = () => {
         <Link to="/settings" className={`topnav-icon${isActive('/settings') ? ' is-active' : ''}`} aria-label="Settings">
           <Settings size={19} />
         </Link>
-        <ThemeToggle />
       </div>
     </header>
   );
