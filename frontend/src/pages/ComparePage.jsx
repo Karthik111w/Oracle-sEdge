@@ -1,19 +1,101 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { ArrowUpRight } from 'lucide-react';
 import { getStockAnalysis } from '../api/client';
-import SearchBar from '../components/SearchBar';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { Sparkles, ShieldAlert, CheckCircle2, ArrowLeft } from 'lucide-react';
 import SegmentedControl from '../components/SegmentedControl';
+import { displayName, formatMoney } from '../components/home/LensVerdictCard';
+import { LENSES } from '../components/home/lenses';
 
-const INVESTOR_OPTIONS = [
-  { value: 'buffett', label: 'Warren Buffett' },
-  { value: 'lynch', label: 'Peter Lynch' },
-  { value: 'graham', label: 'Benjamin Graham' },
-  { value: 'munger', label: 'Charlie Munger' },
-  { value: 'oneil', label: "William O'Neil" },
-  { value: 'soros', label: 'George Soros' },
+const INVESTOR_OPTIONS = LENSES.map((l) => ({ value: l.value, label: l.label }));
+
+// Metric values arrive as display strings ("17.5%", "N/A"); parse for comparison only.
+const num = (v) => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const n = parseFloat(String(v ?? '').replace(/[%,x$]/g, ''));
+  return Number.isFinite(n) ? n : null;
+};
+
+const metricValue = (data, name) => data.scorecard?.metrics?.find((m) => m.name === name)?.value;
+
+// Trailing P/E from the latest annual EPS; null when earnings are negative or missing.
+function trailingPE(data) {
+  const eps = data.stock_data?.financials?.eps || [];
+  const latest = [...eps].reverse().find((e) => e !== null && e !== undefined);
+  const price = data.stock_data?.current_price;
+  return latest > 0 && price ? price / latest : null;
+}
+
+const pctText = (v) => (Number.isFinite(v) ? `${v > 0 ? '+' : ''}${v.toFixed(1)}%` : 'n/a');
+
+const metricRow = (label, name, better) => ({
+  label,
+  get: (d) => num(metricValue(d, name)),
+  show: (_, d) => metricValue(d, name) ?? 'n/a',
+  better,
+});
+
+// Each row: label, how to read it for a stock, and which direction is better.
+const ROWS = [
+  { label: 'Score', get: (d) => d.scorecard?.total_score, show: (v, d) => `${Math.round(v)}/100, grade ${d.scorecard?.grade}`, better: 'high' },
+  { label: 'Fair value', get: (d) => d.dcf?.intrinsic_value, show: (v) => formatMoney(v) },
+  { label: 'Price', get: (d) => d.stock_data?.current_price, show: (v) => formatMoney(v) },
+  { label: 'Margin of safety', get: (d) => d.margin?.margin_pct, show: pctText, better: 'high', tone: true },
+  { label: 'P/E (trailing)', get: trailingPE, show: (v) => v.toFixed(1), better: 'low' },
+  metricRow('ROE', 'ROE', 'high'),
+  metricRow('ROIC', 'ROIC', 'high'),
+  metricRow('Profit margin', 'Profit Margin', 'high'),
+  metricRow('Revenue growth', 'Revenue Growth', 'high'),
+  metricRow('Debt to equity', 'Debt-to-Equity', 'low'),
 ];
+
+function winner(row, a, b) {
+  const va = row.get(a);
+  const vb = row.get(b);
+  if (!row.better || va == null || vb == null || va === vb) return null;
+  if (row.better === 'high') return va > vb ? 'a' : 'b';
+  return va < vb ? 'a' : 'b';
+}
+
+// Plain, rule-based differences between the two. Not AI-generated.
+function differences(a, b, lensLabel) {
+  const ta = a.stock_data.ticker;
+  const tb = b.stock_data.ticker;
+  const sa = Math.round(a.scorecard.total_score);
+  const sb = Math.round(b.scorecard.total_score);
+  const ma = a.margin?.margin_pct;
+  const mb = b.margin?.margin_pct;
+  const lines = [];
+
+  if (sa === sb) lines.push(`Both score ${sa}/100 through the ${lensLabel} lens.`);
+  else lines.push(`${sa > sb ? ta : tb} scores higher through the ${lensLabel} lens (${Math.max(sa, sb)} vs ${Math.min(sa, sb)}).`);
+
+  if (Number.isFinite(ma) && Number.isFinite(mb)) {
+    if (ma >= 0 && mb >= 0) lines.push(`Both trade below fair value. ${ma > mb ? ta : tb} has the wider margin of safety.`);
+    else if (ma < 0 && mb < 0) lines.push(`Both trade above fair value. ${ma > mb ? ta : tb} is closer to it (${pctText(Math.max(ma, mb))}).`);
+    else lines.push(`${ma >= 0 ? ta : tb} trades below fair value; ${ma >= 0 ? tb : ta} trades above it.`);
+  }
+
+  const va = a.classification_label || a.classification;
+  const vb = b.classification_label || b.classification;
+  lines.push(va === vb ? `Both get the same verdict: ${va}.` : `Verdicts differ: ${ta} is ${va}, ${tb} is ${vb}.`);
+  return lines;
+}
+
+const VERDICT_TONE = { Buy: 'pos', Avoid: 'neg' };
+
+function CompareSkeleton() {
+  return (
+    <div className="cmp-table" aria-hidden="true">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="cmp-row">
+          <span className="skel skel-cell" />
+          <span className="skel skel-cell" />
+          <span className="skel skel-cell" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const ComparePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -31,7 +113,7 @@ const ComparePage = () => {
     try {
       const [left, right] = await Promise.all([
         getStockAnalysis(lTicker, investorKey),
-        getStockAnalysis(rTicker, investorKey)
+        getStockAnalysis(rTicker, investorKey),
       ]);
       setLeftData(left);
       setRightData(right);
@@ -64,7 +146,7 @@ const ComparePage = () => {
     let l = 'AAPL';
     let r = 'MSFT';
     if (tickers) {
-      const parts = tickers.split(',').map(t => t.trim().toUpperCase());
+      const parts = tickers.split(',').map((t) => t.trim().toUpperCase());
       if (parts[0]) l = parts[0];
       if (parts[1]) r = parts[1];
     }
@@ -75,199 +157,122 @@ const ComparePage = () => {
     fetchComparison(investor, l, r);
   }, []);
 
+  const lensLabel = LENSES.find((l) => l.value === selectedInvestor)?.label || 'Warren Buffett';
+  const ready = leftData && rightData && !loading;
+
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem clamp(1rem, 3vw, 2rem)' }}>
-      
-      {/* Header */}
-      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
-        <div>
-          <h1 style={{ fontSize: '2.5rem', margin: 0, fontWeight: 900 }}>Compare</h1>
-          <p style={{ color: 'var(--color-text-muted)', marginTop: '0.4rem', fontSize: '1rem' }}>
-            Side-by-side analysis through your chosen investor framework.
-          </p>
-        </div>
+    <div className="page">
+      <header className="page-head">
+        <h1>Compare</h1>
+        <p className="page-sub">Two stocks, one investor lens, side by side.</p>
+      </header>
 
-        {/* Investor Lens */}
-        <SegmentedControl
-          id="compare-investor"
-          options={INVESTOR_OPTIONS}
-          value={selectedInvestor}
-          onChange={handleInvestorSelect}
-        />
-      </div>
-
-      {/* Input Search Form */}
-      <div className="card" style={{ padding: '1.25rem 1.5rem', marginBottom: '2rem' }}>
-        <form onSubmit={handleCompareSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
-          <input
-            type="text"
-            value={leftTicker}
-            onChange={(e) => setLeftTicker(e.target.value)}
-            placeholder="Left Ticker (e.g. AAPL)"
-            style={{ flex: '1 1 140px', minWidth: 0, padding: '0.75rem 1rem', borderRadius: '8px' }}
-          />
-          <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>VS</span>
-          <input
-            type="text"
-            value={rightTicker}
-            onChange={(e) => setRightTicker(e.target.value)}
-            placeholder="Right Ticker (e.g. MSFT)"
-            style={{ flex: '1 1 140px', minWidth: 0, padding: '0.75rem 1rem', borderRadius: '8px' }}
-          />
-          <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px' }}>
-            Compare
+      <div className="cmp-controls">
+        <SegmentedControl id="compare-investor" label="Investor lens" options={INVESTOR_OPTIONS} value={selectedInvestor} onChange={handleInvestorSelect} />
+        <form onSubmit={handleCompareSubmit} className="cmp-form">
+          <label className="field">
+            <span className="field-label">First ticker</span>
+            <input type="text" value={leftTicker} onChange={(e) => setLeftTicker(e.target.value)} placeholder="AAPL" autoComplete="off" />
+          </label>
+          <label className="field">
+            <span className="field-label">Second ticker</span>
+            <input type="text" value={rightTicker} onChange={(e) => setRightTicker(e.target.value)} placeholder="MSFT" autoComplete="off" />
+          </label>
+          <button type="submit" className="btn-solid" disabled={loading}>
+            {loading ? 'Comparing' : 'Compare'}
           </button>
         </form>
       </div>
 
-      {loading ? (
-        <div className="card" style={{ padding: '4rem', display: 'flex', justifyContent: 'center' }}>
-          <LoadingSpinner text="Fetching side-by-side metrics..." />
-        </div>
-      ) : error ? (
-        <div className="card" style={{ padding: '1.5rem', borderLeft: '4px solid var(--color-danger)' }}>
-          <strong style={{ color: 'var(--color-danger)' }}>Error:</strong> {error}
-        </div>
-      ) : leftData && rightData ? (
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          {/* Main Comparison Table matching Image 4 */}
-          <div className="card" style={{ padding: 'clamp(1.1rem, 4vw, 2rem)', border: '1px solid var(--border-color)' }}>
-            
-            {/* Header Ticker Titles */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 120px) minmax(0, 1fr)', gap: '1rem', alignItems: 'center', marginBottom: '2rem', textAlign: 'center' }}>
-              <div>
-                <h2 style={{ fontSize: '2.2rem', margin: 0, fontWeight: 900, color: 'var(--text-heading)' }}>{leftData.stock_data.ticker}</h2>
-                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{leftData.stock_data.company_name}</div>
-              </div>
-
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                VS
-              </div>
-
-              <div>
-                <h2 style={{ fontSize: '2.2rem', margin: 0, fontWeight: 900, color: 'var(--text-heading)' }}>{rightData.stock_data.ticker}</h2>
-                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{rightData.stock_data.company_name}</div>
-              </div>
+      {error ? (
+        <p className="inline-error" role="alert">
+          Couldn't load that comparison: {error}
+        </p>
+      ) : !ready ? (
+        <CompareSkeleton />
+      ) : (
+        <>
+          <div className="cmp-table">
+            <div className="cmp-row cmp-head">
+              <span />
+              {[leftData, rightData].map((d) => (
+                <Link key={d.stock_data.ticker} to={`/stock/${d.stock_data.ticker}?investor=${selectedInvestor}`} className="cmp-stock">
+                  <span className="mono cmp-ticker">
+                    {d.stock_data.ticker} <ArrowUpRight size={14} aria-hidden="true" />
+                  </span>
+                  <span className="cmp-name">{displayName(d.stock_data.company_name)}</span>
+                </Link>
+              ))}
             </div>
 
-            {/* Metrics Rows */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              
-              {/* Row: P/E Ratio */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}>34.2</div>
-                <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>P/E Ratio</div>
-                <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}>36.1</div>
-              </div>
-
-              {/* Row: ROE */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-teal)' }}>145.6%</div>
-                <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>ROE</div>
-                <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}>39.2%</div>
-              </div>
-
-              {/* Row: Margin of Safety */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <span style={{ padding: '0.3rem 0.8rem', borderRadius: '6px', background: 'rgba(6, 182, 212, 0.2)', color: 'var(--color-teal)', fontWeight: 700 }}>
-                    {leftData.margin?.margin_pct ? `${leftData.margin.margin_pct.toFixed(0)}%` : '28%'}
+            <div className="cmp-row">
+              <span className="cmp-label">Verdict</span>
+              {[leftData, rightData].map((d) => {
+                const v = d.classification_label || d.classification;
+                return (
+                  <span key={d.stock_data.ticker} className={`cmp-verdict tone-${VERDICT_TONE[v] || 'mid'}`}>
+                    {v}
                   </span>
-                </div>
-                <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>Margin of Safety</div>
-                <div style={{ textAlign: 'center' }}>
-                  <span style={{ padding: '0.3rem 0.8rem', borderRadius: '6px', background: 'rgba(245, 158, 11, 0.2)', color: 'var(--color-warning)', fontWeight: 700 }}>
-                    {rightData.margin?.margin_pct ? `${rightData.margin.margin_pct.toFixed(0)}%` : '15%'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Row: Business Quality */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-gold)' }}>
-                  {leftData.scorecard.grade}
-                </div>
-                <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>Business Quality</div>
-                <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}>
-                  {rightData.scorecard.grade}
-                </div>
-              </div>
-
-              {/* Row: DCF Value */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}>
-                  ${leftData.dcf?.intrinsic_value ? leftData.dcf.intrinsic_value.toFixed(2) : '245.00'}
-                </div>
-                <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>DCF Value</div>
-                <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}>
-                  ${rightData.dcf?.intrinsic_value ? rightData.dcf.intrinsic_value.toFixed(2) : '410.00'}
-                </div>
-              </div>
-
-              {/* Row: Classification */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) clamp(84px, 24vw, 180px) minmax(0, 1fr)', alignItems: 'center', padding: '0.75rem 0' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <span style={{ padding: '0.4rem 1rem', borderRadius: '999px', background: 'rgba(6, 182, 212, 0.2)', color: 'var(--color-teal)', fontWeight: 700, fontSize: '0.9rem' }}>
-                    {leftData.classification}
-                  </span>
-                </div>
-                <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.88rem' }}>Classification</div>
-                <div style={{ textAlign: 'center' }}>
-                  <span style={{ padding: '0.4rem 1rem', borderRadius: '999px', background: 'rgba(245, 158, 11, 0.2)', color: 'var(--color-warning)', fontWeight: 700, fontSize: '0.9rem' }}>
-                    {rightData.classification}
-                  </span>
-                </div>
-              </div>
-
+                );
+              })}
             </div>
+
+            {ROWS.map((row) => {
+              const win = winner(row, leftData, rightData);
+              return (
+                <div key={row.label} className="cmp-row">
+                  <span className="cmp-label">{row.label}</span>
+                  {[leftData, rightData].map((d, i) => {
+                    const v = row.get(d);
+                    const isWin = win === (i === 0 ? 'a' : 'b');
+                    const tone = row.tone && Number.isFinite(v) ? ` tone-${v >= 0 ? 'pos' : 'neg'}` : '';
+                    return (
+                      <span key={d.stock_data.ticker} className={`mono cmp-value${isWin ? ' is-better' : ''}${tone}`}>
+                        {v == null ? 'n/a' : row.show(v, d)}
+                      </span>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
+          <p className="cmp-legend">Bold marks the stronger value where higher or lower is clearly better.</p>
 
-          {/* Bottom Row: Side-by-Side AI Report & Risk Flags */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))', gap: '1.5rem' }}>
-            
-            {/* AI Comparison Summary */}
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                <Sparkles size={20} color="var(--color-teal)" />
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>AI Report</h3>
+          <div className="cmp-notes">
+            <section>
+              <h2>How they differ</h2>
+              <ul className="plain-list">
+                {differences(leftData, rightData, lensLabel).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </section>
+
+            <section>
+              <h2>Risk flags</h2>
+              <div className="cmp-flags">
+                {[leftData, rightData].map((d) => (
+                  <div key={d.stock_data.ticker}>
+                    <div className="mono cmp-flags-ticker">{d.stock_data.ticker}</div>
+                    {d.risk?.flags?.length ? (
+                      <ul className="plain-list">
+                        {d.risk.flags.map((f) => (
+                          <li key={f.flag}>
+                            <span className="tone-neg">{f.flag}</span>
+                            <span className="muted"> {f.description}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="muted">No red flags in the latest filings.</p>
+                    )}
+                  </div>
+                ))}
               </div>
-              <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', lineHeight: '1.6', margin: 0 }}>
-                {leftData.stock_data.ticker} demonstrates a stronger ROE and higher margin of safety, indicating a wider discount to intrinsic value under this lens. {rightData.stock_data.ticker} trades closer to fair value with a lower margin of safety but benefits from lower leverage and consistent cash flow stability.
-              </p>
-            </div>
-
-            {/* Side-by-side Risk Flags */}
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                <ShieldAlert size={20} color="var(--color-warning)" />
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Risk Flags</h3>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem' }}>
-                <div>
-                  <div style={{ fontWeight: 800, marginBottom: '0.5rem', color: 'var(--color-teal)' }}>{leftData.stock_data.ticker}</div>
-                  <ul style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <li>• High valuation multiple</li>
-                    <li>• Regulatory scrutiny</li>
-                  </ul>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, marginBottom: '0.5rem', color: 'var(--color-gold)' }}>{rightData.stock_data.ticker}</div>
-                  <ul style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <li>• Cloud competition</li>
-                    <li>• Capital expenditure growth</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
+            </section>
           </div>
-
-        </div>
-      ) : null}
-
+        </>
+      )}
     </div>
   );
 };

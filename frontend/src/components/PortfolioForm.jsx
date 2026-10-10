@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, PieChart, Zap, TrendingUp, Gauge } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { getMarketConditions, parseBulkHoldings } from '../api/client';
 
 const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', selectedHorizon = 'long' }) => {
@@ -130,268 +130,124 @@ const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', select
     }
   };
 
-  return (
-    <div className="card" style={{ padding: 'clamp(1.1rem, 4vw, 2rem)' }}>
-      <h3 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <PieChart size={24} color="var(--color-primary)" />
-        Current Holdings
-      </h3>
-      
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 40px', gap: '1rem', marginBottom: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
-          <div>Ticker Symbol</div>
-          <div>Number of Shares</div>
-          <div></div>
-        </div>
+  const cap = (v) => (v ? v[0].toUpperCase() + v.slice(1) : 'n/a');
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+  return (
+    <section className="panel" aria-labelledby="holdings-title">
+      <header className="panel-head">
+        <div>
+          <h2 id="holdings-title">Your holdings</h2>
+          <p className="panel-note">Saved in this browser. Enter shares as 0 to include a ticker you don't own yet.</p>
+        </div>
+      </header>
+
+      <form onSubmit={handleSubmit} className="pf-form">
+        <div className="pf-rows">
+          <div className="pf-row pf-row--head" aria-hidden="true">
+            <span>Ticker</span>
+            <span>Shares</span>
+            <span />
+          </div>
           {holdings.map((holding, index) => (
-            <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 40px', gap: '1rem', alignItems: 'center' }}>
+            <div key={index} className="pf-row">
               <input
                 type="text"
                 placeholder="e.g. AAPL"
+                aria-label={`Ticker ${index + 1}`}
                 value={holding.ticker}
                 onChange={(e) => handleHoldingChange(index, 'ticker', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '8px',
-                  border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)'
-                }}
+                autoComplete="off"
               />
               <input
                 type="number"
                 placeholder="0"
                 min="0"
                 step="any"
+                aria-label={`Shares ${index + 1}`}
                 value={holding.shares}
                 onChange={(e) => handleHoldingChange(index, 'shares', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '8px',
-                  border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)'
-                }}
               />
-              <button 
-                type="button" 
-                onClick={() => removeRow(index)}
-                disabled={holdings.length <= 1}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--color-danger)',
-                  cursor: holdings.length <= 1 ? 'not-allowed' : 'pointer',
-                  opacity: holdings.length <= 1 ? 0.3 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0.5rem'
-                }}
-              >
-                <X size={20} />
+              <button type="button" className="pf-remove" onClick={() => removeRow(index)} aria-label={`Remove row ${index + 1}`}>
+                <X size={16} />
               </button>
             </div>
           ))}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>Total Account Value</div>
-            <input
-              type="number"
-              placeholder="0"
-              min="0"
-              step="any"
-              value={accountValue}
-              onChange={(e) => setAccountValue(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-surface)',
-                color: 'var(--color-text)'
-              }}
-            />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>Available Cash</div>
-            <input
-              type="number"
-              placeholder="0"
-              min="0"
-              step="any"
-              value={cashAvailable}
-              onChange={(e) => setCashAvailable(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-surface)',
-                color: 'var(--color-text)'
-              }}
-            />
-          </div>
-          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-            Enter your total account value if you want the optimizer to derive cash available from current holdings. Otherwise, fill only available cash.
-          </div>
+          <button type="button" className="btn-quiet pf-add" onClick={addRow}>
+            <Plus size={14} aria-hidden="true" /> Add row
+          </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            <label style={{ fontWeight: 600, color: 'var(--color-text)' }}>Bulk ticker import</label>
-            <textarea
-              value={bulkTickers}
-              onChange={(e) => setBulkTickers(e.target.value)}
-              placeholder="Paste tickers separated by commas, newlines, or spaces."
-              rows={4}
-              style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', resize: 'vertical' }}
-            />
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button type="button" onClick={parseBulkTickers} style={{ padding: '0.9rem 1.2rem', borderRadius: '999px', background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer' }}>
-                Add tickers to portfolio
-              </button>
-              {bulkError && <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{bulkError}</span>}
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <button 
-              type="button" 
-              onClick={addRow}
-              style={{
-                background: 'transparent',
-                border: '1px dashed var(--color-border)',
-                color: 'var(--color-text)',
-                borderRadius: '8px',
-                padding: '0.5rem 1rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              <Plus size={16} /> Add Row
-            </button>
-            
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem 2rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={useRecommendations}
-                  onChange={(e) => setUseRecommendations(e.target.checked)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: '0.95rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Zap size={16} color="var(--color-primary)" />
-                  Test adding recommended stocks
-                </span>
-              </label>
-              
-              <button 
-                type="submit" 
-                className="btn" 
-                disabled={loading}
-                style={{ padding: '0.75rem 2rem', marginLeft: 'auto' }}
-              >
-                {loading ? 'Optimizing...' : 'Optimize Portfolio'}
-              </button>
-            </div>
-          </div>
+        <div className="pf-money">
+          <label className="field">
+            <span className="field-label">Total account value</span>
+            <input type="number" placeholder="0" min="0" step="any" value={accountValue} onChange={(e) => setAccountValue(e.target.value)} />
+          </label>
+          <label className="field">
+            <span className="field-label">Available cash</span>
+            <input type="number" placeholder="0" min="0" step="any" value={cashAvailable} onChange={(e) => setCashAvailable(e.target.value)} />
+          </label>
+          <p className="panel-note pf-money-note">
+            Fill in total account value to have cash worked out from your holdings. Otherwise, fill in available cash only.
+          </p>
+        </div>
 
-          {useRecommendations && (
-            <div style={{ 
-              padding: '1.25rem', 
-              background: 'rgba(99, 102, 241, 0.05)', 
-              border: '1px solid rgba(99, 102, 241, 0.2)', 
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <TrendingUp size={18} color="var(--color-primary)" />
-                <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--color-text)' }}>Market-Adaptive Recommendations</h4>
-              </div>
-              
-              {conditionsLoading ? (
-                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', margin: 0 }}>Loading market conditions...</p>
-              ) : marketConditions ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', fontSize: '0.9rem' }}>
+        <details className="pf-bulk">
+          <summary>Paste a list of tickers</summary>
+          <label className="field">
+            <span className="field-label">Tickers, separated by commas, spaces or new lines</span>
+            <textarea value={bulkTickers} onChange={(e) => setBulkTickers(e.target.value)} placeholder="KO, PG, JNJ" rows={3} />
+          </label>
+          <div className="pf-bulk-actions">
+            <button type="button" className="btn-quiet" onClick={parseBulkTickers}>
+              Add to holdings
+            </button>
+            {bulkError && <span className="tone-neg pf-inline">{bulkError}</span>}
+          </div>
+        </details>
+
+        <label className="pf-check">
+          <input type="checkbox" checked={useRecommendations} onChange={(e) => setUseRecommendations(e.target.checked)} />
+          <span>Also test adding stocks recommended for the current market</span>
+        </label>
+
+        {useRecommendations && (
+          <div className="pf-reco" aria-live="polite">
+            {conditionsLoading ? (
+              <p className="panel-note">Loading market conditions</p>
+            ) : marketConditions ? (
+              <>
+                <dl className="deck-facts">
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>Market Trend:</span>
-                    <div style={{ 
-                      color: marketConditions.market_trend === 'bull' ? 'var(--color-success)' : 
-                             marketConditions.market_trend === 'bear' ? 'var(--color-danger)' : 
-                             'var(--color-warning)',
-                      fontWeight: 600,
-                      marginTop: '0.25rem'
-                    }}>
-                      {marketConditions.market_trend === 'bull' ? '📈' : 
-                       marketConditions.market_trend === 'bear' ? '📉' : 
-                       '➡️'} {marketConditions.market_trend.charAt(0).toUpperCase() + marketConditions.market_trend.slice(1)}
-                    </div>
+                    <dt>Market trend</dt>
+                    <dd>{cap(marketConditions.market_trend)}</dd>
                   </div>
-                  
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>Volatility:</span>
-                    <div style={{ 
-                      color: marketConditions.volatility === 'low' ? 'var(--color-success)' : 
-                             marketConditions.volatility === 'high' ? 'var(--color-danger)' : 
-                             'var(--color-warning)',
-                      fontWeight: 600,
-                      marginTop: '0.25rem'
-                    }}>
-                      {marketConditions.volatility === 'low' ? '🟢' : 
-                       marketConditions.volatility === 'high' ? '🔴' : 
-                       '🟡'} {marketConditions.volatility.charAt(0).toUpperCase() + marketConditions.volatility.slice(1)}
-                    </div>
+                    <dt>Volatility (VIX)</dt>
+                    <dd>{cap(marketConditions.volatility)}</dd>
                   </div>
-                  
                   <div>
-                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>90-Day Return:</span>
-                    <div style={{ 
-                      color: marketConditions.market_return_90d_pct >= 0 ? 'var(--color-success)' : 'var(--color-danger)',
-                      fontWeight: 600,
-                      marginTop: '0.25rem'
-                    }}>
-                      {marketConditions.market_return_90d_pct > 0 ? '+' : ''}{marketConditions.market_return_90d_pct}%
-                    </div>
+                    <dt>S&amp;P 500, 90d annualized</dt>
+                    <dd className={`mono tone-${marketConditions.market_return_90d_pct >= 0 ? 'pos' : 'neg'}`}>
+                      {marketConditions.market_return_90d_pct > 0 ? '+' : ''}
+                      {marketConditions.market_return_90d_pct}%
+                    </dd>
                   </div>
-                </div>
-              ) : null}
-              
-              {marketConditions && (
-                <div style={{ 
-                  paddingTop: '1rem', 
-                  borderTop: '1px solid rgba(99, 102, 241, 0.2)',
-                  fontSize: '0.85rem',
-                  color: 'var(--color-text-muted)'
-                }}>
-                  <span style={{ fontWeight: 500 }}>Recommended stocks:</span>
-                  <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {marketConditions.recommended_stocks.map((ticker, idx) => (
-                      <span key={idx} style={{ 
-                        background: 'rgba(99, 102, 241, 0.15)',
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '4px',
-                        fontSize: '0.85rem',
-                        color: 'var(--color-text)'
-                      }}>
-                        {ticker}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+                </dl>
+                <p className="panel-text">
+                  Candidates: <span className="mono">{marketConditions.recommended_stocks.join(', ')}</span>
+                </p>
+              </>
+            ) : null}
+          </div>
+        )}
+
+        <div className="pf-submit">
+          <button type="submit" className="btn-solid" disabled={loading}>
+            {loading ? 'Optimizing' : 'Optimize portfolio'}
+          </button>
         </div>
       </form>
-    </div>
+    </section>
   );
 };
 

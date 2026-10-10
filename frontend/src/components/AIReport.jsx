@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getAIReport } from '../api/client';
-import { Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
+import { getAIReport } from '../api/client';
 
 const AIReport = ({ ticker, investor = 'buffett', horizon = 'long', investorLabel = 'Investor' }) => {
   const [report, setReport] = useState(null);
@@ -13,11 +13,8 @@ const AIReport = ({ ticker, investor = 'buffett', horizon = 'long', investorLabe
     setError(null);
     try {
       const data = await getAIReport(ticker, investor, horizon);
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setReport(data.report);
-      }
+      if (data.error) setError(data.error);
+      else setReport(data.report);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -27,91 +24,38 @@ const AIReport = ({ ticker, investor = 'buffett', horizon = 'long', investorLabe
 
   useEffect(() => {
     fetchReport();
-  }, [ticker, investor]);
+  }, [ticker, investor, horizon]);
+
+  const needsKey = error && /API key/i.test(error);
 
   return (
-    <div className="card" style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Sparkles size={24} color="var(--color-primary)" />
-          <h2 style={{ margin: 0 }}>{investorLabel ? `${investorLabel}'s Verdict` : 'Investor Verdict'}{horizon === 'short' ? ' (Short)' : ' (Long)'}</h2>
+    <section className="panel" aria-labelledby="memo-title" aria-busy={loading}>
+      <header className="panel-head">
+        <div>
+          <h2 id="memo-title">Memo in {investorLabel}'s voice</h2>
+          <p className="panel-note">Written by Gemini from the figures on this page. {horizon === 'short' ? 'Short-term' : 'Long-term'} horizon.</p>
         </div>
-        <button 
-          onClick={fetchReport} 
-          disabled={loading}
-          style={{
-            background: 'transparent',
-            border: '1px solid var(--color-border)',
-            borderRadius: '4px',
-            padding: '0.5rem',
-            color: 'var(--color-text-muted)',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          <span>Refresh</span>
+        <button type="button" className="btn-quiet" onClick={fetchReport} disabled={loading}>
+          <RefreshCw size={14} aria-hidden="true" /> Regenerate
         </button>
-      </div>
+      </header>
 
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {[1, 2, 3].map((i) => (
-            <div key={i} style={{ 
-              height: '4rem', 
-              background: 'var(--color-border)', 
-              borderRadius: '8px',
-              animation: 'pulse 1.5s infinite ease-in-out',
-              opacity: 0.5
-            }}></div>
-          ))}
+        <div className="memo-skel" aria-hidden="true">
+          <span className="skel" />
+          <span className="skel" />
+          <span className="skel" />
         </div>
+      ) : needsKey ? (
+        <p className="panel-text">
+          Add a Gemini API key in <Link to="/settings">Settings</Link> to get this memo.
+        </p>
       ) : error ? (
-        <div style={{
-          padding: '1.5rem',
-          background: 'rgba(239, 68, 68, 0.05)',
-          border: '1px solid rgba(239, 68, 68, 0.2)',
-          borderRadius: '8px',
-          display: 'flex',
-          gap: '1rem',
-          alignItems: 'flex-start'
-        }}>
-          <AlertCircle size={24} color="var(--color-danger)" style={{ flexShrink: 0 }} />
-          <div>
-            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--color-danger)' }}>Could not generate AI report</h4>
-            <p style={{ margin: '0 0 1rem 0', color: 'var(--color-text)' }}>{error}</p>
-            {error.includes('API key') && (
-              <Link to="/settings" style={{
-                display: 'inline-block',
-                padding: '0.5rem 1rem',
-                background: 'var(--color-primary)',
-                color: '#000',
-                textDecoration: 'none',
-                borderRadius: '4px',
-                fontWeight: 500
-              }}>
-                Configure API Key
-              </Link>
-            )}
-          </div>
-        </div>
+        <p className="panel-text tone-neg">{error}</p>
       ) : report ? (
-        <div style={{
-          fontSize: '1.1rem',
-          lineHeight: '1.8',
-          color: 'var(--color-text)',
-          whiteSpace: 'pre-wrap'
-        }}>
-          {report}
-        </div>
-      ) : (
-        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-          Click refresh to generate the report.
-        </div>
-      )}
-    </div>
+        <div className="memo">{report}</div>
+      ) : null}
+    </section>
   );
 };
 

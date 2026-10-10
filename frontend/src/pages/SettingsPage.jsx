@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Eye, EyeOff, CheckCircle, ExternalLink, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, ExternalLink } from 'lucide-react';
 import SegmentedControl from '../components/SegmentedControl';
 import { useTheme } from '../theme';
 
@@ -9,223 +9,138 @@ const APPEARANCE_OPTIONS = [
   { value: 'dark', label: 'Dark' },
 ];
 
+const MODELS = [
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (default, best balance)' },
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (slower, more detail)' },
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (fast)' },
+];
+
 const SettingsPage = () => {
   const { preference, setPreference } = useTheme();
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [hasKey, setHasKey] = useState(false);
   const [geminiModel, setGeminiModel] = useState('gemini-2.5-flash');
-  const [toast, setToast] = useState(null);
+  const [status, setStatus] = useState(null);
 
   useEffect(() => {
-    const storedKey = localStorage.getItem('gemini_api_key');
-    if (storedKey) {
-      setApiKey(storedKey);
-      setHasKey(true);
-    }
-    const storedModel = localStorage.getItem('gemini_model');
-    if (storedModel) {
-      setGeminiModel(storedModel);
+    try {
+      const storedKey = localStorage.getItem('gemini_api_key');
+      if (storedKey) {
+        setApiKey(storedKey);
+        setHasKey(true);
+      }
+      const storedModel = localStorage.getItem('gemini_model');
+      if (storedModel) setGeminiModel(storedModel);
+    } catch {
+      // storage unavailable: settings can't persist in this browser
     }
   }, []);
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+  const flash = (message) => {
+    setStatus(message);
+    setTimeout(() => setStatus(null), 3000);
   };
 
-  const handleSave = () => {
-    if (apiKey.trim()) {
-      localStorage.setItem('gemini_api_key', apiKey.trim());
-      setHasKey(true);
-      showToast('API key saved successfully');
-    }
+  const handleSave = (e) => {
+    e.preventDefault();
+    if (!apiKey.trim()) return;
+    localStorage.setItem('gemini_api_key', apiKey.trim());
+    setHasKey(true);
+    flash('API key saved.');
   };
 
   const handleClear = () => {
     localStorage.removeItem('gemini_api_key');
     setApiKey('');
     setHasKey(false);
-    showToast('API key cleared');
+    flash('API key removed.');
   };
 
   const handleModelChange = (e) => {
-    const newModel = e.target.value;
-    setGeminiModel(newModel);
-    localStorage.setItem('gemini_model', newModel);
-    showToast(`Gemini model switched to ${newModel.split('-').slice(1).join('-')}`);
+    setGeminiModel(e.target.value);
+    localStorage.setItem('gemini_model', e.target.value);
+    flash('Model updated.');
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem clamp(1rem, 3vw, 2rem)' }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <Key size={32} color="var(--color-primary)" />
-        Settings
-      </h1>
+    <div className="page page--narrow">
+      <header className="page-head">
+        <h1>Settings</h1>
+        <p className="page-sub">Stored only in this browser.</p>
+      </header>
 
-      <div className="card" style={{ padding: 'clamp(1.1rem, 4vw, 2rem)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+      <section className="panel" aria-labelledby="key-title">
+        <header className="panel-head">
           <div>
-            <h2 style={{ margin: '0 0 0.5rem 0' }}>Google Gemini API Key</h2>
-            <p style={{ color: 'var(--color-text-muted)', margin: 0, maxWidth: '600px', lineHeight: '1.5' }}>
-              The AI Stock Report feature uses Google's Gemini models to generate analysis in the voice of master investors (Buffett, Lynch, Graham, Munger, O'Neil, Soros). 
-              You need a free API key to use this feature.
+            <h2 id="key-title">Gemini API key</h2>
+            <p className="panel-note">
+              Powers the metric explanations and the investor memo on each analysis. The key is sent with those requests only.
             </p>
-            <a 
-              href="https://aistudio.google.com" 
-              target="_blank" 
-              rel="noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)', marginTop: '0.5rem', textDecoration: 'none' }}
-            >
-              Get your free API key at Google AI Studio <ExternalLink size={14} />
-            </a>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '999px' }}>
-            <div style={{ 
-              width: '10px', 
-              height: '10px', 
-              borderRadius: '50%', 
-              background: hasKey ? 'var(--color-success)' : 'var(--color-text-muted)',
-              boxShadow: hasKey ? '0 0 10px var(--color-success)' : 'none'
-            }}></div>
-            <span style={{ fontSize: '0.9rem', whiteSpace: 'nowrap', color: hasKey ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
-              {hasKey ? 'Configured' : 'Not Configured'}
-            </span>
-          </div>
-        </div>
+          <span className={`settings-status${hasKey ? ' tone-pos' : ' muted'}`}>{hasKey ? 'Saved' : 'Not set'}</span>
+        </header>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>API Key</label>
-          <div style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
-            <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0, display: 'flex' }}>
+        <form className="settings-key" onSubmit={handleSave}>
+          <label className="field settings-key-field">
+            <span className="field-label">API key</span>
+            <span className="settings-key-input">
               <input
-                type={showKey ? "text" : "password"}
+                type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="AIzaSy..."
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 3rem 0.75rem 1rem',
-                  borderRadius: '8px',
-                  border: '1px solid var(--color-border)',
-                  background: 'rgba(0,0,0,0.2)',
-                  color: 'var(--color-text)',
-                  fontFamily: 'monospace',
-                  fontSize: '1rem'
-                }}
+                placeholder="Paste your key"
+                autoComplete="off"
+                spellCheck="false"
               />
-              <button 
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                aria-label={showKey ? 'Hide API key' : 'Show API key'}
-                style={{
-                  position: 'absolute',
-                  right: '0.75rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--color-text-muted)',
-                  cursor: 'pointer'
-                }}
-              >
-                {showKey ? <EyeOff size={20} /> : <Eye size={20} />}
+              <button type="button" className="settings-eye" onClick={() => setShowKey((v) => !v)} aria-label={showKey ? 'Hide API key' : 'Show API key'}>
+                {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
-            </div>
-            <button className="btn" onClick={handleSave} disabled={!apiKey.trim()} style={{ minWidth: '100px' }}>
+            </span>
+          </label>
+          <div className="settings-key-actions">
+            <button type="submit" className="btn-solid" disabled={!apiKey.trim()}>
               Save
             </button>
-            <button 
-              onClick={handleClear} 
-              disabled={!hasKey}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--color-danger)',
-                color: 'var(--color-danger)',
-                borderRadius: '8px',
-                padding: '0 1rem',
-                cursor: hasKey ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                opacity: hasKey ? 1 : 0.5
-              }}
-            >
-              <Trash2 size={18} /> Clear
-            </button>
+            {hasKey && (
+              <button type="button" className="btn-quiet settings-remove" onClick={handleClear}>
+                Remove
+              </button>
+            )}
           </div>
-        </div>
+        </form>
 
-        {toast && (
-          <div style={{ 
-            marginTop: '1.5rem', 
-            padding: '1rem', 
-            background: toast.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-            border: `1px solid ${toast.type === 'success' ? 'var(--color-success)' : 'var(--color-danger)'}`,
-            borderRadius: '8px',
-            color: toast.type === 'success' ? 'var(--color-success)' : 'var(--color-danger)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            animation: 'fadeIn 0.3s'
-          }}>
-            <CheckCircle size={20} />
-            {toast.message}
-          </div>
-        )}
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="settings-link">
+          Get a free key from Google AI Studio <ExternalLink size={14} aria-hidden="true" />
+        </a>
 
-        <hr style={{ margin: '2rem 0', border: 'none', borderTop: '1px solid var(--color-border)' }} />
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <h2 style={{ margin: '0 0 0.5rem 0' }}>Gemini Model Selection</h2>
-            <p style={{ color: 'var(--color-text-muted)', margin: 0, maxWidth: '600px', lineHeight: '1.5' }}>
-              Choose your preferred Gemini model for AI Stock Reports. Higher-end models provide more detailed analysis.
-            </p>
-          </div>
-          <select
-            value={geminiModel}
-            onChange={handleModelChange}
-            style={{
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              border: '1px solid var(--color-border)',
-              background: 'rgba(0,0,0,0.2)',
-              color: 'var(--color-text)',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              maxWidth: '400px'
-            }}
-          >
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash (Default - Best Balance)</option>
-            <option value="gemini-2.0-flash">Gemini 2.0 Flash (Fully Supported)</option>
-            <option value="gemini-1.5-pro">Gemini 1.5 Pro (Higher Quality)</option>
-            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast & Widely Supported)</option>
+        <label className="field settings-model">
+          <span className="field-label">Model</span>
+          <select value={geminiModel} onChange={handleModelChange}>
+            {MODELS.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
           </select>
-          <p style={{ 
-            fontSize: '0.85rem', 
-            color: 'var(--color-text-muted)', 
-            maxWidth: '600px',
-            lineHeight: '1.5',
-            marginTop: '0.5rem'
-          }}>
-            💡 <strong>Tip:</strong> Gemini 2.5 Flash offers the best balance of speed and quality. If it is unavailable for your key, the app will automatically fall back to Gemini 1.5 Flash.
-          </p>
-        </div>
-      </div>
+          <span className="panel-note">If the chosen model isn't available for your key, Gemini 2.5 Flash is used instead.</span>
+        </label>
+      </section>
 
-      <div className="card" style={{ padding: 'clamp(1.1rem, 4vw, 2rem)', marginTop: '1.5rem' }}>
-        <h2 style={{ margin: '0 0 0.5rem 0' }}>Appearance</h2>
-        <p style={{ color: 'var(--color-text-muted)', margin: '0 0 1rem 0' }}>
-          System follows your device's light or dark setting.
-        </p>
-        <SegmentedControl
-          id="appearance"
-          options={APPEARANCE_OPTIONS}
-          value={preference}
-          onChange={setPreference}
-        />
-      </div>
+      <section className="panel" aria-labelledby="appearance-title">
+        <header className="panel-head">
+          <div>
+            <h2 id="appearance-title">Appearance</h2>
+            <p className="panel-note">System follows your device's light or dark setting.</p>
+          </div>
+        </header>
+        <SegmentedControl id="appearance" options={APPEARANCE_OPTIONS} value={preference} onChange={setPreference} />
+      </section>
+
+      <p className="settings-flash" role="status" aria-live="polite">
+        {status}
+      </p>
     </div>
   );
 };

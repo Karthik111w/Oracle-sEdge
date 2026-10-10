@@ -1,31 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { getStockAnalysis } from '../api/client';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ScoreCard from '../components/ScoreCard';
 import DCFChart from '../components/DCFChart';
-import MarginGauge from '../components/MarginGauge';
+import ValuationPanel from '../components/ValuationPanel';
 import ETFProfileCard from '../components/ETFProfileCard';
 import RiskFlags from '../components/RiskFlags';
 import AIReport from '../components/AIReport';
-import ClassificationBadge from '../components/ClassificationBadge';
+import MetricDeck from '../components/MetricDeck';
 import SearchBar from '../components/SearchBar';
 import SegmentedControl from '../components/SegmentedControl';
-import { ArrowLeft, AlertCircle, Info, DollarSign, ShieldAlert, Sparkles } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
+import { displayName, formatMoney } from '../components/home/LensVerdictCard';
+import { LENSES } from '../components/home/lenses';
 
-const INVESTOR_OPTIONS = [
-  { value: 'buffett', label: 'Warren Buffett' },
-  { value: 'lynch', label: 'Peter Lynch' },
-  { value: 'graham', label: 'Benjamin Graham' },
-  { value: 'munger', label: 'Charlie Munger' },
-  { value: 'oneil', label: "William O'Neil" },
-  { value: 'soros', label: 'George Soros' },
-];
+const INVESTOR_OPTIONS = LENSES.map((l) => ({ value: l.value, label: l.label }));
 
 const HORIZON_OPTIONS = [
-  { value: 'long', label: 'Long-term' },
-  { value: 'short', label: 'Short-term' },
+  { value: 'long', label: 'Long term' },
+  { value: 'short', label: 'Short term' },
 ];
 
 const StockAnalysisPage = () => {
@@ -43,8 +37,7 @@ const StockAnalysisPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getStockAnalysis(ticker, investor, horizon);
-      setData(result);
+      setData(await getStockAnalysis(ticker, investor, horizon));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -52,16 +45,15 @@ const StockAnalysisPage = () => {
     }
   };
 
+  // Changing the lens or horizon updates the URL; the effect below refetches from it.
   const handleInvestorSelect = (investorKey) => {
     setSelectedInvestor(investorKey);
     setSearchParams({ investor: investorKey, horizon: selectedHorizon });
-    fetchData(investorKey, selectedHorizon);
   };
 
   const handleHorizonSelect = (horizonKey) => {
     setSelectedHorizon(horizonKey);
     setSearchParams({ investor: selectedInvestor, horizon: horizonKey });
-    fetchData(selectedInvestor, horizonKey);
   };
 
   useEffect(() => {
@@ -71,51 +63,54 @@ const StockAnalysisPage = () => {
   }, [ticker, investorParam, horizonParam]);
 
   useEffect(() => {
-    if (data && data.stock_data) {
-      const sd = data.stock_data;
-      const changeVal = sd.daily_change_pct;
-      const isPos = changeVal === null || changeVal === undefined ? true : changeVal >= 0;
-      const changeStr = changeVal === null || changeVal === undefined ? 'N/A' : `${isPos ? '+' : ''}${changeVal.toFixed(2)}%`;
-      const item = {
-        ticker: sd.ticker,
-        name: sd.company_name,
-        price: sd.current_price ? `$${sd.current_price.toFixed(2)}` : 'N/A',
-        change: changeStr,
-        changeVal: changeVal ?? 0,
-      };
-      try {
-        const saved = JSON.parse(localStorage.getItem('recently_viewed') || '[]');
-        const filtered = saved.filter((x) => x.ticker !== item.ticker);
-        const updated = [item, ...filtered].slice(0, 6);
-        localStorage.setItem('recently_viewed', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
+    if (!data?.stock_data) return;
+    const sd = data.stock_data;
+    const changeVal = sd.daily_change_pct;
+    const hasChange = changeVal !== null && changeVal !== undefined;
+    const item = {
+      ticker: sd.ticker,
+      name: sd.company_name,
+      price: sd.current_price ? `$${sd.current_price.toFixed(2)}` : 'N/A',
+      change: hasChange ? `${changeVal >= 0 ? '+' : ''}${changeVal.toFixed(2)}%` : 'N/A',
+      changeVal: changeVal ?? 0,
+    };
+    try {
+      const saved = JSON.parse(localStorage.getItem('recently_viewed') || '[]');
+      const updated = [item, ...saved.filter((x) => x.ticker !== item.ticker)].slice(0, 6);
+      localStorage.setItem('recently_viewed', JSON.stringify(updated));
+    } catch {
+      // Recently viewed is a convenience; ignore storage failures.
     }
   }, [data]);
 
-  if (loading) {
+  const topBar = (
+    <div className="analysis-topbar">
+      <Link to="/" className="back-link">
+        <ArrowLeft size={16} aria-hidden="true" /> Home
+      </Link>
+      <div className="analysis-search">
+        <SearchBar compact placeholder="Analyze another ticker" />
+      </div>
+    </div>
+  );
+
+  if (loading && !data) {
     return (
-      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <LoadingSpinner text={`Analyzing ${ticker}...`} />
+      <div className="page page--wide">
+        {topBar}
+        <LoadingSpinner text={`Analyzing ${ticker.toUpperCase()}`} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ maxWidth: '800px', margin: '4rem auto', padding: '0 2rem' }}>
-        <div style={{ marginBottom: '2rem' }}>
-          <SearchBar initialValue={ticker} />
-        </div>
-        <div className="card" style={{ padding: '3rem', textAlign: 'center', borderTop: '4px solid var(--color-danger)' }}>
-          <AlertCircle size={48} color="var(--color-danger)" style={{ margin: '0 auto 1rem' }} />
-          <h2 style={{ margin: '0 0 1rem 0' }}>Ticker Not Found</h2>
-          <p style={{ color: 'var(--color-text-muted)', marginBottom: '2rem' }}>
-            We could not analyze <strong>{ticker.toUpperCase()}</strong>. Please check the ticker symbol and try again.
-          </p>
-          <p style={{ color: 'var(--color-text-muted)', marginBottom: '2rem' }}>{error}</p>
-          <Link to="/" className="btn">Return Home</Link>
+      <div className="page">
+        {topBar}
+        <div className="empty-state">
+          <h1>We couldn't analyze {ticker.toUpperCase()}</h1>
+          <p className="page-sub">Check the ticker symbol and try again. The server said: {error}</p>
+          <Link to="/" className="btn-solid">Back to home</Link>
         </div>
       </div>
     );
@@ -123,211 +118,57 @@ const StockAnalysisPage = () => {
 
   if (!data) return null;
 
-  const currentPrice = data.stock_data?.current_price || 0;
-  const intrinsicValue = data.dcf?.intrinsic_value || 0;
-  const marginPct = data.margin?.margin_pct ?? 0;
-  const dailyChangePct = data.stock_data?.daily_change_pct;
-  const isDailyPos = dailyChangePct === null || dailyChangePct === undefined ? true : dailyChangePct >= 0;
-
-  // Data for the side-by-side DCF vertical bar chart
-  const dcfBarData = [
-    { name: 'Market Price', value: currentPrice, color: 'var(--color-teal)' },
-    { name: 'Intrinsic Value', value: intrinsicValue, color: 'var(--color-gold)' },
-  ];
+  const sd = data.stock_data;
+  const change = sd?.daily_change_pct;
+  const hasChange = change !== null && change !== undefined;
+  const isEtf = sd.quote_type === 'ETF';
 
   return (
-    <div style={{ maxWidth: '1380px', margin: '0 auto', padding: '1.5rem clamp(1rem, 3vw, 2rem)' }}>
-      
-      {/* Search & Back Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', textDecoration: 'none', fontWeight: 500 }}>
-          <ArrowLeft size={16} /> Back to Search
-        </Link>
-        <div style={{ width: 'min(380px, 100%)' }}>
-          <SearchBar compact placeholder="Analyze another ticker" />
+    <div className={`page page--wide${loading ? ' is-refreshing' : ''}`} aria-busy={loading}>
+      {topBar}
+
+      <header className="analysis-head">
+        <div className="analysis-id">
+          <h1>
+            <span className="mono">{sd.ticker}</span>
+            <span className="analysis-name">{displayName(sd.company_name)}</span>
+          </h1>
+          <p className="analysis-meta">
+            <span className="mono analysis-price">{formatMoney(sd.current_price)}</span>
+            {hasChange && (
+              <span className={`mono tone-${change >= 0 ? 'pos' : 'neg'}`}>
+                {change >= 0 ? '+' : ''}
+                {change.toFixed(2)}% today
+              </span>
+            )}
+            <span className="muted">{[sd.sector, sd.industry].filter(Boolean).join(', ')}</span>
+          </p>
+        </div>
+        <div className="analysis-controls">
+          <SegmentedControl id="investor" label="Investor lens" options={INVESTOR_OPTIONS} value={selectedInvestor} onChange={handleInvestorSelect} />
+          <SegmentedControl id="horizon" label="Horizon" options={HORIZON_OPTIONS} value={selectedHorizon} onChange={handleHorizonSelect} tone="teal" />
+        </div>
+      </header>
+
+      <MetricDeck data={data} ticker={sd.ticker} investor={selectedInvestor} horizon={selectedHorizon} />
+
+      <h2 className="analysis-section-title">Full breakdown</h2>
+      <div className="analysis-grid">
+        <ScoreCard scorecard={data.scorecard} />
+        <div className="analysis-col">
+          {isEtf ? <ETFProfileCard stockData={sd} /> : <ValuationPanel dcf={data.dcf} margin={data.margin} />}
+          <RiskFlags riskData={data.risk} />
         </div>
       </div>
 
-      {/* Top Banner: Ticker + Price on Left, Pill Selectors on Right */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '1.5rem',
-        marginBottom: '2rem',
-        padding: 'clamp(1.1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 2rem)',
-        background: 'var(--glass-bg)',
-        borderRadius: '16px',
-        border: '1px solid var(--border-color)',
-        backdropFilter: 'blur(20px)',
-        boxShadow: 'var(--shadow-md)'
-      }}>
-        {/* Left Side: Stock Identity */}
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '1rem' }}>
-            <h1 style={{ margin: 0, fontSize: 'clamp(2.2rem, 7vw, 3rem)', fontWeight: 900, letterSpacing: '-0.03em' }}>{data.stock_data.ticker}</h1>
-            <span style={{ fontSize: '1.4rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-              {data.stock_data.company_name}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem 1rem', marginTop: '0.25rem' }}>
-            <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-teal)' }}>
-              ${currentPrice.toFixed(2)}
-            </span>
-            <span style={{ 
-              padding: '0.2rem 0.6rem', 
-              borderRadius: '6px', 
-              background: isDailyPos ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', 
-              color: isDailyPos ? 'var(--color-success)' : 'var(--color-danger)', 
-              fontWeight: 700, 
-              fontSize: '0.95rem' 
-            }}>
-              {dailyChangePct === null || dailyChangePct === undefined ? 'N/A' : `${isDailyPos ? '+' : ''}${dailyChangePct.toFixed(2)}%`}
-            </span>
-            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-              Market closed • {data.stock_data.sector} • {data.stock_data.industry}
-            </span>
-          </div>
-        </div>
+      {!isEtf && data.dcf?.projected_fcf && <DCFChart dcf={data.dcf} />}
 
-        {/* Right Side: Lens + Horizon selectors */}
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
-          <SegmentedControl
-            id="investor"
-            label="Investor Lens"
-            options={INVESTOR_OPTIONS}
-            value={selectedInvestor}
-            onChange={handleInvestorSelect}
-          />
-          <SegmentedControl
-            id="horizon"
-            label="Time Horizon"
-            options={HORIZON_OPTIONS}
-            value={selectedHorizon}
-            onChange={handleHorizonSelect}
-            tone="teal"
-          />
-        </div>
-      </div>
+      <AIReport ticker={ticker} investor={selectedInvestor} horizon={selectedHorizon} investorLabel={data.scorecard?.investor_label} />
 
-      {/* Main 3-Column Desktop Grid Layout */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', 
-        gap: '1.5rem',
-        alignItems: 'stretch'
-      }}>
-
-        {/* COLUMN 1: Scorecard */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <ScoreCard scorecard={data.scorecard} />
-        </div>
-
-        {/* COLUMN 2: DCF Intrinsic Value & Margin of Safety */}
-        {data.stock_data.quote_type === "ETF" ? (
-          <ETFProfileCard stockData={data.stock_data} />
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            
-            {/* DCF Intrinsic Value Card with Side-by-Side Vertical Bars */}
-            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <DollarSign size={18} color="var(--color-gold)" /> DCF Intrinsic Value
-                </h3>
-                <Info size={16} color="var(--color-text-muted)" title="2-stage DCF intrinsic value calculation" />
-              </div>
-
-              {/* Dual Vertical Bar Chart */}
-              <div style={{ height: '180px', width: '100%', marginTop: '0.5rem' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dcfBarData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-                    <XAxis dataKey="name" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                    <Tooltip 
-                      formatter={(val) => [`$${val.toFixed(2)}`, 'Value']} 
-                      contentStyle={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }}
-                    />
-                    <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={45}>
-                      {dcfBarData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-around', background: 'var(--bg-row)', padding: '0.75rem', borderRadius: '8px' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Market Price</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-teal)' }}>${currentPrice.toFixed(2)}</div>
-                </div>
-                <div style={{ width: '1px', background: 'var(--color-border)' }}></div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Intrinsic Value</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-gold)' }}>${intrinsicValue.toFixed(2)}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Margin of Safety Gauge */}
-            <MarginGauge margin={data.margin} />
-          </div>
-        )}
-
-        {/* COLUMN 3: Classification Badge, Risk Flags & AI Report */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          {/* Classification & Risk Card */}
-          <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Classification</span>
-              <ClassificationBadge classification={data.classification} classificationLabel={data.classification_label} />
-            </div>
-
-            <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: 0 }} />
-
-            {/* Risk Flags Section */}
-            <RiskFlags riskData={data.risk} />
-          </div>
-
-          {/* AI Written Memo Card */}
-          <AIReport 
-            ticker={ticker} 
-            investor={selectedInvestor} 
-            horizon={selectedHorizon} 
-            investorLabel={data.scorecard?.investor_label} 
-          />
-
-        </div>
-
-      </div>
-
-      {/* Full Projected FCF Bar Chart for deeper analysis */}
-      {data.dcf && data.dcf.projected_fcf && (
-        <div style={{ marginTop: '2rem' }}>
-          <DCFChart dcf={data.dcf} />
-        </div>
-      )}
-
-      {/* Footer Disclaimer */}
-      <div style={{ 
-        marginTop: '3rem', 
-        paddingTop: '1.5rem', 
-        borderTop: '1px solid var(--color-border)', 
-        color: 'var(--color-text-muted)', 
-        fontSize: '0.8rem',
-        display: 'flex',
-        justify: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '1rem'
-      }}>
-        <div>🛡️ Not financial advice. Past performance does not guarantee future results. All data is provided for informational purposes only.</div>
-        <div>Data powered by Yahoo! Finance • SEC Filings</div>
-      </div>
-
+      <footer className="analysis-foot">
+        <p>Not financial advice. Past performance does not guarantee future results.</p>
+        <p>Data from Yahoo Finance and company filings.</p>
+      </footer>
     </div>
   );
 };

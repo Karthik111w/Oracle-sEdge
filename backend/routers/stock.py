@@ -6,6 +6,7 @@ from ..services.margin_of_safety import calculate_margin_of_safety
 from ..services.risk_filter import check_risk_flags
 from ..services.classifier import classify_stock
 from ..services.ai_report import generate_ai_report
+from ..services.metric_explainer import explain_metrics
 
 router = APIRouter(prefix="/api/stock", tags=["Stock"])
 
@@ -93,6 +94,39 @@ def get_ai_report_endpoint(ticker: str, request: Request, investor: str = "buffe
         pass
         
     return report_result
+
+@router.get("/{ticker}/metric-explanations")
+def get_metric_explanations(ticker: str, request: Request, investor: str = "buffett", horizon: str = "long"):
+    """Plain-language reading of each scorecard metric for the analysis slides (Gemini)."""
+    api_key = request.headers.get("X-Gemini-API-Key")
+    model_name = request.headers.get("X-Gemini-Model", "gemini-2.5-flash")
+
+    stock_data = get_stock_data(ticker)
+    if not stock_data:
+        raise HTTPException(status_code=404, detail="Stock not found")
+
+    scorecard = calculate_scorecard_by_investor(stock_data, investor, horizon)
+    dcf = calculate_dcf(stock_data, horizon)
+    if dcf and dcf.get("intrinsic_value") is not None and stock_data.get("current_price") is not None:
+        margin = calculate_margin_of_safety(dcf["intrinsic_value"], stock_data["current_price"])
+    else:
+        margin = None
+    risk = check_risk_flags(stock_data, sector=stock_data.get("sector", ""))
+    classification_details = classify_stock(scorecard, margin["margin_pct"] if margin else -100.0, risk["is_avoid"], horizon)
+
+    # Errors are returned in the body (not raised) so the slides can show them inline.
+    return explain_metrics(
+        stock_data=stock_data,
+        scorecard={**scorecard, "investor": investor},
+        dcf=dcf,
+        margin=margin,
+        classification=classification_details["classification"],
+        classification_explanation=classification_details["explanation"],
+        horizon=horizon,
+        api_key=api_key,
+        model_name=model_name,
+    )
+
 
 @router.get("/{ticker}/price-history")
 def get_price_history_endpoint(ticker: str, period: str = "5y"):

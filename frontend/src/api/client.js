@@ -25,6 +25,16 @@ export async function getAIReport(ticker, investor = 'buffett', horizon = 'long'
   return res.json();
 }
 
+export async function getMetricExplanations(ticker, investor = 'buffett', horizon = 'long') {
+  const apiKey = localStorage.getItem('gemini_api_key');
+  const model = localStorage.getItem('gemini_model') || 'gemini-2.5-flash';
+  const headers = { 'X-Gemini-Model': model };
+  if (apiKey) headers['X-Gemini-API-Key'] = apiKey;
+  const res = await fetch(withBase(`/api/stock/${ticker}/metric-explanations?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`), { headers });
+  if (!res.ok) throw new Error(`Explanations failed: ${res.statusText}`);
+  return res.json();
+}
+
 export async function getPriceHistory(ticker, period = '5y') {
   const res = await fetch(withBase(`/api/stock/${ticker}/price-history?period=${period}`));
   if (!res.ok) throw new Error(`Price history failed: ${res.statusText}`);

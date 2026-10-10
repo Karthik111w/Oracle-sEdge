@@ -1,127 +1,82 @@
 import React from 'react';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from 'recharts';
 
+const tone = (score, max) => {
+  if (!max) return 'muted';
+  const pct = score / max;
+  if (pct >= 0.8) return 'pos';
+  if (pct >= 0.4) return 'mid';
+  return 'neg';
+};
+
 const ScoreCard = ({ scorecard }) => {
   if (!scorecard || !scorecard.metrics) return null;
 
-  // Normalize each metric to 0-100 for radar (max varies by metric/sector)
+  // Normalise each metric to 0-100 for the radar (max varies by metric and sector).
   const chartData = scorecard.metrics
-    .filter(m => m.max > 0)
-    .map(m => ({
+    .filter((m) => m.max > 0)
+    .map((m) => ({
       metric: m.name
         .replace('Growth', 'Grwth')
         .replace('Consistency', 'Consist.')
         .replace('Interest Coverage', 'Int. Cov.')
         .replace('Debt-to-Equity', 'D/E'),
       normalized: (m.score / m.max) * 100,
-      fullMark: 100,
     }));
 
-  const getScoreColor = (score, max) => {
-    if (!max) return 'var(--color-text-muted)';
-    const pct = score / max;
-    if (pct >= 0.8) return 'var(--color-success)';
-    if (pct >= 0.4) return 'var(--color-warning)';
-    return 'var(--color-danger)';
-  };
-
-  const getGradeColor = (grade) => {
-    if (grade === 'A') return 'var(--color-success)';
-    if (grade === 'B') return 'var(--color-primary)';
-    if (grade === 'C') return 'var(--color-warning)';
-    return 'var(--color-danger)';
-  };
-
   return (
-    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <section className="panel" aria-labelledby="scorecard-title">
+      <header className="panel-head">
         <div>
-          <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{scorecard.investor_label || 'Buffett'} Scorecard</h3>
-          {scorecard.sector_label && scorecard.sector_label !== 'Default' && (
-            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
-              Weighted for {scorecard.sector_label} sector
-            </div>
-          )}
-          {scorecard.grade_explanation && (
-            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.75rem', maxWidth: '28rem' }}>
-              {scorecard.grade_explanation}
-            </div>
-          )}
-          {scorecard.investor_sector_note && (
-            <div style={{
-              marginTop: '0.6rem',
-              fontSize: '0.75rem',
-              color: 'var(--color-primary)',
-              opacity: 0.8,
-              fontStyle: 'italic',
-              maxWidth: '28rem',
-            }}>
-              ⚖️ {scorecard.investor_sector_note}
-            </div>
-          )}
+          <h2 id="scorecard-title">{scorecard.investor_label || 'Buffett'} scorecard</h2>
+          {scorecard.investor_sector_note && <p className="panel-note">{scorecard.investor_sector_note}.</p>}
         </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>{scorecard.total_score}</span>
-          <span style={{ fontSize: '1rem', color: 'var(--color-text-muted)' }}>/ 100</span>
-          <div style={{
-            width: '40px', height: '40px', borderRadius: '50%',
-            background: 'var(--color-surface)',
-            border: `2px solid ${getGradeColor(scorecard.grade)}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.25rem', fontWeight: 700, color: getGradeColor(scorecard.grade),
-            marginLeft: '0.5rem',
-          }}>
-            {scorecard.grade}
-          </div>
+        <div className="panel-figure">
+          <span className="mono">{Math.round(scorecard.total_score)}</span>
+          <span className="panel-figure-unit">/100, grade {scorecard.grade}</span>
         </div>
-      </div>
+      </header>
 
-      <div style={{ height: '250px', width: '100%' }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
-            <PolarGrid stroke="var(--color-border)" />
-            <PolarAngleAxis dataKey="metric" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} />
-            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-            <Radar name="Score" dataKey="normalized" stroke="var(--color-primary)" fill="var(--color-primary)" fillOpacity={0.4} />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
+      {chartData.length >= 3 && (
+        <div className="radar">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart cx="50%" cy="50%" outerRadius="72%" data={chartData}>
+              <PolarGrid stroke="var(--border-color)" />
+              <PolarAngleAxis dataKey="metric" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+              <Radar name="Score" dataKey="normalized" stroke="var(--color-gold)" fill="var(--color-gold)" fillOpacity={0.28} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
-      <div style={{ display: 'grid', gap: '0.75rem' }}>
-        {scorecard.metrics.map((metric, i) => {
-          const isExcluded = metric.max === 0;
-          return (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', opacity: isExcluded ? 0.4 : 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                <span style={{ color: 'var(--color-text)', fontWeight: 500 }} title={metric.details}>
-                  {metric.name}
-                  {isExcluded && (
-                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginLeft: '0.4rem' }}>
-                      (not applicable)
-                    </span>
-                  )}
-                </span>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>{metric.value}</span>
-                  <span style={{ color: getScoreColor(metric.score, metric.max), fontWeight: 600 }}>{metric.score}/{metric.max}</span>
-                </div>
-              </div>
-              <div style={{ height: '6px', background: 'var(--color-border)', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%',
-                  width: `${metric.max > 0 ? (metric.score / metric.max) * 100 : 0}%`,
-                  background: getScoreColor(metric.score, metric.max),
-                  borderRadius: '3px',
-                  transition: 'width 0.4s ease',
-                }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+      <table className="score-table">
+        <thead>
+          <tr>
+            <th scope="col">Metric</th>
+            <th scope="col" className="num">Value</th>
+            <th scope="col" className="num">Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          {scorecard.metrics.map((m) => {
+            const excluded = !(m.max > 0);
+            return (
+              <tr key={m.name} className={excluded ? 'is-excluded' : ''}>
+                <th scope="row" title={m.details}>
+                  {m.name}
+                  {excluded && <span className="muted"> (not scored)</span>}
+                </th>
+                <td className="mono num">{m.value}</td>
+                <td className={`mono num tone-${tone(m.score, m.max)}`}>
+                  {excluded ? 'n/a' : `${m.score.toFixed(1)} / ${m.max.toFixed(1)}`}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
   );
 };
 

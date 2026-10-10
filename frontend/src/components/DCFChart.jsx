@@ -1,84 +1,76 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+const pct = (val) => (Number.isFinite(val) ? `${(val * 100).toFixed(1)}%` : 'n/a');
+
 const DCFChart = ({ dcf }) => {
   if (!dcf || !dcf.projected_fcf) return null;
   if (dcf.error) {
     return (
-      <div className="card" style={{ padding: '1.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Valuation</h3>
-        <p style={{ color: 'var(--color-text-muted)', marginTop: '1rem' }}>{dcf.error}</p>
-      </div>
+      <section className="panel">
+        <h2>Projected cash flow</h2>
+        <p className="panel-text">{dcf.error}</p>
+      </section>
     );
   }
 
-  const data = dcf.projected_fcf.map(item => ({
-    year: `Year ${item.year}`,
-    fcf: Math.round(item.fcf / 1000000),
-    discounted: Math.round(item.discounted_fcf / 1000000),
+  const data = dcf.projected_fcf.map((item) => ({
+    year: `Y${item.year}`,
+    fcf: Math.round(item.fcf / 1e6),
+    discounted: Math.round(item.discounted_fcf / 1e6),
   }));
 
-  const formatCurrency = (val) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
-
-  const formatPercent = (val) => (val * 100).toFixed(2) + '%';
-
   return (
-    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
+    <section className="panel" aria-labelledby="fcf-title">
+      <header className="panel-head">
+        <div>
+          <h2 id="fcf-title">Projected cash flow</h2>
+          <p className="panel-note">Ten years of free cash flow, and what each year is worth today after discounting.</p>
+        </div>
+      </header>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{dcf.model_label || 'Discounted Cash Flow (DCF)'}</h3>
-        {dcf.model_explanation && (
-          <div style={{
-            fontSize: '0.78rem',
-            color: 'var(--color-text-muted)',
-            background: 'rgba(255,255,255,0.04)',
-            padding: '0.4rem 0.75rem',
-            borderRadius: '6px',
-            borderLeft: '3px solid var(--color-primary)',
-          }}>
-            💡 {dcf.model_explanation}
-          </div>
-        )}
-      </div>
+      <dl className="deck-facts deck-facts--four">
+        <div>
+          <dt>Discount rate</dt>
+          <dd className="mono">{pct(dcf.discount_rate ?? dcf.wacc)}</dd>
+        </div>
+        <div>
+          <dt>Growth rate</dt>
+          <dd className="mono">{pct(dcf.growth_rate)}</dd>
+        </div>
+        <div>
+          <dt>Terminal growth</dt>
+          <dd className="mono">{pct(dcf.terminal_rate)}</dd>
+        </div>
+        <div>
+          <dt>Terminal value today</dt>
+          <dd className="mono">${Math.round((dcf.terminal_value_discounted || 0) / 1e9)}B</dd>
+        </div>
+      </dl>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Intrinsic Value / Share</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-primary)' }}>{formatCurrency(dcf.intrinsic_value)}</div>
-        </div>
-        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Discount Rate</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text)' }}>{formatPercent(dcf.discount_rate ?? dcf.wacc ?? 0)}</div>
-        </div>
-        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Est. Growth Rate</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-text)' }}>{formatPercent(dcf.growth_rate)}</div>
-        </div>
-        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Terminal Value (Discounted)</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-text)' }}>${Math.round(dcf.terminal_value_discounted / 1e9)}B</div>
-        </div>
-      </div>
-
-      <div style={{ width: '100%', marginTop: '1rem' }}>
+      <div className="fcf-chart">
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-            <XAxis dataKey="year" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(val) => (Math.abs(val) >= 1000 ? `$${(val / 1000).toFixed(0)}B` : `$${val}M`)} />
+          <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+            <XAxis dataKey="year" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
+            <YAxis
+              tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(val) => (Math.abs(val) >= 1000 ? `$${(val / 1000).toFixed(1).replace(/\.0$/, '')}B` : `$${val}M`)}
+            />
             <Tooltip
-              contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text)' }}
-              itemStyle={{ color: 'var(--color-text)' }}
+              cursor={{ fill: 'var(--bg-hover)' }}
+              contentStyle={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }}
               formatter={(value) => [`$${value.toLocaleString()}M`, undefined]}
             />
-            <Legend wrapperStyle={{ paddingTop: '10px' }} />
-            <Bar dataKey="fcf" name="Projected" fill="rgba(212, 168, 83, 0.4)" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="discounted" name="Discounted" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+            <Legend wrapperStyle={{ paddingTop: '10px', fontSize: 12 }} />
+            <Bar dataKey="fcf" name="Projected" fill="var(--text-muted)" fillOpacity={0.35} radius={[3, 3, 0, 0]} />
+            <Bar dataKey="discounted" name="Worth today" fill="var(--color-gold)" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </section>
   );
 };
 

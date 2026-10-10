@@ -6,7 +6,7 @@ import { getStockAnalysis } from '../../api/client';
 import { cached } from '../../api/cache';
 import { LENSES } from './lenses';
 
-const TICKER = 'KO';
+export const TICKER = 'KO';
 const ease = [0.22, 1, 0.36, 1];
 
 export const analysisKey = (ticker, lens) => `analysis:${ticker}:${lens}:long`;
@@ -60,8 +60,8 @@ function Skeleton() {
   );
 }
 
-const LensVerdictCard = () => {
-  const [lens, setLens] = useState('buffett');
+// Controlled by the home page so the hero headline can follow the selected lens.
+const LensVerdictCard = ({ lens, onSelect, onPause, onResume }) => {
   const [results, setResults] = useState({});
   const [error, setError] = useState(null);
   const [attempt, setAttempt] = useState(0);
@@ -101,7 +101,13 @@ const LensVerdictCard = () => {
   const gapWidth = Math.abs(fairPos - pricePos) / 100;
 
   return (
-    <section className="verdict" aria-label={`${TICKER} verdict by investor lens`}>
+    <section
+      className="verdict"
+      aria-label={`${TICKER} verdict by investor lens`}
+      onPointerEnter={onPause}
+      onPointerLeave={onResume}
+      onFocus={onPause}
+    >
       <header className="verdict-head">
         <div>
           <div className="verdict-ticker">
@@ -125,7 +131,7 @@ const LensVerdictCard = () => {
               role="tab"
               aria-selected={active}
               className={`lens-tab${active ? ' is-active' : ''}`}
-              onClick={() => setLens(l.value)}
+              onClick={() => onSelect(l.value)}
             >
               {active && <motion.span layoutId="lens-tab-thumb" className="lens-tab-thumb" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
               <span className="lens-tab-text">{l.short}</span>

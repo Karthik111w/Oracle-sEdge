@@ -1,28 +1,17 @@
 import React from 'react';
-import SearchBar from '../components/SearchBar';
-import LensVerdictCard from '../components/home/LensVerdictCard';
-import MarketStrip from '../components/home/MarketStrip';
+import HomeHero from '../components/home/HomeHero';
+import TickerTape from '../components/home/TickerTape';
 import MarginRanking from '../components/home/MarginRanking';
-import LensGuide from '../components/home/LensGuide';
 import VerdictWalkthrough from '../components/home/VerdictWalkthrough';
+import LensStack from '../components/home/LensStack';
 
 const HomePage = () => (
   <div className="home">
-    <section className="home-hero">
-      <div className="home-hero-copy">
-        <h1 className="home-title">See any stock the way Buffett would.</h1>
-        <p className="home-subtitle">
-          Score any stock through six investing lenses. See fair value, margin of safety, and what each legend would say.
-        </p>
-        <SearchBar placeholder="Try KO, AAPL or BRK-B" />
-      </div>
-      <LensVerdictCard />
-    </section>
-
-    <MarketStrip />
+    <HomeHero />
+    <TickerTape />
     <MarginRanking />
     <VerdictWalkthrough />
-    <LensGuide />
+    <LensStack />
 
     <footer className="home-footer">
       <div>
