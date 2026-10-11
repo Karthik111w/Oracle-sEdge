@@ -1,6 +1,7 @@
-// Mirrors INVESTOR_PROFILES in backend/services/scorecard.py.
-// Weights are the base weights before sector adjustment; each lens sums to 100
-// except Buffett, which weights all eight metrics equally.
+// Weights are each investor's long-term weights averaged across sectors, from
+// INVESTOR_SECTOR_WEIGHTS in backend/services/investor_sector_weights.py. They are also
+// what the scorecard uses when a company's sector can't be identified. A company in a
+// known sector is scored with that sector's own weights, so its analysis can differ.
 export const METRICS = [
   ['earnings_consistency', 'Earnings consistency'],
   ['roic', 'ROIC'],
@@ -20,7 +21,7 @@ export const LENSES = [
     philosophy: 'Buy wonderful companies at fair prices and hold forever.',
     focus: 'Business quality, moat and intrinsic value.',
     horizon: 'Long term',
-    weights: { earnings_consistency: 1, roic: 1, fcf_growth: 1, profit_margin: 1, roe: 1, debt_to_equity: 1, interest_coverage: 1, revenue_growth: 1 },
+    weights: { roic: 22.6, fcf_growth: 15.9, earnings_consistency: 15.4, profit_margin: 14.1, interest_coverage: 11.1, debt_to_equity: 9.7, roe: 7.5, revenue_growth: 3.8 },
   },
   {
     value: 'munger',
@@ -29,7 +30,7 @@ export const LENSES = [
     philosophy: 'Exceptional businesses at fair prices. Quality over everything.',
     focus: 'High ROIC, wide moat, pricing power.',
     horizon: 'Long term',
-    weights: { roic: 25, earnings_consistency: 20, profit_margin: 18, fcf_growth: 15, roe: 10, debt_to_equity: 7, interest_coverage: 4, revenue_growth: 1 },
+    weights: { roic: 34.5, profit_margin: 14.8, fcf_growth: 12.4, earnings_consistency: 10.7, interest_coverage: 9.8, debt_to_equity: 8.2, roe: 6.8, revenue_growth: 2.8 },
   },
   {
     value: 'graham',
@@ -38,7 +39,7 @@ export const LENSES = [
     philosophy: 'Deep value and balance-sheet safety, bought with a large margin of safety.',
     focus: 'Debt safety, earnings consistency, conservative valuation.',
     horizon: 'Long term',
-    weights: { debt_to_equity: 25, earnings_consistency: 25, interest_coverage: 20, profit_margin: 10, roe: 8, revenue_growth: 5, roic: 5, fcf_growth: 2 },
+    weights: { earnings_consistency: 29.9, interest_coverage: 25.6, debt_to_equity: 23.7, profit_margin: 10.8, roe: 8.8, roic: 0.8, revenue_growth: 0.6, fcf_growth: 0.0 },
   },
   {
     value: 'lynch',
@@ -47,7 +48,7 @@ export const LENSES = [
     philosophy: 'Find fast growers before Wall Street does. Growth at a reasonable price.',
     focus: 'Revenue acceleration, earnings growth.',
     horizon: 'Shorter term',
-    weights: { revenue_growth: 25, earnings_consistency: 20, fcf_growth: 15, profit_margin: 15, roe: 10, roic: 8, debt_to_equity: 5, interest_coverage: 2 },
+    weights: { fcf_growth: 19.6, debt_to_equity: 19.1, earnings_consistency: 16.6, profit_margin: 15.6, revenue_growth: 13.8, interest_coverage: 11.5, roe: 2.3, roic: 1.4 },
   },
   {
     value: 'oneil',
@@ -56,7 +57,7 @@ export const LENSES = [
     philosophy: 'Buy the strongest earnings-growth leaders breaking out to new highs.',
     focus: 'CAN SLIM: earnings acceleration, revenue momentum, leadership.',
     horizon: 'Shorter term',
-    weights: { revenue_growth: 30, earnings_consistency: 25, fcf_growth: 20, profit_margin: 15, roe: 5, roic: 3, debt_to_equity: 1, interest_coverage: 1 },
+    weights: { roe: 29.1, revenue_growth: 28.6, profit_margin: 20.1, earnings_consistency: 13.0, fcf_growth: 9.2, roic: 0.0, debt_to_equity: 0.0, interest_coverage: 0.0 },
   },
   {
     value: 'soros',
@@ -65,7 +66,7 @@ export const LENSES = [
     philosophy: 'Spot macro shifts early and ride reflexive momentum before the crowd.',
     focus: 'Revenue momentum, FCF acceleration, macro trend alignment.',
     horizon: 'Shorter term',
-    weights: { revenue_growth: 35, fcf_growth: 25, profit_margin: 15, earnings_consistency: 10, roe: 8, roic: 5, debt_to_equity: 1, interest_coverage: 1 },
+    weights: { revenue_growth: 28.3, fcf_growth: 23.3, profit_margin: 14.9, debt_to_equity: 9.8, roe: 9.3, earnings_consistency: 7.8, interest_coverage: 6.6, roic: 0.0 },
   },
 ];
 

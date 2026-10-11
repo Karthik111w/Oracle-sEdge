@@ -1,6 +1,8 @@
 import React from 'react';
 import { formatMoney } from './home/LensVerdictCard';
 
+const rate = (v) => `${(v * 100).toFixed(1)}%`;
+
 function marginNote(pct) {
   if (pct === null) return 'No valuation is available for this security.';
   if (pct >= 30) return 'The price is well below the estimated fair value, a wide margin of safety.';
@@ -14,9 +16,13 @@ const ValuationPanel = ({ dcf, margin }) => {
   const fair = margin?.intrinsic_value ?? dcf?.intrinsic_value;
   const price = margin?.current_price;
   const pct = typeof margin?.margin_pct === 'number' ? margin.margin_pct : null;
-  const axisMax = (Math.max(price || 0, fair || 0) || 1) * 1.12;
-  const fairPos = ((fair || 0) / axisMax) * 100;
-  const pricePos = ((price || 0) / axisMax) * 100;
+  const bear = dcf?.scenarios?.bear?.intrinsic_value;
+  const bull = dcf?.scenarios?.bull?.intrinsic_value;
+  const hasRange = bear > 0 && bull > 0;
+  const axisMax = (Math.max(price || 0, fair || 0, hasRange ? bull : 0) || 1) * 1.12;
+  const pos = (v) => ((v || 0) / axisMax) * 100;
+  const fairPos = pos(fair);
+  const pricePos = pos(price);
 
   return (
     <section className="panel" aria-labelledby="valuation-title">
@@ -44,6 +50,9 @@ const ValuationPanel = ({ dcf, margin }) => {
 
       {fair > 0 && price > 0 && (
         <div className="value-line" aria-hidden="true">
+          {hasRange && (
+            <span className="value-line-range" style={{ left: `${pos(bear)}%`, width: `${pos(bull) - pos(bear)}%` }} />
+          )}
           <span
             className={`value-line-gap tone-bg-${pct >= 0 ? 'pos' : 'neg'}`}
             style={{ transform: `translateX(${Math.min(fairPos, pricePos)}%) scaleX(${Math.abs(fairPos - pricePos) / 100})` }}
@@ -58,6 +67,13 @@ const ValuationPanel = ({ dcf, margin }) => {
       )}
 
       <p className="panel-text">{marginNote(pct)}</p>
+      {hasRange && (
+        <p className="panel-text valuation-range">
+          Fair value range <span className="mono">{formatMoney(bear)}</span> to <span className="mono">{formatMoney(bull)}</span>. The cautious case
+          starts growth at {rate(dcf.scenarios.bear.growth_rate)} and discounts at {rate(dcf.scenarios.bear.discount_rate)}; the optimistic case starts at{' '}
+          {rate(dcf.scenarios.bull.growth_rate)} and discounts at {rate(dcf.scenarios.bull.discount_rate)}.{price > bull ? ' The price is above even the optimistic case.' : price < bear ? ' The price is below even the cautious case.' : ''}
+        </p>
+      )}
     </section>
   );
 };

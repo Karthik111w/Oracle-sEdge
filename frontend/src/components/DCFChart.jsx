@@ -25,7 +25,7 @@ const DCFChart = ({ dcf }) => {
       <header className="panel-head">
         <div>
           <h2 id="fcf-title">Projected cash flow</h2>
-          <p className="panel-note">Ten years of free cash flow, and what each year is worth today after discounting.</p>
+          <p className="panel-note">Ten years of free cash flow, starting from the three-year average, with growth fading to the terminal rate. Each bar pair shows the projected year and what it is worth today.</p>
         </div>
       </header>
 
@@ -35,7 +35,7 @@ const DCFChart = ({ dcf }) => {
           <dd className="mono">{pct(dcf.discount_rate ?? dcf.wacc)}</dd>
         </div>
         <div>
-          <dt>Growth rate</dt>
+          <dt>Starting growth</dt>
           <dd className="mono">{pct(dcf.growth_rate)}</dd>
         </div>
         <div>

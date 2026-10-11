@@ -2257,6 +2257,15 @@ a.ranking-row:active { background: var(--border-color); }
   background: var(--border-color-hover);
 }
 
+.value-line-range {
+  position: absolute;
+  top: 50%;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-gold) 18%, transparent);
+}
+
 .value-line-gap {
   position: absolute;
   left: 0;
@@ -3708,3 +3717,5 @@ a.wl-main:hover { color: var(--text-primary); background: var(--bg-hover); }
 
 /* Ticker inputs uppercase what you type, not the hint text. */
 input::placeholder { text-transform: none; }
+.valuation-range { margin-top: 0.5rem; }
+.alloc-empty { align-self: center; font-size: var(--text-xs); }

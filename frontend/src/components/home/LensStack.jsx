@@ -58,7 +58,7 @@ const LensStack = () => {
       <div className="section-head">
         <h2 id="lenses-title">What each lens checks</h2>
         <p className="section-sub">
-          Every lens scores the same eight fundamentals. What changes is how much each one counts.
+          Every lens scores the same eight fundamentals. What changes is how much each one counts. These are averages across sectors; each company is scored with its own sector's weights.
         </p>
       </div>
 

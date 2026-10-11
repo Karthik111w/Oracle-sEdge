@@ -1,5 +1,11 @@
 import os
+import time
 from typing import Optional
+
+# Memos depend on the stock's figures and the lens, not on whose key paid, so repeat views
+# within a few hours reuse the same memo instead of spending Gemini quota again.
+_CACHE: dict = {}
+_CACHE_TTL_SECONDS = 6 * 60 * 60
 
 
 def _safe_div(numerator: Optional[float], denominator: Optional[float]) -> Optional[float]:
@@ -18,6 +24,17 @@ def _cagr(start_val: Optional[float], end_val: Optional[float], years: int) -> O
     return (end_val / start_val) ** (1 / years) - 1
 
 
+def _valuation_summary(stock_data: dict, dcf: dict, margin: dict) -> str:
+    price = stock_data.get("current_price") or 0
+    if dcf.get("intrinsic_value") is None:
+        return f"Current price: ${price:.2f} | No intrinsic value estimate ({dcf.get('error') or 'not available'})"
+    line = f"Intrinsic value: ${dcf['intrinsic_value']:.2f} | Current price: ${price:.2f} | Margin of safety: {margin.get('margin_pct') or 0:.1f}%"
+    scen = dcf.get("scenarios") or {}
+    if scen.get("bear") and scen.get("bull"):
+        line += f" | Fair value range ${scen['bear']['intrinsic_value']:.2f} to ${scen['bull']['intrinsic_value']:.2f}"
+    return line
+
+
 def generate_ai_report(
     stock_data: dict,
     scorecard: dict,
@@ -26,7 +43,8 @@ def generate_ai_report(
     classification: str,
     classification_explanation: str = None,
     api_key: str = None,
-    model_name: str = "gemini-2.5-flash"
+    model_name: str = "gemini-2.5-flash",
+    before_call=None,
 ) -> dict:
     """Generate a Warren Buffett-style AI investment report using Google Gemini.
 
@@ -39,6 +57,15 @@ def generate_ai_report(
         resolved_key = os.environ.get("GEMINI_API_KEY")
     if not resolved_key:
         return {"report": None, "error": "No Gemini API key configured. Add your key in Settings."}
+
+    cache_key = (stock_data.get("ticker"), scorecard.get("investor_label"), classification, model_name)
+    hit = _CACHE.get(cache_key)
+    if hit and time.time() - hit[0] < _CACHE_TTL_SECONDS:
+        return hit[1]
+    if before_call:
+        limited = before_call()
+        if limited:
+            return {"report": None, "error": limited}
 
     investor_label = scorecard.get("investor_label", "Warren Buffett")
     quote_type = stock_data.get("quote_type", "EQUITY")
@@ -159,7 +186,7 @@ Company: {stock_data.get('company_name', 'Unknown')} ({stock_data.get('ticker', 
 What the company does: {business_description}
 Scorecard: {scorecard.get('total_score', 0)}/100 ({scorecard.get('grade', 'N/A')})
 Key metrics: Revenue growth {rev_growth_str}%, FCF growth {fcf_growth_str}%, Net margin {net_margin_str}%, ROE {roe_str}%, ROIC {roic_str}%, Debt/Equity {de_str}, Earnings consistency {consistency_str}%
-Intrinsic value: ${safe_dcf.get('intrinsic_value', 0):.2f} | Current price: ${stock_data.get('current_price', 0):.2f} | Margin of safety: {safe_margin.get('margin_pct', 0):.1f}%
+{_valuation_summary(stock_data, safe_dcf, safe_margin)}
 Risk flags: {stock_data.get('risk_flags', 'N/A')}
 Classification: {classification}
 Classification rationale: {classification_explanation or 'N/A'}"""
@@ -170,7 +197,9 @@ Classification rationale: {classification_explanation or 'N/A'}"""
         genai.configure(api_key=resolved_key)
         model = genai.GenerativeModel(model_name)
         response = model.generate_content(prompt)
-        return {"report": response.text, "error": None}
+        result = {"report": response.text, "error": None}
+        _CACHE[cache_key] = (time.time(), result)
+        return result
     except Exception as e:
         error_msg = str(e)
         fallback_model = "gemini-2.5-flash"

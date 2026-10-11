@@ -44,6 +44,27 @@ def _series_to_list(series: Optional[pd.Series], years_count: int) -> list[Optio
     return values[:years_count]
 
 
+def _profile_from_search(ticker: str) -> dict:
+    """Name, sector and industry from Yahoo's search endpoint.
+
+    Ticker.info (quoteSummary) is often throttled or returned partially on cloud hosts,
+    which used to leave the sector as "Unknown" and silently switch the scorecard to
+    default weights. Search is a separate, lighter endpoint that usually still answers.
+    """
+    try:
+        for quote in yf.Search(ticker, max_results=5, news_count=0).quotes:
+            if str(quote.get("symbol", "")).upper() == ticker:
+                return {
+                    "sector": quote.get("sectorDisp") or quote.get("sector"),
+                    "industry": quote.get("industryDisp") or quote.get("industry"),
+                    "shortName": quote.get("shortname") or quote.get("longname"),
+                    "quoteType": quote.get("quoteType"),
+                }
+    except Exception:
+        pass
+    return {}
+
+
 def get_stock_data(ticker: str) -> Optional[dict]:
     """Fetch and normalize all financial data for a ticker into a clean dict structure.
 
@@ -60,7 +81,13 @@ def get_stock_data(ticker: str) -> Optional[dict]:
         income_stmt = t.income_stmt
         balance_sheet = t.balance_sheet
         cashflow = t.cashflow
-        info = t.info or {}
+        try:
+            info = t.info or {}
+        except Exception:
+            info = {}
+        if not info.get("sector") or not (info.get("shortName") or info.get("longName")):
+            fallback = _profile_from_search(ticker)
+            info = {**{k: v for k, v in fallback.items() if v}, **{k: v for k, v in info.items() if v}}
         fast = t.fast_info
 
         # Extract years from income statement columns if available (most recent first in yFinance)
@@ -139,8 +166,8 @@ def get_stock_data(ticker: str) -> Optional[dict]:
         market_cap = _to_float(getattr(fast, "market_cap", None))
         shares_outstanding = _to_float(getattr(fast, "shares", None))
         beta = _to_float(info.get("beta"))
-        sector = info.get("sector", "Unknown")
-        industry = info.get("industry", "Unknown")
+        sector = info.get("sector") or "Unknown"
+        industry = info.get("industry") or "Unknown"
         company_name = info.get("shortName") or info.get("longName") or info.get("companyName") or ticker.upper()
         quote_type = info.get("quoteType", "EQUITY")
 

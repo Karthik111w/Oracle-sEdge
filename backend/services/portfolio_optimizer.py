@@ -309,32 +309,51 @@ def _get_adaptive_recommendations(investor: str = "buffett", horizon: str = "lon
     return [ticker for ticker, _ in scored[:top_n]]
 
 
-def _enforce_max_position_weight(weights: np.ndarray, max_weight: float = 0.20) -> np.ndarray:
-    clipped = np.clip(np.asarray(weights, dtype=float), 0.0, max_weight)
-    total = clipped.sum()
-    if total <= 0:
-        return clipped
-    if total == 1.0:
-        return clipped
-    return clipped / total
+MAX_POSITION = 0.20
 
 
 def _strategy_bounds(current_weights: np.ndarray, scores: list[float], threshold: float, allow_wide: bool = False) -> list[tuple[float, float]]:
-    max_position = 0.20
-    bounds = []
-    for cur, score in zip(current_weights, scores):
-        if score >= threshold:
-            upper = max_position
+    """Per-holding weight bounds. Holdings scoring at or above the strategy's bar may take up to
+    MAX_POSITION; the rest are held near their current weight.
+
+    The caps must add up to at least 100% or the optimizer has no valid answer (three stocks at
+    20% each can only fill 60%). When they fall short, the approved holdings' caps are raised
+    first, and only if none are approved are all caps raised.
+    """
+    approved = [score >= threshold for score in scores]
+    uppers = []
+    for cur, ok in zip(current_weights, approved):
+        if ok:
+            uppers.append(MAX_POSITION)
         elif allow_wide:
-            upper = min(max_position, max(cur, 0.05))
+            uppers.append(min(MAX_POSITION, max(cur, 0.05)))
         else:
-            upper = min(max_position, max(cur, 0.01))
-        bounds.append((0.0, upper))
-    return bounds
+            uppers.append(min(MAX_POSITION, max(cur, 0.01)))
+
+    shortfall = 1.0 - sum(uppers)
+    if shortfall > 1e-9:
+        raise_idx = [i for i, ok in enumerate(approved) if ok] or list(range(len(uppers)))
+        held = sum(uppers[i] for i in range(len(uppers)) if i not in raise_idx)
+        # 1.5x the even share leaves the optimizer room to prefer some holdings over others.
+        cap = min(1.0, 1.5 * (1.0 - held) / len(raise_idx))
+        for i in raise_idx:
+            uppers[i] = max(uppers[i], cap)
+        if sum(uppers) < 1.0 - 1e-9:
+            uppers = [1.0] * len(uppers)
+    return [(0.0, u) for u in uppers]
 
 
-def _minimize_sharpe(x0: np.ndarray, mean_returns: np.ndarray, cov_matrix: np.ndarray, bounds: list[tuple[float, float]]) -> np.ndarray:
+def _feasible_start(bounds: list[tuple[float, float]]) -> np.ndarray:
+    """A starting point inside the bounds that sums to 1: weights proportional to each cap."""
+    uppers = np.array([u for _, u in bounds], dtype=float)
+    return uppers / uppers.sum() if uppers.sum() > 0 else uppers
+
+
+def _minimize_sharpe(mean_returns: np.ndarray, cov_matrix: np.ndarray, bounds: list[tuple[float, float]]) -> tuple[np.ndarray, bool]:
+    """Maximise Sharpe within the bounds. Returns (weights, solved); if the solver fails the
+    feasible starting point is returned instead, so the caller always gets a full allocation."""
     risk_free_annual = 0.045
+    x0 = _feasible_start(bounds)
 
     def neg_sharpe(weights: np.ndarray) -> float:
         port_return = np.dot(weights, mean_returns) * 252
@@ -353,14 +372,29 @@ def _minimize_sharpe(x0: np.ndarray, mean_returns: np.ndarray, cov_matrix: np.nd
             constraints=constraints,
             options={"maxiter": 1000, "ftol": 1e-10},
         )
-        optimized = result.x if result.success else x0
+        solved = bool(result.success)
+        optimized = result.x if solved else x0
     except Exception:
+        solved = False
         optimized = x0
 
-    optimized = np.maximum(optimized, 0)
-    optimized = _enforce_max_position_weight(optimized)
+    optimized = np.clip(optimized, 0, None)
     weight_sum = np.sum(optimized)
-    return optimized / weight_sum if weight_sum > 0 else optimized
+    return (optimized / weight_sum if weight_sum > 0 else x0), solved
+
+
+def _strategy_note(tickers: list[str], scores: list[float], threshold: float, bounds: list[tuple[float, float]], solved: bool) -> str:
+    """One or two sentences on why the allocation looks the way it does."""
+    held = [t for t, sc, (_, u) in zip(tickers, scores, bounds) if sc < threshold and u < MAX_POSITION - 1e-9]
+    raised = [t for t, (_, u) in zip(tickers, bounds) if u > MAX_POSITION + 1e-9]
+    parts = []
+    if held:
+        parts.append(f"{', '.join(held)} {'is' if len(held) == 1 else 'are'} held near the current weight because the score is below this strategy's bar of {threshold:.0f}.")
+    if raised:
+        parts.append(f"With only {len(tickers)} holdings, the usual 20% cap per position is lifted for {', '.join(raised)} so the whole account can be invested.")
+    if not solved:
+        parts.append("The optimizer did not converge, so weights are spread in proportion to each position's cap instead.")
+    return " ".join(parts)
 
 
 def _build_strategy_result(name: str, label: str, description: str, tickers: list[str], prices: list[float], shares_list: list[float], market_values: list[float], current_weights: np.ndarray, optimized_weights: np.ndarray, scorecard_scores: list[float], daily_changes: list[float], threshold: float, total_value: float, mean_returns: np.ndarray, cov_matrix: np.ndarray) -> dict:
@@ -453,10 +487,8 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
     
     if total_value <= 0:
         current_weights = np.zeros(n)
-        x0 = np.ones(n) / n if n > 0 else np.zeros(n)
     else:
         current_weights = np.array([mv / total_value for mv in market_values])
-        x0 = current_weights.copy()
 
     # 2. Fetch returns
     period = "6mo" if horizon == "short" else "2y"
@@ -503,7 +535,10 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
     current_sharpe = float((current_return - 0.045) / current_vol) if current_vol > 0 else 0.0
 
     strategies = {}
-    strategy_thresholds = _score_percentile_thresholds(scorecard_scores)
+    # Bars are relative to this portfolio's own scores, but never stricter than a fixed level,
+    # so a strong stock isn't held back just for being the weakest of several strong ones.
+    percentile_bars = _score_percentile_thresholds(scorecard_scores)
+    strategy_thresholds = tuple(min(p, cap) for p, cap in zip(percentile_bars, (85.0, 75.0, 65.0)))
     strategy_definitions = [
         ("short_term", "Short Term", "Prioritize higher-scoring stocks and protect near-term volatility.", strategy_thresholds[0], False),
         ("balanced", "Balanced", "Blend growth and quality while limiting exposure to lower-score positions.", strategy_thresholds[1], False),
@@ -512,7 +547,7 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
 
     for key, label, description, threshold, allow_wide in strategy_definitions:
         bounds = _strategy_bounds(current_weights, scorecard_scores, threshold, allow_wide)
-        optimized_weights = _minimize_sharpe(x0, mean_returns, cov_matrix, bounds)
+        optimized_weights, solved = _minimize_sharpe(mean_returns, cov_matrix, bounds)
         strategies[key] = _build_strategy_result(
             key,
             label,
@@ -530,6 +565,7 @@ def optimize_portfolio(holdings: list[dict], use_recommendations: bool = False, 
             mean_returns,
             cov_matrix,
         )
+        strategies[key]["note"] = _strategy_note(tickers, scorecard_scores, threshold, bounds, solved)
 
     # 5. Build the baseline holdings response and strategy summaries.
     holdings_response = []

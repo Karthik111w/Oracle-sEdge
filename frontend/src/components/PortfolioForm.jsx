@@ -97,10 +97,16 @@ const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', select
 
     setBulkError(null);
     try {
-      const data = await parseBulkHoldings(rawText);
+      // A plain list ("KO, JPM MSFT") is split here; anything else is treated as a pasted
+      // brokerage statement and parsed by the backend, which expects one ticker per line.
+      const plainList = /^[A-Za-z0-9.\-\s,]+$/.test(rawText);
+      const data = plainList
+        ? { holdings: rawText.split(/[\s,]+/).filter(Boolean).map((t) => ({ ticker: t, shares: 0 })) }
+        : await parseBulkHoldings(rawText);
       const newRows = (data.holdings || [])
         .filter((h) => h.ticker && h.ticker.trim())
         .map((h) => ({ ticker: h.ticker.toUpperCase(), shares: Number(h.shares) || 0 }))
+        .filter((h, i, all) => all.findIndex((o) => o.ticker === h.ticker) === i)
         .filter((h) => !holdings.some((existing) => existing.ticker.toUpperCase() === h.ticker));
 
       if (newRows.length === 0) {
@@ -108,7 +114,8 @@ const PortfolioForm = ({ onSubmit, loading, selectedInvestor = 'buffett', select
         return;
       }
 
-      setHoldings((prev) => [...prev, ...newRows, { ticker: '', shares: '' }]);
+      // Fill in after the rows already in use, dropping trailing blank rows.
+      setHoldings((prev) => [...prev.filter((h) => h.ticker.trim()), ...newRows, { ticker: '', shares: '' }]);
       setBulkTickers('');
       setBulkError(null);
     } catch (err) {

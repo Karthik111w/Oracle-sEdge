@@ -7,6 +7,7 @@ from ..services.risk_filter import check_risk_flags
 from ..services.classifier import classify_stock
 from ..services.ai_report import generate_ai_report
 from ..services.metric_explainer import explain_metrics
+from ..services import ai_guard
 
 router = APIRouter(prefix="/api/stock", tags=["Stock"])
 
@@ -60,8 +61,7 @@ def get_analysis(ticker: str, investor: str = "buffett", horizon: str = "long"):
 
 @router.get("/{ticker}/ai-report")
 def get_ai_report_endpoint(ticker: str, request: Request, investor: str = "buffett", horizon: str = "long"):
-    api_key = request.headers.get("X-Gemini-API-Key")
-    model_name = request.headers.get("X-Gemini-Model", "gemini-2.5-flash")
+    api_key, model_name, before_call = ai_guard.resolve(request)
     
     stock_data = get_stock_data(ticker)
     if not stock_data:
@@ -86,7 +86,8 @@ def get_ai_report_endpoint(ticker: str, request: Request, investor: str = "buffe
         classification=classification_details["classification"],
         classification_explanation=classification_details["explanation"],
         api_key=api_key,
-        model_name=model_name
+        model_name=model_name,
+        before_call=before_call,
     )
     
     if report_result["error"]:
@@ -98,8 +99,7 @@ def get_ai_report_endpoint(ticker: str, request: Request, investor: str = "buffe
 @router.get("/{ticker}/metric-explanations")
 def get_metric_explanations(ticker: str, request: Request, investor: str = "buffett", horizon: str = "long"):
     """Plain-language reading of each scorecard metric for the analysis slides (Gemini)."""
-    api_key = request.headers.get("X-Gemini-API-Key")
-    model_name = request.headers.get("X-Gemini-Model", "gemini-2.5-flash")
+    api_key, model_name, before_call = ai_guard.resolve(request)
 
     stock_data = get_stock_data(ticker)
     if not stock_data:
@@ -125,6 +125,7 @@ def get_metric_explanations(ticker: str, request: Request, investor: str = "buff
         horizon=horizon,
         api_key=api_key,
         model_name=model_name,
+        before_call=before_call,
     )
 
 

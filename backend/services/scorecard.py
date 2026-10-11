@@ -265,9 +265,9 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
         if metric["score"] is not None:
             total_points += metric["score"]
             available_max += metric["max"]
-        else:
-            metric["score"] = None
+        elif metric["value"] is None:
             metric["value_label"] = "N/A"
+        # A metric the lens gives no weight for this sector keeps its real value; it just isn't counted.
 
     total_score = round(total_points * 100 / available_max, 1) if available_max else 0
     grade = _get_grade(total_score)

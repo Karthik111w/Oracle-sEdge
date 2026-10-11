@@ -12,6 +12,7 @@ function AllocationBar({ label, rows, field: weightKey }) {
     <div className="alloc">
       <span className="alloc-label">{label}</span>
       <div className="alloc-bar">
+        {!rows.some((r) => r[weightKey] > 0.001) && <span className="alloc-empty muted">All cash</span>}
         {rows.map((r, i) =>
           r[weightKey] > 0.001 ? (
             <span
@@ -74,8 +75,10 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
         {results.cash_available > 0 && (
           <p className="panel-text">
             Includes <span className="mono">{formatMoney(results.cash_available)}</span> of cash to deploy.
+            {!(results.current_portfolio_value > 0) && ' You hold no shares yet, so the "now" figures are all cash.'}
           </p>
         )}
+        {strategy.note && <p className="panel-text">{strategy.note}</p>}
 
         <div className="alloc-group">
           <AllocationBar label="Now" rows={rows} field="current_weight" />

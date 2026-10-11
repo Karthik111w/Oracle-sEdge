@@ -18,6 +18,18 @@ def _cache_get(key):
     return None
 
 
+def _valuation_line(stock_data: dict, dcf: dict, margin: dict) -> str:
+    price = stock_data.get("current_price") or 0
+    if dcf.get("intrinsic_value") is None:
+        reason = dcf.get("error") or "not available"
+        return f"Price ${price:.2f}. No fair value estimate ({reason})."
+    line = f"Fair value ${dcf['intrinsic_value']:.2f}, price ${price:.2f}, margin of safety {margin.get('margin_pct') or 0:.1f}%."
+    scen = dcf.get("scenarios") or {}
+    if scen.get("bear") and scen.get("bull"):
+        line += f" Range ${scen['bear']['intrinsic_value']:.2f} (cautious) to ${scen['bull']['intrinsic_value']:.2f} (optimistic)."
+    return line
+
+
 def _build_prompt(stock_data: dict, scorecard: dict, margin: Optional[dict], dcf: Optional[dict],
                   classification: str, classification_explanation: str) -> str:
     investor = scorecard.get("investor_label", "Warren Buffett")
@@ -27,11 +39,13 @@ def _build_prompt(stock_data: dict, scorecard: dict, margin: Optional[dict], dcf
     metric_lines = []
     for m in metrics:
         weight_share = (m.get("max") or 0) / total_weight * 100
-        metric_lines.append(
-            f'- {m["name"]}: value {m.get("value", "N/A")} ({m.get("details", "")}); '
-            f'scored {m.get("score") or 0:.1f} of {m.get("max") or 0:.1f} points; '
-            f"{weight_share:.0f}% of this lens's total weight"
-        )
+        if not m.get("max"):
+            scoring = "not counted: this lens gives it no weight for companies in this sector"
+        elif m.get("score") is None:
+            scoring = "not scored: the data is missing, so the other metrics carry the score"
+        else:
+            scoring = f'scored {m["score"]:.1f} of {m["max"]:.1f} points; {weight_share:.0f}% of this lens\'s total weight'
+        metric_lines.append(f'- {m["name"]}: value {m.get("value", "N/A")} ({m.get("details", "")}); {scoring}')
 
     safe_margin = margin or {}
     safe_dcf = dcf or {}
@@ -40,7 +54,7 @@ Explain how {stock_data.get('company_name', 'the company')} ({stock_data.get('ti
 
 Scorecard: {scorecard.get('total_score', 0):.1f}/100, grade {scorecard.get('grade', 'N/A')}.
 Verdict: {classification}. Reason: {classification_explanation or 'N/A'}.
-Fair value ${safe_dcf.get('intrinsic_value') or 0:.2f}, price ${stock_data.get('current_price') or 0:.2f}, margin of safety {safe_margin.get('margin_pct') or 0:.1f}%.
+{_valuation_line(stock_data, safe_dcf, safe_margin)}
 Metrics:
 {chr(10).join(metric_lines)}
 
@@ -50,7 +64,7 @@ Return JSON only, with this shape:
 Rules:
 - "overview": 2 or 3 sentences summarising the overall reading and verdict for this stock.
 - One entry in "metrics" for every metric above, using the exact metric name given.
-- "reading": 1 or 2 sentences on what this stock's own number says. Quote the number. If the value is N/A, say the data is missing and what that means for the score.
+- "reading": 1 or 2 sentences on what this stock's own number says. Quote the number. If the value is N/A, say the data is missing and what that means for the score. If the metric is not counted for this sector, say so plainly.
 - "why_it_matters": 1 or 2 sentences on why {investor} cares about this metric, tied to how much weight it carries in this lens.
 - Use only the figures provided. Do not invent numbers, events or news.
 - Plain sentences. No markdown, no em dashes, no exclamation marks, no hype words."""
@@ -76,11 +90,12 @@ def _parse(text: str, metric_names: list) -> dict:
 
 def explain_metrics(stock_data: dict, scorecard: dict, dcf: Optional[dict], margin: Optional[dict],
                     classification: str, classification_explanation: str = None, horizon: str = "long",
-                    api_key: str = None, model_name: str = FALLBACK_MODEL) -> dict:
+                    api_key: str = None, model_name: str = FALLBACK_MODEL, before_call=None) -> dict:
     """Per-metric explanations for the analysis slides.
 
     Returns {"overview", "metrics", "error": None} on success or {"error": str} on failure.
-    The API key comes from the request header, falling back to GEMINI_API_KEY.
+    The API key comes from the request header, falling back to GEMINI_API_KEY. before_call,
+    when given, runs just before a (non-cached) Gemini request and may return an error to stop it.
     """
     resolved_key = api_key or os.environ.get("GEMINI_API_KEY")
     if not resolved_key:
@@ -90,6 +105,11 @@ def explain_metrics(stock_data: dict, scorecard: dict, dcf: Optional[dict], marg
     cached = _cache_get(cache_key)
     if cached:
         return cached
+
+    if before_call:
+        limited = before_call()
+        if limited:
+            return {"error": limited}
 
     prompt = _build_prompt(stock_data, scorecard, margin, dcf, classification, classification_explanation)
     metric_names = [m["name"] for m in scorecard.get("metrics", [])]

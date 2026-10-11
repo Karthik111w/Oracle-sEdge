@@ -37,11 +37,15 @@ const VERDICT_TONE = { Buy: 'pos', Avoid: 'neg' };
 
 // Without Gemini, describe the score from the numbers alone.
 function plainReading(ticker, m) {
+  if (!(m.max > 0) && m.value !== 'N/A') {
+    return `${ticker} comes in at ${m.value}. This lens doesn't count it for companies in this sector, so it doesn't move the score.`;
+  }
   if (!isScored(m)) {
     return `Yahoo Finance doesn't report the inputs for this metric for ${ticker}, so it isn't scored here.`;
   }
   const ratio = m.score / m.max;
-  const band = ratio >= 0.8 ? 'a strong result' : ratio >= 0.5 ? 'a middling result' : 'a weak result';
+  // Scores come in tiers of 100, 80, 60, 40 and 0 percent of the metric's points.
+  const band = ratio >= 0.99 ? 'the top tier' : ratio >= 0.79 ? 'a good result, one tier below the top' : ratio >= 0.59 ? 'a middling result' : 'a weak result';
   return `${ticker} comes in at ${m.value}, earning ${m.score.toFixed(1)} of ${m.max.toFixed(1)} possible points (${Math.round(ratio * 100)}%), ${band}.`;
 }
 
@@ -233,8 +237,10 @@ const MetricDeck = ({ data, ticker, investor, horizon }) => {
                 <span className="mono">{m.score.toFixed(1)}</span> of <span className="mono">{m.max.toFixed(1)}</span> points
                 <span className="muted"> ({weightShare(metrics, m)}% of the {lensLabel} score)</span>
               </>
+            ) : m.max > 0 ? (
+              'No data, not scored'
             ) : (
-              'Not scored'
+              'Not counted for this sector'
             )}
           </span>
         </div>
@@ -260,7 +266,7 @@ const MetricDeck = ({ data, ticker, investor, horizon }) => {
                   ? `It carries ${weightShare(metrics, m)}% of the weight in this lens, after adjusting for the ${data.scorecard?.sector_label || 'company'} sector.`
                   : m.max > 0
                     ? 'With no data to score, it is left out and the remaining metrics carry the score.'
-                    : 'This lens gives it no weight for this company.'}
+                    : `This lens gives it no weight for ${data.scorecard?.sector_label || 'this'} companies.`}
               </p>
             )}
           </section>
@@ -287,9 +293,8 @@ const MetricDeck = ({ data, ticker, investor, horizon }) => {
         </div>
         <span className="deck-bar-label">
           <span className="deck-bar-name">{index === 0 ? 'Overall reading' : slides[index]}</span>
-          <span className="mono deck-count">
-            {index + 1}/{slides.length}
-          </span>
+          {/* Count metrics only; the overview card isn't one of them. */}
+          <span className="mono deck-count">{index === 0 ? `${metrics.length} metrics` : `${index}/${metrics.length}`}</span>
         </span>
       </nav>
 
