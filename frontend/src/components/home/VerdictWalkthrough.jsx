@@ -5,6 +5,7 @@ import { useGSAP } from '@gsap/react';
 import { getStockAnalysis } from '../../api/client';
 import { cached } from '../../api/cache';
 import { TICKER, analysisKey, formatMoney } from './LensVerdictCard';
+import { isScored } from './lenses';
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -178,7 +179,7 @@ const VerdictWalkthrough = () => {
               {metrics.map((m) => (
                 <div key={m.name}>
                   <dt>{m.name}</dt>
-                  <dd className="mono">{m.max > 0 ? `${m.score.toFixed(1)} of ${m.max.toFixed(1)}` : 'not scored'}</dd>
+                  <dd className="mono">{isScored(m) ? `${m.score.toFixed(1)} of ${m.max.toFixed(1)}` : 'not scored'}</dd>
                 </div>
               ))}
             </dl>

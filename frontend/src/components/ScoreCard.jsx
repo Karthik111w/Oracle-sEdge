@@ -1,5 +1,6 @@
 import React from 'react';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from 'recharts';
+import { isScored } from './home/lenses';
 
 const tone = (score, max) => {
   if (!max) return 'muted';
@@ -14,7 +15,7 @@ const ScoreCard = ({ scorecard }) => {
 
   // Normalise each metric to 0-100 for the radar (max varies by metric and sector).
   const chartData = scorecard.metrics
-    .filter((m) => m.max > 0)
+    .filter(isScored)
     .map((m) => ({
       metric: m.name
         .replace('Growth', 'Grwth')
@@ -60,7 +61,7 @@ const ScoreCard = ({ scorecard }) => {
         </thead>
         <tbody>
           {scorecard.metrics.map((m) => {
-            const excluded = !(m.max > 0);
+            const excluded = !isScored(m);
             return (
               <tr key={m.name} className={excluded ? 'is-excluded' : ''}>
                 <th scope="row" title={m.details}>

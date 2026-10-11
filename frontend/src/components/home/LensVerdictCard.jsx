@@ -4,7 +4,7 @@ import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, use
 import { ArrowUpRight, Check, Minus, X } from 'lucide-react';
 import { getStockAnalysis } from '../../api/client';
 import { cached } from '../../api/cache';
-import { LENSES } from './lenses';
+import { LENSES, isScored } from './lenses';
 
 export const TICKER = 'KO';
 const ease = [0.22, 1, 0.36, 1];
@@ -22,7 +22,7 @@ export const formatMoney = (v) =>
 // Two strongest scored metrics and the weakest one, as one-line reasons.
 function pickReasons(metrics = []) {
   const scored = metrics
-    .filter((m) => m.max > 0)
+    .filter(isScored)
     .map((m) => ({ ...m, ratio: m.score / m.max }))
     .sort((a, b) => b.ratio - a.ratio);
   if (scored.length < 3) return scored;

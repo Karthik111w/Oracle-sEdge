@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { getMetricExplanations } from '../api/client';
 import { cached } from '../api/cache';
 import { formatMoney } from './home/LensVerdictCard';
+import { isScored } from './home/lenses';
 
 // What each metric measures, written from the formulas in backend/services/scorecard.py.
 const MEASURES = {
@@ -29,7 +30,7 @@ const VERDICT_TONE = { Buy: 'pos', Avoid: 'neg' };
 
 // Without Gemini, describe the score from the numbers alone.
 function plainReading(ticker, m) {
-  if (!(m.max > 0) || m.value === 'N/A' || m.value == null) {
+  if (!isScored(m)) {
     return `Yahoo Finance doesn't report the inputs for this metric for ${ticker}, so it isn't scored here.`;
   }
   const ratio = m.score / m.max;
@@ -157,7 +158,7 @@ const MetricDeck = ({ data, ticker, investor, horizon }) => {
 
     const m = metrics[index - 1];
     const explained = aiFor(m.name);
-    const scored = m.max > 0;
+    const scored = isScored(m);
     return (
       <div className="deck-slide">
         <p className="deck-kicker">
@@ -197,7 +198,9 @@ const MetricDeck = ({ data, ticker, investor, horizon }) => {
               <p>
                 {scored
                   ? `It carries ${weightShare(metrics, m)}% of the weight in this lens, after adjusting for the ${data.scorecard?.sector_label || 'company'} sector.`
-                  : 'This lens gives it no weight for this company.'}
+                  : m.max > 0
+                    ? 'With no data to score, it is left out and the remaining metrics carry the score.'
+                    : 'This lens gives it no weight for this company.'}
               </p>
             )}
           </section>

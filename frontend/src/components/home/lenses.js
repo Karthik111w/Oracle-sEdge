@@ -74,3 +74,7 @@ export function weightShares(lens) {
   const total = Object.values(lens.weights).reduce((a, b) => a + b, 0);
   return METRICS.map(([key, name]) => ({ key, name, share: (lens.weights[key] / total) * 100 })).sort((a, b) => b.share - a.share);
 }
+
+// A metric counts only when it has weight and Yahoo Finance supplied the inputs
+// (the backend sends score: null, value "N/A" when data is missing).
+export const isScored = (m) => m.max > 0 && Number.isFinite(m.score);
