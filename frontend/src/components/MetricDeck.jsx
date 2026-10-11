@@ -1,11 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useGSAP } from '@gsap/react';
+import { useLenis } from 'lenis/react';
+import { Sparkles } from 'lucide-react';
 import { getMetricExplanations } from '../api/client';
 import { cached } from '../api/cache';
 import { formatMoney } from './home/LensVerdictCard';
 import { isScored } from './home/lenses';
+
+gsap.registerPlugin(ScrollTrigger, useGSAP);
+
+const navHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navbar-height')) || 64;
 
 // What each metric measures, written from the formulas in backend/services/scorecard.py.
 const MEASURES = {
@@ -43,29 +50,26 @@ function weightShare(metrics, m) {
   return Math.round(((m.max || 0) / total) * 100);
 }
 
-const slideVariants = {
-  enter: (dir) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (dir) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
-};
-
 function AiLine({ status, text }) {
   if (status === 'loading') return <span className="skel deck-skel" aria-hidden="true" />;
   if (status === 'ok' && text) return <p>{text}</p>;
   return null;
 }
 
-// Swipeable walkthrough of an analysis: the overall reading first, then one slide per metric.
+// The analysis as a stack of sticky cards, like the lens stack on the home page:
+// the overall reading first, then one card per metric. Scrolling slides each card over
+// the last, which recedes. Under reduced motion the cards simply sit one after another.
 const MetricDeck = ({ data, ticker, investor, horizon }) => {
-  const reduce = useReducedMotion();
   const metrics = data.scorecard?.metrics || [];
   const lensLabel = data.scorecard?.investor_label || 'Warren Buffett';
   const slides = ['overview', ...metrics.map((m) => m.name)];
-  const [[index, dir], setPage] = useState([0, 0]);
+  const [index, setIndex] = useState(0);
   const [ai, setAi] = useState({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => setPage([0, 0]), [ticker, investor, horizon]);
+  const root = useRef(null);
+  const stack = useRef(null);
+  const bar = useRef(null);
+  const lenis = useLenis();
 
   useEffect(() => {
     let alive = true;
@@ -89,33 +93,88 @@ const MetricDeck = ({ data, ticker, investor, horizon }) => {
     };
   }, [ticker, investor, horizon, attempt]);
 
-  const go = (to) => {
-    const next = Math.max(0, Math.min(slides.length - 1, to));
-    if (next !== index) setPage([next, next > index ? 1 : -1]);
+  // Where card i sits in normal flow. Sticky cards report their stuck position, so this is
+  // summed from the (non-sticky) stack container instead.
+  const naturalTop = (i) => {
+    const el = stack.current;
+    const cards = el.children;
+    const gap = parseFloat(getComputedStyle(el).rowGap) || 0;
+    let y = window.scrollY + el.getBoundingClientRect().top;
+    for (let k = 0; k < i; k++) y += cards[k].offsetHeight + gap;
+    return y;
   };
 
-  const onKeyDown = (e) => {
-    if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      go(index + 1);
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      go(index - 1);
-    }
+  // Each card sticks just under the progress bar, stepped down a little per card. A card
+  // taller than the space left sticks higher (negative top), so its bottom edge is read
+  // before the next card covers it.
+  const stickyTop = (i) => {
+    const card = stack.current.children[i];
+    const base = navHeight() + (bar.current?.offsetHeight || 0) + 12 + i * 10;
+    return Math.min(base, window.innerHeight - card.offsetHeight - 16);
   };
 
-  const onDragEnd = (_, info) => {
-    const swipe = info.offset.x + info.velocity.x * 0.2;
-    if (swipe < -60) go(index + 1);
-    else if (swipe > 60) go(index - 1);
+  useGSAP(
+    () => {
+      const cards = gsap.utils.toArray(stack.current.children);
+      const placeCards = () => cards.forEach((c, i) => (c.style.top = `${stickyTop(i)}px`));
+      placeCards();
+      ScrollTrigger.addEventListener('refreshInit', placeCards);
+
+      // Which card is in front, for the progress bar.
+      cards.forEach((_, i) =>
+        ScrollTrigger.create({
+          start: () => naturalTop(i) - window.innerHeight * 0.55,
+          end: () => (i + 1 < cards.length ? naturalTop(i + 1) - window.innerHeight * 0.55 : naturalTop(i) + cards[i].offsetHeight),
+          onToggle: (self) => self.isActive && setIndex(i),
+        })
+      );
+
+      const mm = gsap.matchMedia();
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        cards.forEach((card, i) => {
+          if (!cards[i + 1]) return;
+          gsap.fromTo(
+            card,
+            { scale: 1, filter: 'brightness(1)' },
+            {
+              scale: 0.94,
+              filter: 'brightness(0.55)',
+              ease: 'none',
+              scrollTrigger: {
+                start: () => naturalTop(i + 1) - window.innerHeight,
+                end: () => naturalTop(i + 1) - stickyTop(i + 1),
+                scrub: true,
+              },
+            }
+          );
+        });
+      });
+
+      // Gemini text arriving changes card heights; re-measure everything.
+      const ro = new ResizeObserver(() => ScrollTrigger.refresh());
+      cards.forEach((c) => ro.observe(c));
+
+      return () => {
+        ro.disconnect();
+        ScrollTrigger.removeEventListener('refreshInit', placeCards);
+        mm.revert();
+      };
+    },
+    { scope: root, dependencies: [ticker, investor, horizon, slides.length], revertOnUpdate: true }
+  );
+
+  const go = (i) => {
+    const y = naturalTop(i) - stickyTop(i);
+    if (lenis) lenis.scrollTo(y, { duration: 1 });
+    else window.scrollTo({ top: y, behavior: 'smooth' });
   };
 
   const aiFor = (name) => ai.metrics?.find((m) => m.name === name);
   const verdict = data.classification_label || data.classification;
   const margin = data.margin;
 
-  const renderSlide = () => {
-    if (index === 0) {
+  const renderCard = (i) => {
+    if (i === 0) {
       return (
         <div className="deck-slide">
           <p className="deck-kicker">The reading, through the {lensLabel} lens</p>
@@ -151,18 +210,19 @@ const MetricDeck = ({ data, ticker, investor, horizon }) => {
           <div className="deck-ai">
             <AiLine status={ai.status} text={ai.overview} />
           </div>
-          <p className="deck-hint">Swipe or use the arrows to go through each of the {metrics.length} metrics behind this score.</p>
+          <p className="deck-hint">Scroll to go through each of the {metrics.length} metrics behind this score.</p>
+          <AiStatus ai={ai} onRetry={() => setAttempt((n) => n + 1)} />
         </div>
       );
     }
 
-    const m = metrics[index - 1];
+    const m = metrics[i - 1];
     const explained = aiFor(m.name);
     const scored = isScored(m);
     return (
       <div className="deck-slide">
         <p className="deck-kicker">
-          Metric {index} of {metrics.length}
+          Metric {i} of {metrics.length}
         </p>
         <h3 className="deck-title">{m.name}</h3>
         <div className="deck-metric-head">
@@ -210,84 +270,65 @@ const MetricDeck = ({ data, ticker, investor, horizon }) => {
   };
 
   return (
-    <section className="deck" aria-roledescription="carousel" aria-label={`${ticker} analysis, explained`}>
-      <div className="deck-progress" role="tablist" aria-label="Slides">
-        {slides.map((s, i) => (
-          <button
-            key={s}
-            type="button"
-            role="tab"
-            aria-selected={i === index}
-            aria-label={i === 0 ? 'Overall reading' : s}
-            title={i === 0 ? 'Overall reading' : s}
-            className={`deck-step${i <= index ? ' is-done' : ''}${i === index ? ' is-current' : ''}`}
-            onClick={() => go(i)}
-          />
-        ))}
-      </div>
-
-      <div className="deck-viewport" tabIndex={0} onKeyDown={onKeyDown} aria-live="polite">
-        <AnimatePresence mode="popLayout" initial={false} custom={dir}>
-          <motion.div
-            key={index}
-            custom={dir}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={reduce ? { duration: 0 } : { duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-            drag={reduce ? false : 'x'}
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.25}
-            onDragEnd={onDragEnd}
-            className="deck-drag"
-          >
-            {renderSlide()}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      <footer className="deck-footer">
-        <div className="deck-ai-status">
-          {ai.status === 'error' &&
-            (ai.noKey ? (
-              <span>
-                <Sparkles size={14} aria-hidden="true" /> Add a Gemini API key in <Link to="/settings">Settings</Link> for a written explanation of each metric.
-              </span>
-            ) : (
-              <span>
-                {ai.message}{' '}
-                <button type="button" className="btn-quiet" onClick={() => setAttempt((n) => n + 1)}>
-                  Try again
-                </button>
-              </span>
-            ))}
-          {ai.status === 'ok' && (
-            <span className="muted">
-              <Sparkles size={14} aria-hidden="true" /> Explanations written by Gemini from the figures shown.
-            </span>
-          )}
+    <section ref={root} className="deck" aria-label={`${ticker} analysis, explained`}>
+      <nav ref={bar} className="deck-bar" aria-label="Jump to a card">
+        <div className="deck-progress">
+          {slides.map((s, i) => (
+            <button
+              key={s}
+              type="button"
+              aria-current={i === index ? 'step' : undefined}
+              aria-label={i === 0 ? 'Overall reading' : s}
+              title={i === 0 ? 'Overall reading' : s}
+              className={`deck-step${i <= index ? ' is-done' : ''}${i === index ? ' is-current' : ''}`}
+              onClick={() => go(i)}
+            />
+          ))}
         </div>
-        <div className="deck-nav">
-          <button type="button" className="deck-arrow" onClick={() => go(index - 1)} disabled={index === 0} aria-label="Previous slide">
-            <ArrowLeft size={18} />
-          </button>
+        <span className="deck-bar-label">
+          <span className="deck-bar-name">{index === 0 ? 'Overall reading' : slides[index]}</span>
           <span className="mono deck-count">
             {index + 1}/{slides.length}
           </span>
-          <button
-            type="button"
-            className="deck-arrow"
-            onClick={() => go(index + 1)}
-            disabled={index === slides.length - 1}
-            aria-label="Next slide"
-          >
-            <ArrowRight size={18} />
-          </button>
-        </div>
-      </footer>
+        </span>
+      </nav>
+
+      <div ref={stack} className="deck-cards">
+        {slides.map((s, i) => (
+          <article key={s} className="deck-card">
+            {renderCard(i)}
+          </article>
+        ))}
+      </div>
     </section>
   );
 };
+
+function AiStatus({ ai, onRetry }) {
+  if (ai.status === 'ok') {
+    return (
+      <p className="deck-ai-status muted">
+        <Sparkles size={14} aria-hidden="true" /> Explanations written by Gemini from the figures shown.
+      </p>
+    );
+  }
+  if (ai.status !== 'error') return null;
+  return (
+    <p className="deck-ai-status">
+      {ai.noKey ? (
+        <>
+          <Sparkles size={14} aria-hidden="true" /> Add a Gemini API key in <Link to="/settings">Settings</Link> for a written explanation of each metric.
+        </>
+      ) : (
+        <>
+          {ai.message}{' '}
+          <button type="button" className="btn-quiet" onClick={onRetry}>
+            Try again
+          </button>
+        </>
+      )}
+    </p>
+  );
+}
 
 export default MetricDeck;

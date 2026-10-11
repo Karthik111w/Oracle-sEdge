@@ -24,12 +24,17 @@ const LensStack = () => {
         cards.forEach((card, i) => {
           const next = cards[i + 1];
           if (!next) return;
-          gsap.to(card, {
-            scale: 0.94,
-            filter: 'brightness(0.55)',
-            ease: 'none',
-            scrollTrigger: { trigger: next, start: 'top bottom', end: 'top 30%', scrub: true },
-          });
+          // fromTo: tweening from filter "none" would start at brightness(0) and flash dark.
+          gsap.fromTo(
+            card,
+            { scale: 1, filter: 'brightness(1)' },
+            {
+              scale: 0.94,
+              filter: 'brightness(0.55)',
+              ease: 'none',
+              scrollTrigger: { trigger: next, start: 'top bottom', end: 'top 30%', scrub: true },
+            }
+          );
         });
         // Weight bars fill as each card arrives.
         cards.forEach((card) => {
