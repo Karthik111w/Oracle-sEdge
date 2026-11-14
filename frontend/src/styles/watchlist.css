@@ -1,0 +1,52 @@
+.wl2-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 2rem; margin-bottom: 1.5rem; }
+.wl2-form { display: flex; align-items: flex-end; gap: 0.75rem; }
+.wl2-form .field { width: 15rem; }
+.wl2-form input { width: 100%; }
+.wl2-form-error { margin: -1rem 0 1.25rem; font-size: var(--text-sm); }
+
+.wl2-summary { margin-bottom: 0.75rem; font-size: var(--text-sm); color: var(--text-secondary); min-height: 1.4rem; }
+.wl2-summary strong { color: var(--text-heading); font-weight: 600; }
+
+.wl2-actions { display: flex; align-items: center; gap: 0.75rem; min-height: 2.4rem; margin-bottom: 0.5rem; font-size: var(--text-sm); color: var(--text-secondary); }
+.wl2-compare { display: inline-flex; align-items: center; gap: 0.4rem; }
+.wl2-compare[aria-disabled='true'] { opacity: 0.5; pointer-events: none; }
+
+.wl2-scroll { position: relative; overflow-x: auto; border-top: 1px solid var(--border-color); }
+.wl2-table { width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0; font-size: var(--text-sm); }
+.wl2-table th, .wl2-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-color); text-align: left; font-weight: 400; white-space: nowrap; }
+.wl2-table .num { text-align: right; }
+.wl2-table thead th { padding: 0.4rem 0.75rem; font-size: var(--text-xs); color: var(--text-muted); }
+.wl2-table tbody tr:hover > * { background: var(--bg-hover); }
+
+.wl2-sticky { position: sticky; left: 0; z-index: 1; background: var(--bg-primary); min-width: 11rem; max-width: 15rem; }
+.wl2-table tbody tr:hover > .wl2-sticky { background: color-mix(in srgb, var(--text-primary) 4%, var(--bg-primary)); }
+
+.wl2-sort { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0; background: transparent; color: inherit; font: inherit; font-weight: 500; cursor: pointer; }
+.num .wl2-sort { flex-direction: row-reverse; }
+.wl2-sort:hover, .wl2-sort.is-active { color: var(--text-heading); }
+
+.wl2-pick { display: flex; align-items: center; gap: 0.75rem; }
+.wl2-pick input { width: 16px; height: 16px; padding: 0; accent-color: var(--color-gold); flex: none; }
+.wl2-company { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; color: inherit; }
+.wl2-company:hover .wl2-ticker { color: var(--color-gold); }
+.wl2-ticker { font-weight: 600; color: var(--text-heading); }
+.wl2-name { overflow: hidden; text-overflow: ellipsis; font-size: var(--text-xs); color: var(--text-secondary); }
+.wl2-verdict { font-weight: 600; }
+.wl2-err { color: var(--text-muted); }
+.wl2-remove-col { width: 3rem; }
+
+.wl2-empty { padding: 2rem 0; border-top: 1px solid var(--border-color); }
+.wl2-empty h2 { margin-bottom: 0.4rem !important; }
+
+.wl2-recent { margin-top: 2.5rem; }
+.wl2-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; }
+.wl2-chips li { display: inline-flex; align-items: center; border: 1px solid var(--border-color); border-radius: 999px; overflow: hidden; }
+.wl2-chips a { padding: 0.4rem 0.4rem 0.4rem 0.85rem; font-size: var(--text-sm); color: var(--text-heading); }
+.wl2-chips button { display: grid; place-items: center; width: 32px; height: 32px; background: transparent; color: var(--text-muted); }
+.wl2-chips button:hover { color: var(--color-gold); }
+
+@media (max-width: 640px) {
+  .wl2-form { width: 100%; }
+  .wl2-form .field { flex: 1 1 0; width: auto; }
+  .wl2-sticky { min-width: 9.5rem; }
+}
