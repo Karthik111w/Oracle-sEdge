@@ -32,7 +32,7 @@ const AIReport = ({ ticker, investor = 'buffett', horizon = 'long', investorLabe
     <section className="panel" aria-labelledby="memo-title" aria-busy={loading}>
       <header className="panel-head">
         <div>
-          <h2 id="memo-title">Memo in {investorLabel}'s voice</h2>
+          <h3 id="memo-title" className="an-h3">Memo in {investorLabel}'s voice</h3>
           <p className="panel-note">Written by Gemini from the figures on this page. {horizon === 'short' ? 'Short-term' : 'Long-term'} horizon.</p>
         </div>
         <button type="button" className="btn-quiet" onClick={fetchReport} disabled={loading}>

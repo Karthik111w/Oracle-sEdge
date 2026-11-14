@@ -29,17 +29,21 @@ const ScoreCard = ({ scorecard }) => {
     <section className="panel" aria-labelledby="scorecard-title">
       <header className="panel-head">
         <div>
-          <h2 id="scorecard-title">{scorecard.investor_label || 'Buffett'} scorecard</h2>
+          <h3 id="scorecard-title" className="an-h3">{scorecard.investor_label || 'Investor'} scorecard</h3>
           {scorecard.investor_sector_note && <p className="panel-note">{scorecard.investor_sector_note}.</p>}
         </div>
         <div className="panel-figure">
-          <span className="mono">{Math.round(scorecard.total_score)}</span>
+          <span className="mono">{Number.isFinite(scorecard.total_score) ? Math.round(scorecard.total_score) : 'n/a'}</span>
           <span className="panel-figure-unit">/100, grade {scorecard.grade}</span>
         </div>
       </header>
 
       {chartData.length >= 3 && (
-        <div className="radar">
+        <div
+          className="radar"
+          role="img"
+          aria-label={`Radar chart of ${chartData.length} scored metrics as a share of their points: ${chartData.map((d) => `${d.metric} ${Math.round(d.normalized)} percent`).join(', ')}`}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart cx="50%" cy="50%" outerRadius="72%" data={chartData}>
               <PolarGrid stroke="var(--border-color)" />
@@ -51,6 +55,7 @@ const ScoreCard = ({ scorecard }) => {
         </div>
       )}
 
+      <div className="an-table-wrap">
       <table className="score-table">
         <thead>
           <tr>
@@ -68,7 +73,7 @@ const ScoreCard = ({ scorecard }) => {
                   {m.name}
                   {excluded && <span className="muted"> (not scored)</span>}
                 </th>
-                <td className="mono num">{m.value}</td>
+                <td className="mono num">{m.value ?? 'n/a'}</td>
                 <td className={`mono num tone-${tone(m.score, m.max)}`}>
                   {excluded ? 'n/a' : `${m.score.toFixed(1)} / ${m.max.toFixed(1)}`}
                 </td>
@@ -77,6 +82,7 @@ const ScoreCard = ({ scorecard }) => {
           })}
         </tbody>
       </table>
+      </div>
     </section>
   );
 };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatMoney } from './home/LensVerdictCard';
 
-const rate = (v) => `${(v * 100).toFixed(1)}%`;
+const rate = (v) => (Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : 'n/a');
 
 function marginNote(pct) {
   if (pct === null) return 'No valuation is available for this security.';
@@ -15,10 +15,13 @@ function marginNote(pct) {
 const ValuationPanel = ({ dcf, margin }) => {
   const fair = margin?.intrinsic_value ?? dcf?.intrinsic_value;
   const price = margin?.current_price;
-  const pct = typeof margin?.margin_pct === 'number' ? margin.margin_pct : null;
+  const pct = Number.isFinite(margin?.margin_pct) ? margin.margin_pct : null;
+  const implied = dcf?.implied_growth;
+  const hasImplied = Number.isFinite(implied) && Number.isFinite(dcf?.growth_rate);
   const bear = dcf?.scenarios?.bear?.intrinsic_value;
   const bull = dcf?.scenarios?.bull?.intrinsic_value;
   const hasRange = bear > 0 && bull > 0;
+  const hasValue = fair > 0 && price > 0;
   const axisMax = (Math.max(price || 0, fair || 0, hasRange ? bull : 0) || 1) * 1.12;
   const pos = (v) => ((v || 0) / axisMax) * 100;
   const fairPos = pos(fair);
@@ -28,7 +31,7 @@ const ValuationPanel = ({ dcf, margin }) => {
     <section className="panel" aria-labelledby="valuation-title">
       <header className="panel-head">
         <div>
-          <h2 id="valuation-title">Valuation</h2>
+          <h3 id="valuation-title" className="an-h3">Valuation model</h3>
           <p className="panel-note">{dcf?.model_label || 'Discounted cash flow'}. {dcf?.model_explanation}</p>
         </div>
       </header>
@@ -44,7 +47,7 @@ const ValuationPanel = ({ dcf, margin }) => {
         </div>
         <div>
           <dt>Margin of safety</dt>
-          <dd className={`mono tone-${pct >= 0 ? 'pos' : 'neg'}`}>{pct === null ? 'n/a' : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`}</dd>
+          <dd className={`mono tone-${pct === null ? 'mid' : pct >= 0 ? 'pos' : 'neg'}`}>{pct === null ? 'n/a' : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`}</dd>
         </div>
       </dl>
 
@@ -67,6 +70,16 @@ const ValuationPanel = ({ dcf, margin }) => {
       )}
 
       <p className="panel-text">{marginNote(pct)}</p>
+      {hasImplied && (
+        <p className="panel-text an-implied">
+          <strong>What the price implies.</strong> The current price assumes cash flows grow about {rate(implied)} a year at first; the model uses {rate(dcf.growth_rate)}.
+        </p>
+      )}
+      {!hasImplied && hasValue && Number.isFinite(dcf?.base_value) && (
+        <p className="panel-text an-implied">
+          <strong>What the price implies.</strong> No starting growth between -10% and 60% a year reproduces the current price with this model.
+        </p>
+      )}
       {hasRange && (
         <p className="panel-text valuation-range">
           Fair value range <span className="mono">{formatMoney(bear)}</span> to <span className="mono">{formatMoney(bull)}</span>. The cautious case

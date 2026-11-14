@@ -1,18 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
-import { useLenis } from 'lenis/react';
-import { Sparkles } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { getMetricExplanations } from '../api/client';
 import { cached } from '../api/cache';
-import { formatMoney } from './home/LensVerdictCard';
 import { isScored } from './home/lenses';
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
-
-const navHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navbar-height')) || 64;
 
 // What each metric measures, written from the formulas in backend/services/scorecard.py.
 const MEASURES = {
@@ -32,8 +23,6 @@ const MEASURES = {
   'Revenue Growth': (h) =>
     h === 'short' ? 'How much revenue changed in the latest year.' : 'The yearly growth rate of revenue over five years.',
 };
-
-const VERDICT_TONE = { Buy: 'pos', Avoid: 'neg' };
 
 // Without Gemini, describe the score from the numbers alone.
 function plainReading(ticker, m) {
@@ -55,27 +44,22 @@ function weightShare(metrics, m) {
 }
 
 function AiLine({ status, text }) {
-  if (status === 'loading') return <span className="skel deck-skel" aria-hidden="true" />;
+  if (status === 'loading') return <span className="skel an-walk-skel" aria-hidden="true" />;
   if (status === 'ok' && text) return <p>{text}</p>;
   return null;
 }
 
-// The analysis as a stack of sticky cards, like the lens stack on the home page:
-// the overall reading first, then one card per metric. Scrolling slides each card over
-// the last, which recedes. Under reduced motion the cards simply sit one after another.
+// Plain-language walk through each scored metric, collapsed until asked for. The Gemini
+// readings are fetched on first open; without them each row falls back to text built from the numbers.
 const MetricDeck = ({ data, ticker, investor, horizon }) => {
   const metrics = data.scorecard?.metrics || [];
-  const lensLabel = data.scorecard?.investor_label || 'Warren Buffett';
-  const slides = ['overview', ...metrics.map((m) => m.name)];
-  const [index, setIndex] = useState(0);
-  const [ai, setAi] = useState({ status: 'loading' });
+  const lensLabel = data.scorecard?.investor_label || 'the investor';
+  const [open, setOpen] = useState(false);
+  const [ai, setAi] = useState({ status: 'idle' });
   const [attempt, setAttempt] = useState(0);
-  const root = useRef(null);
-  const stack = useRef(null);
-  const bar = useRef(null);
-  const lenis = useLenis();
 
   useEffect(() => {
+    if (!open) return undefined;
     let alive = true;
     let hasKey = false;
     try {
@@ -95,216 +79,72 @@ const MetricDeck = ({ data, ticker, investor, horizon }) => {
     return () => {
       alive = false;
     };
-  }, [ticker, investor, horizon, attempt]);
+  }, [open, ticker, investor, horizon, attempt]);
 
-  // Where card i sits in normal flow. Sticky cards report their stuck position, so this is
-  // summed from the (non-sticky) stack container instead.
-  const naturalTop = (i) => {
-    const el = stack.current;
-    const cards = el.children;
-    const gap = parseFloat(getComputedStyle(el).rowGap) || 0;
-    let y = window.scrollY + el.getBoundingClientRect().top;
-    for (let k = 0; k < i; k++) y += cards[k].offsetHeight + gap;
-    return y;
-  };
-
-  // Each card sticks just under the progress bar, stepped down a little per card. A card
-  // taller than the space left sticks higher (negative top), so its bottom edge is read
-  // before the next card covers it.
-  const stickyTop = (i) => {
-    const card = stack.current.children[i];
-    const base = navHeight() + (bar.current?.offsetHeight || 0) + 12 + i * 10;
-    return Math.min(base, window.innerHeight - card.offsetHeight - 16);
-  };
-
-  useGSAP(
-    () => {
-      const cards = gsap.utils.toArray(stack.current.children);
-      const placeCards = () => cards.forEach((c, i) => (c.style.top = `${stickyTop(i)}px`));
-      placeCards();
-      ScrollTrigger.addEventListener('refreshInit', placeCards);
-
-      // Which card is in front, for the progress bar.
-      cards.forEach((_, i) =>
-        ScrollTrigger.create({
-          start: () => naturalTop(i) - window.innerHeight * 0.55,
-          end: () => (i + 1 < cards.length ? naturalTop(i + 1) - window.innerHeight * 0.55 : naturalTop(i) + cards[i].offsetHeight),
-          onToggle: (self) => self.isActive && setIndex(i),
-        })
-      );
-
-      const mm = gsap.matchMedia();
-      mm.add('(prefers-reduced-motion: no-preference)', () => {
-        cards.forEach((card, i) => {
-          if (!cards[i + 1]) return;
-          gsap.fromTo(
-            card,
-            { scale: 1, filter: 'brightness(1)' },
-            {
-              scale: 0.94,
-              filter: 'brightness(0.55)',
-              ease: 'none',
-              scrollTrigger: {
-                start: () => naturalTop(i + 1) - window.innerHeight,
-                end: () => naturalTop(i + 1) - stickyTop(i + 1),
-                scrub: true,
-              },
-            }
-          );
-        });
-      });
-
-      // Gemini text arriving changes card heights; re-measure everything.
-      const ro = new ResizeObserver(() => ScrollTrigger.refresh());
-      cards.forEach((c) => ro.observe(c));
-
-      return () => {
-        ro.disconnect();
-        ScrollTrigger.removeEventListener('refreshInit', placeCards);
-        mm.revert();
-      };
-    },
-    { scope: root, dependencies: [ticker, investor, horizon, slides.length], revertOnUpdate: true }
-  );
-
-  const go = (i) => {
-    const y = naturalTop(i) - stickyTop(i);
-    if (lenis) lenis.scrollTo(y, { duration: 1 });
-    else window.scrollTo({ top: y, behavior: 'smooth' });
-  };
-
+  if (metrics.length === 0) return null;
   const aiFor = (name) => ai.metrics?.find((m) => m.name === name);
-  const verdict = data.classification_label || data.classification;
-  const margin = data.margin;
-
-  const renderCard = (i) => {
-    if (i === 0) {
-      return (
-        <div className="deck-slide">
-          <p className="deck-kicker">The reading, through the {lensLabel} lens</p>
-          <div className="deck-overview">
-            <div>
-              <div className={`deck-verdict tone-${VERDICT_TONE[verdict] || 'mid'}`}>{verdict}</div>
-              <p className="deck-sub">{data.classification_explanation}</p>
-            </div>
-            <div className="deck-score">
-              <span className="mono deck-score-num">{Math.round(data.scorecard?.total_score ?? 0)}</span>
-              <span className="deck-score-of">/100, grade {data.scorecard?.grade}</span>
-            </div>
-          </div>
-          {margin && (
-            <dl className="deck-facts">
-              <div>
-                <dt>Fair value</dt>
-                <dd className="mono">{formatMoney(margin.intrinsic_value)}</dd>
-              </div>
-              <div>
-                <dt>Price</dt>
-                <dd className="mono">{formatMoney(margin.current_price)}</dd>
-              </div>
-              <div>
-                <dt>Margin of safety</dt>
-                <dd className={`mono tone-${margin.margin_pct >= 0 ? 'pos' : 'neg'}`}>
-                  {margin.margin_pct > 0 ? '+' : ''}
-                  {margin.margin_pct.toFixed(1)}%
-                </dd>
-              </div>
-            </dl>
-          )}
-          <div className="deck-ai">
-            <AiLine status={ai.status} text={ai.overview} />
-          </div>
-          <p className="deck-hint">Scroll to go through each of the {metrics.length} metrics behind this score.</p>
-          <AiStatus ai={ai} onRetry={() => setAttempt((n) => n + 1)} />
-        </div>
-      );
-    }
-
-    const m = metrics[i - 1];
-    const explained = aiFor(m.name);
-    const scored = isScored(m);
-    return (
-      <div className="deck-slide">
-        <p className="deck-kicker">
-          Metric {i} of {metrics.length}
-        </p>
-        <h3 className="deck-title">{m.name}</h3>
-        <div className="deck-metric-head">
-          <span className="mono deck-value">{m.value ?? 'N/A'}</span>
-          <span className="deck-points">
-            {scored ? (
-              <>
-                <span className="mono">{m.score.toFixed(1)}</span> of <span className="mono">{m.max.toFixed(1)}</span> points
-                <span className="muted"> ({weightShare(metrics, m)}% of the {lensLabel} score)</span>
-              </>
-            ) : m.max > 0 ? (
-              'No data, not scored'
-            ) : (
-              'Not counted for this sector'
-            )}
-          </span>
-        </div>
-
-        <div className="deck-sections">
-          <section>
-            <h4>What it measures</h4>
-            <p>{(MEASURES[m.name] || (() => m.details))(horizon)}</p>
-          </section>
-          <section>
-            <h4>What {ticker}'s number says</h4>
-            {ai.status === 'ok' && explained?.reading ? <p>{explained.reading}</p> : ai.status === 'loading' ? <AiLine status="loading" /> : <p>{plainReading(ticker, m)}</p>}
-          </section>
-          <section>
-            <h4>Why it matters to {lensLabel}</h4>
-            {ai.status === 'ok' && explained?.why_it_matters ? (
-              <p>{explained.why_it_matters}</p>
-            ) : ai.status === 'loading' ? (
-              <AiLine status="loading" />
-            ) : (
-              <p>
-                {scored
-                  ? `It carries ${weightShare(metrics, m)}% of the weight in this lens, after adjusting for the ${data.scorecard?.sector_label || 'company'} sector.`
-                  : m.max > 0
-                    ? 'With no data to score, it is left out and the remaining metrics carry the score.'
-                    : `This lens gives it no weight for ${data.scorecard?.sector_label || 'this'} companies.`}
-              </p>
-            )}
-          </section>
-        </div>
-      </div>
-    );
-  };
 
   return (
-    <section ref={root} className="deck" aria-label={`${ticker} analysis, explained`}>
-      <nav ref={bar} className="deck-bar" aria-label="Jump to a card">
-        <div className="deck-progress">
-          {slides.map((s, i) => (
-            <button
-              key={s}
-              type="button"
-              aria-current={i === index ? 'step' : undefined}
-              aria-label={i === 0 ? 'Overall reading' : s}
-              title={i === 0 ? 'Overall reading' : s}
-              className={`deck-step${i <= index ? ' is-done' : ''}${i === index ? ' is-current' : ''}`}
-              onClick={() => go(i)}
-            />
-          ))}
+    <section className="panel an-walk" aria-labelledby="an-walk-title">
+      <h3 id="an-walk-title" className="an-walk-title">
+        <button type="button" className="an-walk-toggle" aria-expanded={open} aria-controls="an-walk-body" onClick={() => setOpen((v) => !v)}>
+          <span>Walk through each metric</span>
+          <span className="muted an-walk-count">{metrics.length} metrics</span>
+          <ChevronDown size={18} className="an-walk-chevron" aria-hidden="true" />
+        </button>
+      </h3>
+      {open && (
+        <div id="an-walk-body" className="an-walk-body">
+          {ai.status === 'ok' && ai.overview && <p className="panel-text an-walk-overview">{ai.overview}</p>}
+          {ai.status === 'loading' && <span className="skel an-walk-skel" aria-hidden="true" />}
+          <AiStatus ai={ai} onRetry={() => setAttempt((n) => n + 1)} />
+          <ul className="an-walk-list">
+            {metrics.map((m) => {
+              const explained = aiFor(m.name);
+              const scored = isScored(m);
+              return (
+                <li key={m.name}>
+                  <details className="an-walk-item">
+                    <summary>
+                      <span className="an-walk-name">{m.name}</span>
+                      <span className="mono an-walk-value">{m.value ?? 'n/a'}</span>
+                      <span className="muted mono an-walk-points">
+                        {scored ? `${m.score.toFixed(1)} / ${m.max.toFixed(1)}` : m.max > 0 ? 'No data' : 'Not counted'}
+                      </span>
+                    </summary>
+                    <div className="an-walk-text">
+                      <section>
+                        <h4>What it measures</h4>
+                        <p>{(MEASURES[m.name] || (() => m.details))(horizon)}</p>
+                      </section>
+                      <section>
+                        <h4>What {ticker}&apos;s number says</h4>
+                        {ai.status === 'ok' && explained?.reading ? <p>{explained.reading}</p> : ai.status === 'loading' ? <AiLine status="loading" /> : <p>{plainReading(ticker, m)}</p>}
+                      </section>
+                      <section>
+                        <h4>Why it matters to {lensLabel}</h4>
+                        {ai.status === 'ok' && explained?.why_it_matters ? (
+                          <p>{explained.why_it_matters}</p>
+                        ) : ai.status === 'loading' ? (
+                          <AiLine status="loading" />
+                        ) : (
+                          <p>
+                            {scored
+                              ? `It carries ${weightShare(metrics, m)}% of the weight in this lens, after adjusting for the ${data.scorecard?.sector_label || 'company'} sector.`
+                              : m.max > 0
+                                ? 'With no data to score, it is left out and the remaining metrics carry the score.'
+                                : `This lens gives it no weight for ${data.scorecard?.sector_label || 'this'} companies.`}
+                          </p>
+                        )}
+                      </section>
+                    </div>
+                  </details>
+                </li>
+              );
+            })}
+          </ul>
         </div>
-        <span className="deck-bar-label">
-          <span className="deck-bar-name">{index === 0 ? 'Overall reading' : slides[index]}</span>
-          {/* Count metrics only; the overview card isn't one of them. */}
-          <span className="mono deck-count">{index === 0 ? `${metrics.length} metrics` : `${index}/${metrics.length}`}</span>
-        </span>
-      </nav>
-
-      <div ref={stack} className="deck-cards">
-        {slides.map((s, i) => (
-          <article key={s} className="deck-card">
-            {renderCard(i)}
-          </article>
-        ))}
-      </div>
+      )}
     </section>
   );
 };
@@ -312,17 +152,17 @@ const MetricDeck = ({ data, ticker, investor, horizon }) => {
 function AiStatus({ ai, onRetry }) {
   if (ai.status === 'ok') {
     return (
-      <p className="deck-ai-status muted">
+      <p className="an-walk-status muted">
         <Sparkles size={14} aria-hidden="true" /> Explanations written by Gemini from the figures shown.
       </p>
     );
   }
   if (ai.status !== 'error') return null;
   return (
-    <p className="deck-ai-status">
+    <p className="an-walk-status">
       {ai.noKey ? (
         <>
-          <Sparkles size={14} aria-hidden="true" /> Add a Gemini API key in <Link to="/settings">Settings</Link> for a written explanation of each metric.
+          <Sparkles size={14} aria-hidden="true" /> Add a Gemini API key in <Link to="/settings">Settings</Link> for a written explanation of each metric. The plain readings below come from the numbers.
         </>
       ) : (
         <>

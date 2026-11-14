@@ -1,33 +1,44 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 
-const ScorecardTrend = ({ trend }) => {
-  if (!trend || trend.length === 0) return null;
-
-  const chartData = trend.map(item => ({ year: item.year, score: item.score }));
+// Business quality score for each past year the statements allow. Years that could not be
+// scored are left out by the backend, so the line may have gaps in time.
+const ScorecardTrend = ({ trend, lensLabel }) => {
+  const rows = (trend || []).filter((t) => Number.isFinite(t.score));
+  if (rows.length === 0) return null;
+  const data = rows.map((t) => ({ year: String(t.year), score: t.score }));
+  const first = data[0];
+  const last = data[data.length - 1];
+  const summary = `Score by year, ${data.map((d) => `${d.year}: ${Math.round(d.score)}`).join(', ')}.`;
 
   return (
-    <div className="card" style={{ padding: '1.5rem', height: '320px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+    <section className="panel" aria-labelledby="trend-title">
+      <header className="panel-head">
         <div>
-          <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Scorecard Trend</h3>
-          <p style={{ margin: '0.5rem 0 0', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
-            Historical business quality score over the last {chartData.length} years.
+          <h3 id="trend-title" className="an-h3">Score over time</h3>
+          <p className="panel-note">
+            {lensLabel ? `${lensLabel} scorecard` : 'Scorecard'} applied to each year of reported statements.
+            {data.length > 1 ? ` From ${Math.round(first.score)} in ${first.year} to ${Math.round(last.score)} in ${last.year}.` : ' Only one year could be scored.'}
           </p>
         </div>
-      </div>
-      <div style={{ width: '100%', height: '220px' }}>
+      </header>
+      <div className="an-trend" role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-            <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" />
-            <XAxis dataKey="year" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} />
-            <YAxis domain={[0, 100]} tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} />
-            <Tooltip formatter={(value) => [`${value.toFixed(1)}`, 'Score']} contentStyle={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '8px' }} />
-            <Line type="monotone" dataKey="score" stroke="var(--color-primary)" strokeWidth={3} dot={{ r: 4 }} />
+          <LineChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
+            <CartesianGrid stroke="var(--border-color)" strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="year" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+            <ReferenceLine y={75} stroke="var(--border-color-hover)" strokeDasharray="2 4" />
+            <Tooltip
+              formatter={(value) => [`${value.toFixed(1)} / 100`, 'Score']}
+              contentStyle={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: 12 }}
+              labelStyle={{ color: 'var(--text-muted)' }}
+            />
+            <Line type="monotone" dataKey="score" stroke="var(--color-gold)" strokeWidth={2} dot={{ r: 3, fill: 'var(--color-gold)' }} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </section>
   );
 };
 

@@ -8,7 +8,7 @@ const RiskFlags = ({ riskData }) => {
   return (
     <section className="panel" aria-labelledby="risk-title">
       <header className="panel-head">
-        <h2 id="risk-title">Risk flags</h2>
+        <h3 id="risk-title" className="an-h3">Risk flags</h3>
         {riskData.is_avoid && <span className="tone-neg panel-tag">Forces an Avoid</span>}
       </header>
       {flags.length === 0 ? (

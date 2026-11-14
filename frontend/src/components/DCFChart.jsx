@@ -8,23 +8,27 @@ const DCFChart = ({ dcf }) => {
   if (dcf.error) {
     return (
       <section className="panel">
-        <h2>Projected cash flow</h2>
+        <h3 className="an-h3">Projected cash flow</h3>
         <p className="panel-text">{dcf.error}</p>
       </section>
     );
   }
 
-  const data = dcf.projected_fcf.map((item) => ({
-    year: `Y${item.year}`,
-    fcf: Math.round(item.fcf / 1e6),
-    discounted: Math.round(item.discounted_fcf / 1e6),
-  }));
+  const data = dcf.projected_fcf
+    .filter((item) => Number.isFinite(item.fcf) && Number.isFinite(item.discounted_fcf))
+    .map((item) => ({
+      year: `Y${item.year}`,
+      fcf: Math.round(item.fcf / 1e6),
+      discounted: Math.round(item.discounted_fcf / 1e6),
+    }));
+  if (data.length === 0) return null;
+  const chartLabel = `Bar chart of projected free cash flow over ${data.length} years, from ${data[0].fcf.toLocaleString()} million dollars in ${data[0].year} to ${data[data.length - 1].fcf.toLocaleString()} million in ${data[data.length - 1].year}, with the present value of each year alongside.`;
 
   return (
     <section className="panel" aria-labelledby="fcf-title">
       <header className="panel-head">
         <div>
-          <h2 id="fcf-title">Projected cash flow</h2>
+          <h3 id="fcf-title" className="an-h3">Projected cash flow</h3>
           <p className="panel-note">Ten years of free cash flow, starting from the three-year average, with growth fading to the terminal rate. Each bar pair shows the projected year and what it is worth today.</p>
         </div>
       </header>
@@ -44,11 +48,11 @@ const DCFChart = ({ dcf }) => {
         </div>
         <div>
           <dt>Terminal value today</dt>
-          <dd className="mono">${Math.round((dcf.terminal_value_discounted || 0) / 1e9)}B</dd>
+          <dd className="mono">{Number.isFinite(dcf.terminal_value_discounted) ? `$${Math.round(dcf.terminal_value_discounted / 1e9)}B` : 'n/a'}</dd>
         </div>
       </dl>
 
-      <div className="fcf-chart">
+      <div className="fcf-chart" role="img" aria-label={chartLabel}>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
