@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getMarketConditions, getStockAnalysis } from '../../api/client';
+import { getMarketConditions, getMarketOverview, getScreener, getStockAnalysis } from '../../api/client';
 import { cached } from '../../api/cache';
 import { analysisKey } from './LensVerdictCard';
 
@@ -48,5 +48,67 @@ export function useMarketConditions() {
       alive = false;
     };
   }, []);
+  return state;
+}
+
+// Index levels for the strip under the hero. status: 'loading' | 'ok' | 'error'; hidden on error or no indices.
+export function useMarketOverview() {
+  const [state, setState] = useState({ status: 'loading', indices: [] });
+  useEffect(() => {
+    let alive = true;
+    cached('market-overview', getMarketOverview, 2 * 60 * 1000)
+      .then((d) => {
+        if (!alive) return;
+        const indices = Array.isArray(d?.indices) ? d.indices.filter((i) => i && i.symbol && Number.isFinite(i.price)) : [];
+        setState(indices.length ? { status: 'ok', indices } : { status: 'error', indices: [] });
+      })
+      .catch(() => alive && setState({ status: 'error', indices: [] }));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return state;
+}
+
+const SCREENER_TTL = 5 * 60 * 1000;
+const screenerReady = new Map();
+const POLL_MS = 5000;
+
+// Screener rows for one lens. Polls every 5s while the backend is still scoring (status "warming").
+// state: { status: 'loading' | 'warming' | 'ready' | 'error', rows, progress }
+export function useScreener(investor, horizon) {
+  const [state, setState] = useState({ status: 'loading', rows: [], progress: null });
+  useEffect(() => {
+    let alive = true;
+    let timer;
+    const key = `${investor}:${horizon}`;
+    const hit = screenerReady.get(key);
+    if (hit && Date.now() - hit.at < SCREENER_TTL) {
+      setState({ status: 'ready', rows: hit.rows, progress: null });
+      return undefined;
+    }
+    setState({ status: 'loading', rows: [], progress: null });
+
+    const load = () => {
+      getScreener(investor, horizon)
+        .then((d) => {
+          if (!alive) return;
+          const rows = Array.isArray(d?.rows) ? d.rows : [];
+          if (d?.status === 'warming') {
+            setState({ status: 'warming', rows, progress: d.progress || null });
+            timer = setTimeout(load, POLL_MS);
+          } else {
+            screenerReady.set(key, { at: Date.now(), rows });
+            setState({ status: 'ready', rows, progress: null });
+          }
+        })
+        .catch(() => alive && setState({ status: 'error', rows: [], progress: null }));
+    };
+    load();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [investor, horizon]);
   return state;
 }

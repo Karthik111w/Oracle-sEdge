@@ -1,5 +1,7 @@
 import React from 'react';
 import HomeHero from '../components/home/HomeHero';
+import MarketStrip from '../components/home/MarketStrip';
+import ScreenerTeaser from '../components/home/ScreenerTeaser';
 import TickerTape from '../components/home/TickerTape';
 import MarginRanking from '../components/home/MarginRanking';
 import VerdictWalkthrough from '../components/home/VerdictWalkthrough';
@@ -8,8 +10,10 @@ import LensStack from '../components/home/LensStack';
 const HomePage = () => (
   <div className="home">
     <HomeHero />
+    <MarketStrip />
     <TickerTape />
     <MarginRanking />
+    <ScreenerTeaser />
     <VerdictWalkthrough />
     <LensStack />
 

@@ -12,6 +12,7 @@ import WatchlistPage from './pages/WatchlistPage';
 import ComparePage from './pages/ComparePage';
 import ScreenerPage from './pages/ScreenerPage';
 import ErrorPage from './pages/ErrorPage';
+import CommandPalette from './components/CommandPalette';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -56,6 +57,7 @@ function App() {
           <SmoothScroll />
           <a href="#main" className="skip-link">Skip to content</a>
           <Navbar />
+          <CommandPalette />
           <main id="main" className="main-content" tabIndex={-1}>
             <AnimatedRoutes />
           </main>

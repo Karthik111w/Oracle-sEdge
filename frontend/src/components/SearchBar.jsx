@@ -2,30 +2,31 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Search, ArrowRight } from 'lucide-react';
+import TickerAutocomplete from './TickerAutocomplete';
+import { cleanTicker } from '../lib/storage';
 
 const SearchBar = ({ initialValue = '', placeholder = 'Enter stock ticker (e.g., AAPL)', compact = false }) => {
   const [ticker, setTicker] = useState(initialValue);
   const navigate = useNavigate();
 
+  const open = (symbol) => navigate(`/stock/${encodeURIComponent(cleanTicker(symbol))}`);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (ticker.trim()) {
-      navigate(`/stock/${ticker.trim().toUpperCase()}`);
-    }
+    if (ticker.trim()) open(ticker);
   };
 
   return (
-    <form onSubmit={handleSubmit} className={`ticker-search${compact ? ' ticker-search--compact' : ''}`} role="search">
+    <form onSubmit={handleSubmit} className={`ticker-search sh-search${compact ? ' ticker-search--compact' : ''}`} role="search">
       <Search className="ticker-search-icon" size={compact ? 18 : 20} aria-hidden="true" />
-      <input
-        type="text"
-        className="ticker-search-input"
+      <TickerAutocomplete
         value={ticker}
-        onChange={(e) => setTicker(e.target.value)}
+        onChange={setTicker}
+        onSelect={open}
         placeholder={placeholder}
-        aria-label="Stock ticker"
-        autoComplete="off"
-        spellCheck="false"
+        ariaLabel="Stock ticker"
+        className="sh-ac--inline"
+        inputClassName="ticker-search-input"
       />
       <motion.button
         type="submit"

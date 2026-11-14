@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
+import '../styles/shell.css';
 
 const ErrorPage = ({ title = 'Something went wrong', message = 'We could not load the requested page.', linkText = 'Back to home' }) => (
   <div className="page">
@@ -11,7 +12,10 @@ const ErrorPage = ({ title = 'Something went wrong', message = 'We could not loa
       <div className="error-search">
         <SearchBar placeholder="Try KO, AAPL or BRK-B" />
       </div>
-      <Link to="/" className="back-link">{linkText}</Link>
+      <div className="sh-error-links">
+        <Link to="/" className="back-link">{linkText}</Link>
+        <Link to="/screener" className="back-link">Open the screener</Link>
+      </div>
     </div>
   </div>
 );
