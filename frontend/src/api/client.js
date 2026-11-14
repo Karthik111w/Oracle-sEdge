@@ -8,8 +8,7 @@ export async function getStockAnalysis(ticker, investor = 'buffett', horizon = '
   const res = await fetch(withBase(`/api/stock/${cleanTicker}/analysis?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`));
   if (!res.ok) {
     const errBody = await res.json().catch(() => null);
-    const msg = errBody?.detail || errBody?.error || res.statusText || 'Analysis failed';
-    throw new Error(msg);
+    throw new Error(errorMessage(errBody, res.statusText || 'Analysis failed'));
   }
   return res.json();
 }
@@ -56,8 +55,7 @@ export async function optimizePortfolio(holdings, cashAvailable = 0, useRecommen
   });
   if (!res.ok) {
     const errorBody = await res.json().catch(() => null);
-    const message = errorBody?.detail || res.statusText || 'Unknown error';
-    throw new Error(`Optimization failed: ${message}`);
+    throw new Error(errorMessage(errorBody, res.statusText || 'Optimization failed'));
   }
   return res.json();
 }
@@ -70,8 +68,7 @@ export async function parseBulkHoldings(rawText) {
   });
   if (!res.ok) {
     const errorBody = await res.json().catch(() => null);
-    const message = errorBody?.detail || res.statusText || 'Bulk parse failed';
-    throw new Error(message);
+    throw new Error(errorMessage(errorBody, res.statusText || 'Bulk parse failed'));
   }
   return res.json();
 }
@@ -82,11 +79,29 @@ export async function getMarketConditions(investor = 'buffett', horizon = 'long'
   return res.json();
 }
 
+// FastAPI sends `detail` as a string for our own errors and as a list of
+// { loc, msg } objects for request validation failures.
+export function errorMessage(body, fallback) {
+  const detail = body?.detail ?? body?.error;
+  if (typeof detail === 'string' && detail) return detail;
+  if (Array.isArray(detail) && detail.length) {
+    return detail
+      .slice(0, 3)
+      .map((d) => {
+        const loc = Array.isArray(d?.loc) ? d.loc : [];
+        const row = loc[1] === 'holdings' && Number.isInteger(loc[2]) ? `Row ${loc[2] + 1}: ` : '';
+        return `${row}${d?.msg || 'invalid value'}`;
+      })
+      .join(' ');
+  }
+  return fallback;
+}
+
 async function getJson(path, fallbackMessage) {
   const res = await fetch(withBase(path));
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.detail || `${fallbackMessage}: ${res.statusText}`);
+    throw new Error(errorMessage(body, `${fallbackMessage}: ${res.statusText}`));
   }
   return res.json();
 }
@@ -125,7 +140,7 @@ export async function analyzePortfolio(holdings, investor = 'buffett', horizon =
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.detail || res.statusText || 'Portfolio analysis failed');
+    throw new Error(errorMessage(body, res.statusText || 'Portfolio analysis failed'));
   }
   return res.json();
 }
