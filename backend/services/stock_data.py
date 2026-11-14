@@ -1,7 +1,17 @@
+import datetime as dt
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from typing import Optional
+
+from .cache import cached
+
+STOCK_TTL = 15 * 60
+FAILED_TTL = 60
+HISTORY_TTL = 15 * 60
+SEARCH_TTL = 60 * 60
+HISTORY_PERIODS = {"1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"}
+WEEKLY_PERIODS = {"5y", "10y", "max"}
 
 
 def safe_get(df: pd.DataFrame, labels: list[str]) -> Optional[pd.Series]:
@@ -65,15 +75,78 @@ def _profile_from_search(ticker: str) -> dict:
     return {}
 
 
+def _normalize_ticker(ticker) -> str:
+    return str(ticker or "").strip().upper().replace(".", "-")
+
+
+def _abs_list(values: list) -> list:
+    return [abs(v) if v is not None else None for v in values]
+
+
+def _dividend_yield_fraction(info: dict) -> Optional[float]:
+    """Dividend yield as a fraction. Current yfinance returns percent (2.14), older versions a fraction."""
+    raw = _to_float(info.get("dividendYield"))
+    if raw is None:
+        return None
+    trailing = _to_float(info.get("trailingAnnualDividendYield"))
+    as_fraction, as_percent = raw, raw / 100
+    if trailing:
+        return as_fraction if abs(as_fraction - trailing) < abs(as_percent - trailing) else as_percent
+    return as_percent if raw >= 0.2 else as_fraction
+
+
+def _next_earnings_date(t) -> Optional[str]:
+    try:
+        cal = t.calendar
+        dates = cal.get("Earnings Date") if isinstance(cal, dict) else None
+        today = dt.date.today()
+        upcoming = sorted(d for d in (dates or []) if isinstance(d, dt.date) and d >= today)
+        return upcoming[0].isoformat() if upcoming else None
+    except Exception:
+        return None
+
+
+def _build_stats(info: dict, t) -> dict:
+    return {
+        "pe_trailing": _to_float(info.get("trailingPE")),
+        "pe_forward": _to_float(info.get("forwardPE")),
+        "peg": _to_float(info.get("trailingPegRatio") if info.get("trailingPegRatio") is not None else info.get("pegRatio")),
+        "price_to_book": _to_float(info.get("priceToBook")),
+        "price_to_sales": _to_float(info.get("priceToSalesTrailing12Months")),
+        "ev_to_ebitda": _to_float(info.get("enterpriseToEbitda")),
+        "eps_trailing": _to_float(info.get("trailingEps")),
+        "eps_forward": _to_float(info.get("forwardEps")),
+        "dividend_yield": _dividend_yield_fraction(info),
+        "payout_ratio": _to_float(info.get("payoutRatio")),
+        "fifty_two_week_low": _to_float(info.get("fiftyTwoWeekLow")),
+        "fifty_two_week_high": _to_float(info.get("fiftyTwoWeekHigh")),
+        "average_volume": _to_float(info.get("averageVolume")),
+        "analyst_target_mean": _to_float(info.get("targetMeanPrice")),
+        "analyst_target_low": _to_float(info.get("targetLowPrice")),
+        "analyst_target_high": _to_float(info.get("targetHighPrice")),
+        "analyst_count": _to_float(info.get("numberOfAnalystOpinions")),
+        "recommendation": info.get("recommendationKey") if isinstance(info.get("recommendationKey"), str) else None,
+        "next_earnings_date": _next_earnings_date(t),
+    }
+
+
 def get_stock_data(ticker: str) -> Optional[dict]:
     """Fetch and normalize all financial data for a ticker into a clean dict structure.
 
-    Returns None if the ticker is invalid or no data is available.
+    Returns None if the ticker is invalid or no data is available. Results are cached for 15 minutes
+    (failures for 60 seconds).
     """
+    ticker = _normalize_ticker(ticker)
     if not ticker:
         return None
-    ticker = str(ticker).strip().upper().replace(".", "-")
+    return cached(
+        ("stock", ticker),
+        lambda value: STOCK_TTL if value is not None else FAILED_TTL,
+        lambda: _fetch_stock_data(ticker),
+    )
 
+
+def _fetch_stock_data(ticker: str) -> Optional[dict]:
     try:
         t = yf.Ticker(ticker)
 
@@ -122,6 +195,20 @@ def get_stock_data(ticker: str) -> Optional[dict]:
         fcf_series = safe_get(cashflow, ["FreeCashFlow", "Free Cash Flow"])
         ocf_series = safe_get(cashflow, ["OperatingCashFlow", "Operating Cash Flow"])
         capex_series = safe_get(cashflow, ["CapitalExpenditure", "Capital Expenditure"])
+        depreciation_series = safe_get(cashflow, [
+            "DepreciationAndAmortization", "Depreciation And Amortization",
+            "DepreciationAmortizationDepletion", "Depreciation Amortization Depletion",
+            "Depreciation", "DepreciationDepletionAndAmortization",
+        ])
+        dividends_series = safe_get(cashflow, [
+            "CashDividendsPaid", "Cash Dividends Paid",
+            "CommonStockDividendPaid", "Common Stock Dividend Paid",
+        ])
+        gross_profit_series = safe_get(income_stmt, ["GrossProfit", "Gross Profit"])
+        shares_series = safe_get(income_stmt, [
+            "DilutedAverageShares", "Diluted Average Shares",
+            "BasicAverageShares", "Basic Average Shares",
+        ])
 
         # --- Build value lists (yFinance order: most recent first) ---
         revenue = _series_to_list(revenue_series, years_count)
@@ -137,6 +224,10 @@ def get_stock_data(ticker: str) -> Optional[dict]:
         free_cash_flow = _series_to_list(fcf_series, years_count)
         operating_cash_flow = _series_to_list(ocf_series, years_count)
         capital_expenditure = _series_to_list(capex_series, years_count)
+        gross_profit = _series_to_list(gross_profit_series, years_count)
+        depreciation = _abs_list(_series_to_list(depreciation_series, years_count))
+        dividends_paid = _abs_list(_series_to_list(dividends_series, years_count))
+        shares = _series_to_list(shares_series, years_count)
 
         # --- Reverse all to chronological order (oldest first) ---
         year_strings.reverse()
@@ -153,6 +244,10 @@ def get_stock_data(ticker: str) -> Optional[dict]:
         operating_cash_flow.reverse()
         capital_expenditure.reverse()
         eps.reverse()
+        gross_profit.reverse()
+        depreciation.reverse()
+        dividends_paid.reverse()
+        shares.reverse()
 
         # --- Extract scalar info ---
         current_price = _to_float(getattr(fast, "last_price", None))
@@ -180,6 +275,13 @@ def get_stock_data(ticker: str) -> Optional[dict]:
         five_year_return = _to_float(info.get("fiveYearAverageReturn"))
         etf_total_assets = _to_float(info.get("totalAssets"))
 
+        summary = info.get("longBusinessSummary")
+        summary = summary if isinstance(summary, str) and summary.strip() else None
+        description = None
+        if summary:
+            description = summary if len(summary) <= 600 else summary[:597].rsplit(" ", 1)[0] + "..."
+        employees = _to_float(info.get("fullTimeEmployees"))
+
         return {
             "ticker": ticker.upper(),
             "company_name": company_name,
@@ -191,6 +293,13 @@ def get_stock_data(ticker: str) -> Optional[dict]:
             "market_cap": market_cap,
             "shares_outstanding": shares_outstanding,
             "beta": beta if beta is not None else 1.0,
+            "business_summary": summary,
+            "business_description": description,
+            "website": info.get("website") or None,
+            "employees": int(employees) if employees is not None else None,
+            "country": info.get("country") or None,
+            "exchange": info.get("exchange") or info.get("fullExchangeName") or None,
+            "stats": _build_stats(info, t),
             "etf_data": {
                 "yield": etf_yield,
                 "expense_ratio": expense_ratio,
@@ -215,6 +324,11 @@ def get_stock_data(ticker: str) -> Optional[dict]:
                 "free_cash_flow": free_cash_flow,
                 "operating_cash_flow": operating_cash_flow,
                 "capital_expenditure": capital_expenditure,
+                "gross_profit": gross_profit,
+                "depreciation": depreciation,
+                "dividends_paid": dividends_paid,
+                "dividends": dividends_paid,
+                "shares": shares,
             },
         }
     except Exception:
@@ -222,27 +336,80 @@ def get_stock_data(ticker: str) -> Optional[dict]:
 
 
 def get_price_history(ticker: str, period: str = "5y") -> list[dict]:
-    """Return daily OHLCV price history as a list of dicts.
+    """Return price history as a list of dicts (daily, or weekly closes for 5y and longer).
 
-    Keys: date, open, high, low, close, volume.
+    Keys: date, open, high, low, close, volume. Unknown periods fall back to 5y.
     """
+    ticker = _normalize_ticker(ticker)
+    if not ticker:
+        return []
+    period = period if period in HISTORY_PERIODS else "5y"
+    return cached(
+        ("history", ticker, period),
+        lambda value: HISTORY_TTL if value else FAILED_TTL,
+        lambda: _fetch_price_history(ticker, period),
+    )
+
+
+def _fetch_price_history(ticker: str, period: str) -> list[dict]:
     try:
-        t = yf.Ticker(ticker)
-        hist = t.history(period=period)
+        hist = yf.Ticker(ticker).history(period=period)
         if hist is None or hist.empty:
             return []
 
+        if period in WEEKLY_PERIODS:
+            weekly = hist.resample("W")
+            last_day = hist.index.to_series().resample("W").last()
+            hist = weekly.agg({
+                "Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum",
+            }).dropna(subset=["Close"])
+            hist.index = last_day.loc[hist.index]  # label each week by its last trading day, not the Sunday
+
         records: list[dict] = []
         for idx, row in hist.iterrows():
+            volume = _to_float(row.get("Volume"))
             records.append({
                 "date": idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx),
                 "open": _to_float(row.get("Open")),
                 "high": _to_float(row.get("High")),
                 "low": _to_float(row.get("Low")),
                 "close": _to_float(row.get("Close")),
-                "volume": int(row.get("Volume", 0)) if row.get("Volume") is not None else 0,
+                "volume": int(volume) if volume is not None else 0,
             })
         return records
+    except Exception:
+        return []
+
+
+def search_tickers(query: str, limit: int = 8) -> list[dict]:
+    """Search Yahoo for equities and ETFs matching a name or symbol. Returns [] on any failure."""
+    query = str(query or "").strip()
+    if not query:
+        return []
+    key = ("search", query.lower(), limit)
+    return cached(key, lambda value: SEARCH_TTL if value else FAILED_TTL, lambda: _fetch_search(query, limit))
+
+
+def _fetch_search(query: str, limit: int) -> list[dict]:
+    try:
+        quotes = yf.Search(query, max_results=max(limit * 2, limit), news_count=0).quotes or []
+        results = []
+        for quote in quotes:
+            if str(quote.get("quoteType", "")).upper() not in ("EQUITY", "ETF"):
+                continue
+            symbol = quote.get("symbol")
+            if not symbol:
+                continue
+            results.append({
+                "symbol": symbol,
+                "name": quote.get("shortname") or quote.get("longname") or symbol,
+                "exchange": quote.get("exchDisp") or quote.get("exchange"),
+                "type": str(quote.get("quoteType")).upper(),
+                "sector": quote.get("sectorDisp") or quote.get("sector"),
+            })
+            if len(results) >= limit:
+                break
+        return results
     except Exception:
         return []
 

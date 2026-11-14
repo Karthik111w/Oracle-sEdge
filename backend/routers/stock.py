@@ -1,10 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
-from ..services.stock_data import get_stock_data, get_price_history
-from ..services.scorecard import calculate_scorecard_by_investor, calculate_scorecard_history, INVESTOR_PROFILES
-from ..services.dcf import calculate_dcf
-from ..services.margin_of_safety import calculate_margin_of_safety
-from ..services.risk_filter import check_risk_flags
-from ..services.classifier import classify_stock
+from ..services.stock_data import get_stock_data, get_price_history, search_tickers
+from ..services.scorecard import calculate_scorecard_history, INVESTOR_PROFILES
+from ..services.analysis import build_analysis, build_lens_summary, normalize_investor, normalize_horizon
 from ..services.ai_report import generate_ai_report
 from ..services.metric_explainer import explain_metrics
 from ..services import ai_guard
@@ -28,36 +25,47 @@ def get_investors():
     }
 
 
+@router.get("/search")
+def search_stocks(q: str = ""):
+    """Ticker and company name search for the header search box."""
+    query = q.strip()
+    if not query:
+        return {"results": []}
+    return {"results": search_tickers(query)}
+
+
 @router.get("/{ticker}/analysis")
 def get_analysis(ticker: str, investor: str = "buffett", horizon: str = "long"):
-    print(f"[DEBUG] stock analysis request: ticker={ticker}, investor={investor}, horizon={horizon}")
+    investor = normalize_investor(investor)
+    horizon = normalize_horizon(horizon)
     stock_data = get_stock_data(ticker)
     if not stock_data:
         raise HTTPException(status_code=404, detail="Stock not found or data unavailable")
 
-    scorecard = calculate_scorecard_by_investor(stock_data, investor, horizon)
-    dcf = calculate_dcf(stock_data, horizon)
-    
-    if dcf and dcf.get("intrinsic_value") is not None and stock_data.get("current_price") is not None:
-        margin = calculate_margin_of_safety(dcf["intrinsic_value"], stock_data["current_price"])
-    else:
-        margin = None
-
-    risk = check_risk_flags(stock_data, sector=stock_data.get("sector", ""))
-    classification_details = classify_stock(scorecard, margin["margin_pct"] if margin else -100.0, risk["is_avoid"], horizon)
-    scorecard_trend = calculate_scorecard_history(stock_data)
+    analysis = build_analysis(stock_data, investor, horizon)
+    classification_details = analysis["classification_details"]
 
     return {
         "stock_data": stock_data,
-        "scorecard": scorecard,
-        "scorecard_trend": scorecard_trend,
-        "dcf": dcf,
-        "margin": margin,
-        "risk": risk,
+        "scorecard": analysis["scorecard"],
+        "scorecard_trend": calculate_scorecard_history(stock_data),
+        "dcf": analysis["dcf"],
+        "margin": analysis["margin"],
+        "risk": analysis["risk"],
         "classification": classification_details["classification"],
         "classification_label": classification_details["horizon_label"],
         "classification_explanation": classification_details["explanation"],
     }
+
+
+@router.get("/{ticker}/lenses")
+def get_lenses(ticker: str, horizon: str = "long"):
+    """Every investor lens scored over one data fetch, with a consensus summary."""
+    stock_data = get_stock_data(ticker)
+    if not stock_data:
+        raise HTTPException(status_code=404, detail="Stock not found or data unavailable")
+    return build_lens_summary(stock_data, normalize_horizon(horizon))
+
 
 @router.get("/{ticker}/ai-report")
 def get_ai_report_endpoint(ticker: str, request: Request, investor: str = "buffett", horizon: str = "long"):
@@ -67,16 +75,11 @@ def get_ai_report_endpoint(ticker: str, request: Request, investor: str = "buffe
     if not stock_data:
         raise HTTPException(status_code=404, detail="Stock not found")
 
-    scorecard = calculate_scorecard_by_investor(stock_data, investor, horizon)
-    dcf = calculate_dcf(stock_data, horizon)
-    
-    if dcf and dcf.get("intrinsic_value") is not None and stock_data.get("current_price") is not None:
-        margin = calculate_margin_of_safety(dcf["intrinsic_value"], stock_data["current_price"])
-    else:
-        margin = None
-
-    risk = check_risk_flags(stock_data, sector=stock_data.get("sector", ""))
-    classification_details = classify_stock(scorecard, margin["margin_pct"] if margin else -100.0, risk["is_avoid"], horizon)
+    investor = normalize_investor(investor)
+    horizon = normalize_horizon(horizon)
+    analysis = build_analysis(stock_data, investor, horizon)
+    scorecard, dcf, margin = analysis["scorecard"], analysis["dcf"], analysis["margin"]
+    classification_details = analysis["classification_details"]
 
     report_result = generate_ai_report(
         stock_data=stock_data,
@@ -105,14 +108,11 @@ def get_metric_explanations(ticker: str, request: Request, investor: str = "buff
     if not stock_data:
         raise HTTPException(status_code=404, detail="Stock not found")
 
-    scorecard = calculate_scorecard_by_investor(stock_data, investor, horizon)
-    dcf = calculate_dcf(stock_data, horizon)
-    if dcf and dcf.get("intrinsic_value") is not None and stock_data.get("current_price") is not None:
-        margin = calculate_margin_of_safety(dcf["intrinsic_value"], stock_data["current_price"])
-    else:
-        margin = None
-    risk = check_risk_flags(stock_data, sector=stock_data.get("sector", ""))
-    classification_details = classify_stock(scorecard, margin["margin_pct"] if margin else -100.0, risk["is_avoid"], horizon)
+    investor = normalize_investor(investor)
+    horizon = normalize_horizon(horizon)
+    analysis = build_analysis(stock_data, investor, horizon)
+    scorecard, dcf, margin = analysis["scorecard"], analysis["dcf"], analysis["margin"]
+    classification_details = analysis["classification_details"]
 
     # Errors are returned in the body (not raised) so the slides can show them inline.
     return explain_metrics(

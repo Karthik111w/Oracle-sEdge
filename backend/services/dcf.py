@@ -73,7 +73,45 @@ def _project(base: float, start_growth: float, years: int, discount_rate: float,
     return {"projected": projected, "terminal_value_discounted": terminal_value_discounted, "total_pv": total_pv}
 
 
-def _valuation(base: float, growth: float, cap: float, shares: float, horizon: str, beta: float, profile: dict) -> dict:
+# Starting-growth search range for the reverse DCF.
+IMPLIED_GROWTH_RANGE = (-0.10, 0.60)
+
+
+def _per_share(base: float, growth: float, years: int, rate: float, terminal_rate: float, shares: float) -> float:
+    return _project(base, growth, years, rate, terminal_rate)["total_pv"] / shares
+
+
+def _implied_growth(base: float, price: float | None, years: int, rate: float, terminal_rate: float, shares: float) -> float | None:
+    """Starting growth at which the base-case per-share value equals `price` (bisection; None if out of range)."""
+    if price is None or price <= 0:
+        return None
+    low, high = IMPLIED_GROWTH_RANGE
+    f_low = _per_share(base, low, years, rate, terminal_rate, shares) - price
+    f_high = _per_share(base, high, years, rate, terminal_rate, shares) - price
+    if f_low > 0 or f_high < 0:
+        return None
+    for _ in range(80):
+        mid = (low + high) / 2
+        if _per_share(base, mid, years, rate, terminal_rate, shares) - price < 0:
+            low = mid
+        else:
+            high = mid
+    return (low + high) / 2
+
+
+def _sensitivity(base: float, growth: float, years: int, rate: float, terminal_rate: float, shares: float) -> dict:
+    """5x5 per-share values: rows are discount rates, columns are starting growth rates."""
+    growth_rates = [max(0.0, growth + step * 0.02) for step in range(-2, 3)]
+    floor = terminal_rate + MIN_RATE_SPREAD
+    discount_rates = [max(rate + step * 0.01, floor) for step in range(-2, 3)]
+    return {
+        "growth_rates": growth_rates,
+        "discount_rates": discount_rates,
+        "values": [[_per_share(base, g, years, r, terminal_rate, shares) for g in growth_rates] for r in discount_rates],
+    }
+
+
+def _valuation(base: float, growth: float, cap: float, shares: float, horizon: str, beta: float, profile: dict, price: float | None = None) -> dict:
     """Base-case projection plus bear and bull cases, as per-share values."""
     years, discount_rate, terminal_rate = _get_valuation_params(horizon, beta, profile)
     shares = shares or 1
@@ -102,6 +140,12 @@ def _valuation(base: float, growth: float, cap: float, shares: float, horizon: s
         "projected_fcf": base_case["projected"],
         "scenarios": scenarios,
         "horizon": horizon,
+        "years": years,
+        "shares": shares,
+        "base_value": base,
+        "growth_cap": cap,
+        "implied_growth": _implied_growth(base, price, years, r, terminal_rate, shares),
+        "sensitivity": _sensitivity(base, g, years, r, terminal_rate, shares),
     }
 
 
@@ -154,7 +198,7 @@ def _dcf_model(stock_data: dict, profile: dict, horizon: str = "long") -> dict:
     latest_fcf = _normalized_base(fcf)
     if latest_fcf <= 0:
         return {"error": "Free cash flow is negative, so there is no cash stream to discount"}
-    valuation = _valuation(latest_fcf, _growth_input(fcf, profile.get("growth_cap", 0.1)), profile.get("growth_cap", 0.1), shares, horizon, beta, profile)
+    valuation = _valuation(latest_fcf, _growth_input(fcf, profile.get("growth_cap", 0.1)), profile.get("growth_cap", 0.1), shares, horizon, beta, profile, stock_data.get("current_price"))
 
 
     return {
@@ -177,7 +221,7 @@ def _earnings_based_valuation(stock_data: dict, profile: dict, horizon: str = "l
     latest_earnings = _normalized_base(net_income)
     if latest_earnings <= 0:
         return {"error": "Earnings are negative, so there is no earnings stream to discount"}
-    valuation = _valuation(latest_earnings, _growth_input(net_income, profile.get("growth_cap", 0.1)), profile.get("growth_cap", 0.1), shares, horizon, beta, profile)
+    valuation = _valuation(latest_earnings, _growth_input(net_income, profile.get("growth_cap", 0.1)), profile.get("growth_cap", 0.1), shares, horizon, beta, profile, stock_data.get("current_price"))
 
 
     return {
@@ -197,7 +241,9 @@ def _dividend_discount_model(stock_data: dict, profile: dict, horizon: str = "lo
         return _dcf_model(stock_data, profile, horizon)
 
     latest_div = _normalized_base(dividends)
-    valuation = _valuation(latest_div, _growth_input(dividends, profile.get("growth_cap", 0.1)), profile.get("growth_cap", 0.1), shares, horizon, beta, profile)
+    if latest_div is None or latest_div <= 0:
+        return _dcf_model(stock_data, profile, horizon)
+    valuation = _valuation(latest_div, _growth_input(dividends, profile.get("growth_cap", 0.1)), profile.get("growth_cap", 0.1), shares, horizon, beta, profile, stock_data.get("current_price"))
 
     return {
         "valuation_model": "ddm",
@@ -216,12 +262,14 @@ def _ffo_model(stock_data: dict, profile: dict, horizon: str = "long") -> dict:
     if not net_income or not depreciation or _last_valid(net_income) is None or _last_valid(depreciation) is None:
         return _dcf_model(stock_data, profile, horizon)
 
-    ffo_series = [ni + dep for ni, dep in zip(net_income, depreciation)]
+    ffo_series = [ni + dep if ni is not None and dep is not None else None for ni, dep in zip(net_income, depreciation)]
     if not ffo_series or _last_valid(ffo_series) is None:
         return _dcf_model(stock_data, profile, horizon)
 
     latest_ffo = _normalized_base(ffo_series)
-    valuation = _valuation(latest_ffo, _growth_input(ffo_series, profile.get("growth_cap", 0.1)), profile.get("growth_cap", 0.1), shares, horizon, beta, profile)
+    if latest_ffo is None or latest_ffo <= 0:
+        return _dcf_model(stock_data, profile, horizon)
+    valuation = _valuation(latest_ffo, _growth_input(ffo_series, profile.get("growth_cap", 0.1)), profile.get("growth_cap", 0.1), shares, horizon, beta, profile, stock_data.get("current_price"))
 
     return {
         "valuation_model": "ffo",

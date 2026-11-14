@@ -288,6 +288,8 @@ def calculate_scorecard_by_investor(stock_data: dict, investor: str = "buffett",
         ),
         "metrics": [{
             "name": metric["name"],
+            "metric": metric["metric"],
+            "raw_value": metric["value"],
             "score": metric["score"],
             "max": metric["max"],
             "value": metric["value_label"],
@@ -577,6 +579,10 @@ def calculate_scorecard_history(stock_data: dict) -> list:
         }
 
         result = calculate_scorecard(sliced_data)
+        # Early years lack the history for growth metrics; a score from a few metrics would draw a false cliff.
+        weighted = [m for m in result["metrics"] if m["max"]]
+        if not weighted or sum(1 for m in weighted if m["score"] is not None) < len(weighted) / 2:
+            continue
         year_label = years[i - 1] if i - 1 < len(years) else str(i)
 
         history.append({
