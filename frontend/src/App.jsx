@@ -10,6 +10,7 @@ import PortfolioPage from './pages/PortfolioPage';
 import SettingsPage from './pages/SettingsPage';
 import WatchlistPage from './pages/WatchlistPage';
 import ComparePage from './pages/ComparePage';
+import ScreenerPage from './pages/ScreenerPage';
 import ErrorPage from './pages/ErrorPage';
 
 function AnimatedRoutes() {
@@ -38,6 +39,7 @@ function AnimatedRoutes() {
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/watchlist" element={<WatchlistPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/screener" element={<ScreenerPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<ErrorPage title="Page not found" message="The page you requested does not exist. Try searching for a valid stock ticker." />} />
         </Routes>

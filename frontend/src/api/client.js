@@ -81,3 +81,51 @@ export async function getMarketConditions(investor = 'buffett', horizon = 'long'
   if (!res.ok) throw new Error(`Market conditions failed: ${res.statusText}`);
   return res.json();
 }
+
+async function getJson(path, fallbackMessage) {
+  const res = await fetch(withBase(path));
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || `${fallbackMessage}: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+const cleanTicker = (ticker) => (ticker || '').trim().toUpperCase().replace('.', '-');
+
+// [{ symbol, name, exchange, type, sector }]
+export async function searchTickers(query) {
+  const q = (query || '').trim();
+  if (!q) return [];
+  const data = await getJson(`/api/stock/search?q=${encodeURIComponent(q)}`, 'Search failed');
+  return data.results || [];
+}
+
+// Every investor lens for one ticker: { ticker, horizon, lenses: [...], consensus: {...} }
+export function getLensSummary(ticker, horizon = 'long') {
+  return getJson(`/api/stock/${cleanTicker(ticker)}/lenses?horizon=${encodeURIComponent(horizon)}`, 'Lens summary failed');
+}
+
+// { status: 'warming' | 'ready', progress: { done, total }, updated_at, rows: [...] }
+export function getScreener(investor = 'buffett', horizon = 'long') {
+  return getJson(`/api/screener?investor=${encodeURIComponent(investor)}&horizon=${encodeURIComponent(horizon)}`, 'Screener failed');
+}
+
+// { indices: [{ symbol, name, price, change_pct, spark: [...] }], updated_at }
+export function getMarketOverview() {
+  return getJson('/api/market/overview', 'Market overview failed');
+}
+
+// Positions, sector allocation, correlation, 1y performance vs SPY and warnings for a set of holdings.
+export async function analyzePortfolio(holdings, investor = 'buffett', horizon = 'long') {
+  const res = await fetch(withBase('/api/portfolio/analyze'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ holdings, investor, horizon }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || res.statusText || 'Portfolio analysis failed');
+  }
+  return res.json();
+}
