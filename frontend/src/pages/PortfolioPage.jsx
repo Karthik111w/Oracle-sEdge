@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import PortfolioForm from '../components/PortfolioForm';
 import PortfolioCharts from '../components/PortfolioCharts';
-import LoadingSpinner from '../components/LoadingSpinner';
+import AnalysisView, { AnalysisSkeleton } from '../components/portfolio/AnalysisView';
 import SegmentedControl from '../components/SegmentedControl';
-import { optimizePortfolio } from '../api/client';
+import { analyzePortfolio, optimizePortfolio } from '../api/client';
 import { LENSES } from '../components/home/lenses';
+import { usePrefs } from '../lib/storage';
+import '../styles/portfolio.css';
 
 const INVESTOR_OPTIONS = LENSES.map((l) => ({ value: l.value, label: l.label }));
 
@@ -13,77 +15,140 @@ const HORIZON_OPTIONS = [
   { value: 'short', label: 'Short term' },
 ];
 
+const idle = { status: 'idle', data: null, error: null };
+
 const PortfolioPage = () => {
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
+  const [prefs] = usePrefs();
+  const [investor, setInvestor] = useState(prefs.investor);
+  const [horizon, setHorizon] = useState(prefs.horizon);
+  const [analysis, setAnalysis] = useState(idle);
+  const [optimizer, setOptimizer] = useState(idle);
   const [activeStrategy, setActiveStrategy] = useState('balanced');
-  const [selectedInvestor, setSelectedInvestor] = useState('buffett');
-  const [selectedHorizon, setSelectedHorizon] = useState('long');
-  const [error, setError] = useState(null);
-  const [lastRequest, setLastRequest] = useState(null);
+  const lastRequest = useRef(null);
+  const seq = useRef({ analysis: 0, optimizer: 0 });
 
   // investor/horizon are passed in explicitly so a lens change re-runs with the new value,
-  // not the one captured before the state update.
-  const runOptimize = async (req, investor, horizon) => {
-    setLoading(true);
-    setError(null);
-    setLastRequest(req);
+  // not the one captured before the state update. Late responses from older runs are dropped.
+  const runAnalysis = async (req, inv, hor) => {
+    const id = ++seq.current.analysis;
+    setAnalysis((a) => ({ ...a, status: 'loading', error: null }));
     try {
-      const data = await optimizePortfolio(req.holdings, req.cashAvailable, req.useRecommendations, req.accountValue, investor, horizon);
-      setResults(data);
-      setActiveStrategy((cur) => (data.strategies?.[cur] ? cur : 'balanced'));
+      const data = await analyzePortfolio(req.holdings, inv, hor);
+      if (id === seq.current.analysis) setAnalysis({ status: 'ok', data, error: null });
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      if (id === seq.current.analysis) setAnalysis({ status: 'error', data: null, error: err.message });
     }
   };
 
-  const handleSubmit = (holdings, cashAvailable = 0, useRecommendations = false, accountValue = 0) =>
-    runOptimize({ holdings, cashAvailable, useRecommendations, accountValue }, selectedInvestor, selectedHorizon);
-
-  const handleInvestorSelect = (investor) => {
-    setSelectedInvestor(investor);
-    if (lastRequest) runOptimize(lastRequest, investor, selectedHorizon);
+  const runOptimize = async (req, inv, hor) => {
+    const id = ++seq.current.optimizer;
+    setOptimizer((o) => ({ ...o, status: 'loading', error: null }));
+    try {
+      const data = await optimizePortfolio(req.holdings, req.cashAvailable, req.useRecommendations, req.accountValue, inv, hor);
+      if (id !== seq.current.optimizer) return;
+      setOptimizer({ status: 'ok', data, error: null });
+      setActiveStrategy((cur) => (data.strategies?.[cur] ? cur : 'balanced'));
+    } catch (err) {
+      if (id === seq.current.optimizer) setOptimizer({ status: 'error', data: null, error: err.message });
+    }
   };
 
-  const handleHorizonSelect = (horizon) => {
-    setSelectedHorizon(horizon);
-    if (lastRequest) runOptimize(lastRequest, selectedInvestor, horizon);
+  const handleAnalyze = (req) => {
+    lastRequest.current = { ...lastRequest.current, analyze: req };
+    runAnalysis(req, investor, horizon);
   };
 
-  const strategyOptions = Object.entries(results?.strategies || {}).map(([key, s]) => ({ value: key, label: s.label }));
+  const handleOptimize = (req) => {
+    lastRequest.current = { ...lastRequest.current, optimize: req };
+    runOptimize(req, investor, horizon);
+  };
+
+  // Re-run whichever views are showing.
+  const rerun = (inv, hor) => {
+    const last = lastRequest.current || {};
+    if (last.analyze && analysis.status !== 'idle') runAnalysis(last.analyze, inv, hor);
+    if (last.optimize && optimizer.status !== 'idle') runOptimize(last.optimize, inv, hor);
+  };
+
+  const handleInvestor = (value) => {
+    setInvestor(value);
+    rerun(value, horizon);
+  };
+
+  const handleHorizon = (value) => {
+    setHorizon(value);
+    rerun(investor, value);
+  };
+
+  const investorLabel = LENSES.find((l) => l.value === investor)?.label || investor;
+  const strategyOptions = Object.entries(optimizer.data?.strategies || {}).map(([key, s]) => ({ value: key, label: s.label }));
+  const busy = analysis.status === 'loading' || optimizer.status === 'loading';
+  const nothingYet = analysis.status === 'idle' && optimizer.status === 'idle';
 
   return (
-    <div className="page">
+    <div className="page page--wide">
       <header className="page-head">
-        <h1>Portfolio optimizer</h1>
+        <h1>Portfolio</h1>
         <p className="page-sub">
-          Rebalance your holdings for a better return per unit of risk (Sharpe ratio). Positions that score poorly under the chosen lens are held back.
+          Check how your holdings fit together, then see how the weights could change for a better return per unit of risk. Positions that score poorly under the chosen lens are held back.
         </p>
       </header>
 
-      <div className="analysis-controls pf-controls">
-        <SegmentedControl id="portfolio-investor" label="Investor lens" options={INVESTOR_OPTIONS} value={selectedInvestor} onChange={handleInvestorSelect} />
-        <SegmentedControl id="portfolio-horizon" label="Horizon" options={HORIZON_OPTIONS} value={selectedHorizon} onChange={handleHorizonSelect} tone="teal" />
+      <div className="analysis-controls pf2-controls">
+        <SegmentedControl id="portfolio-investor" label="Investor lens" options={INVESTOR_OPTIONS} value={investor} onChange={handleInvestor} />
+        <SegmentedControl id="portfolio-horizon" label="Horizon" options={HORIZON_OPTIONS} value={horizon} onChange={handleHorizon} tone="teal" />
       </div>
 
-      <PortfolioForm onSubmit={handleSubmit} loading={loading} selectedInvestor={selectedInvestor} selectedHorizon={selectedHorizon} />
+      <PortfolioForm onAnalyze={handleAnalyze} onOptimize={handleOptimize} busy={busy} selectedInvestor={investor} selectedHorizon={horizon} />
 
-      {error && (
-        <p className="inline-error" role="alert">
-          The optimization failed: {error}
-        </p>
+      {nothingYet && (
+        <section className="pf2-empty" aria-label="Before the first run">
+          <h2>Nothing analyzed yet</h2>
+          <p>
+            Add your holdings above and choose Analyze portfolio for value, risk, sector mix, correlation and a one-year comparison with SPY. Optimize weights suggests a target mix and the trades to reach it.
+          </p>
+        </section>
       )}
 
-      {loading ? (
-        <LoadingSpinner text="Optimizing: fetching two years of daily returns and building the covariance matrix" />
-      ) : results ? (
-        <div className="pf-output">
-          <SegmentedControl id="portfolio-strategy" label="Strategy" options={strategyOptions} value={activeStrategy} onChange={setActiveStrategy} />
-          <PortfolioCharts results={results} activeStrategy={activeStrategy} />
-        </div>
-      ) : null}
+      {analysis.status !== 'idle' && (
+        <section className="pf2-section" aria-labelledby="pf2-analysis-title" aria-live="polite">
+          <h2 id="pf2-analysis-title" className="pf2-section-title">Analysis</h2>
+          {analysis.status === 'loading' && <AnalysisSkeleton />}
+          {analysis.status === 'error' && (
+            <p className="inline-error" role="alert">
+              The analysis failed: {analysis.error}
+            </p>
+          )}
+          {analysis.status === 'ok' && <AnalysisView data={analysis.data} investorLabel={investorLabel} />}
+        </section>
+      )}
+
+      {optimizer.status !== 'idle' && (
+        <section className="pf2-section" aria-labelledby="pf2-opt-title" aria-live="polite">
+          <h2 id="pf2-opt-title" className="pf2-section-title">Optimizer</h2>
+          {optimizer.status === 'loading' && (
+            <div className="pf2-stack-gap" aria-busy="true">
+              <p className="panel-note">Fetching two years of daily returns and building the covariance matrix. This can take up to 20 seconds.</p>
+              <div className="panel">
+                <div className="skel skel-md" />
+                <div className="skel skel-row pf2-skel-row" />
+                <div className="skel skel-row pf2-skel-row" />
+              </div>
+            </div>
+          )}
+          {optimizer.status === 'error' && (
+            <p className="inline-error" role="alert">
+              The optimization failed: {optimizer.error}
+            </p>
+          )}
+          {optimizer.status === 'ok' && (
+            <div className="pf2-stack-gap">
+              <SegmentedControl id="portfolio-strategy" label="Strategy" options={strategyOptions} value={activeStrategy} onChange={setActiveStrategy} />
+              <PortfolioCharts results={optimizer.data} activeStrategy={activeStrategy} />
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 };

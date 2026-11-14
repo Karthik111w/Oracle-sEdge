@@ -1,8 +1,20 @@
 import React from 'react';
 import { formatMoney } from './home/LensVerdictCard';
+import '../styles/portfolio.css';
 
 // Gold steps for allocation segments, largest first; one accent only.
 const SHADES = [1, 0.75, 0.55, 0.42, 0.32, 0.25, 0.2, 0.16];
+
+// Plain-language summary of the biggest weight changes, in percentage points.
+function describeChanges(rows) {
+  const moves = rows
+    .map((h) => ({ ticker: h.ticker, delta: h.optimized_weight - h.current_weight, to: h.optimized_weight }))
+    .filter((m) => Number.isFinite(m.delta) && Math.abs(m.delta) >= 0.005);
+  const ups = moves.filter((m) => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
+  const downs = moves.filter((m) => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 3);
+  const fmt = (m) => `${m.ticker} (${m.delta > 0 ? '+' : '-'}${Math.abs(m.delta * 100).toFixed(1)} points, to ${(m.to * 100).toFixed(1)}%)`;
+  return { ups: ups.map(fmt), downs: downs.map(fmt), none: moves.length === 0 };
+}
 
 const pct = (v, digits = 1) => (Number.isFinite(v) ? `${(v * 100).toFixed(digits)}%` : 'n/a');
 const signed = (v, digits = 2) => `${v > 0 ? '+' : ''}${v.toFixed(digits)}`;
@@ -53,13 +65,14 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
   if (!strategy) return null;
 
   const rows = [...strategy.holdings].sort((a, b) => b.optimized_weight - a.optimized_weight);
+  const changes = describeChanges(rows);
 
   return (
     <div className="pf-results">
       <section className="panel" aria-labelledby="pf-summary-title">
         <header className="panel-head">
           <div>
-            <h2 id="pf-summary-title">{strategy.label}</h2>
+            <h3 id="pf-summary-title">{strategy.label}</h3>
             <p className="panel-note">{strategy.description} Expected figures are annualized from two years of daily returns.</p>
           </div>
         </header>
@@ -80,6 +93,26 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
         )}
         {strategy.note && <p className="panel-text">{strategy.note}</p>}
 
+        <div className="pf2-changes">
+          <h4>What this changes</h4>
+          {changes.none ? (
+            <p className="panel-text">The target is within half a point of your current weights, so no trades are suggested.</p>
+          ) : (
+            <ul className="plain-list">
+              {changes.ups.length > 0 && (
+                <li>
+                  Largest increases: <span className="mono">{changes.ups.join(', ')}</span>.
+                </li>
+              )}
+              {changes.downs.length > 0 && (
+                <li>
+                  Largest decreases: <span className="mono">{changes.downs.join(', ')}</span>.
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+
         <div className="alloc-group">
           <AllocationBar label="Now" rows={rows} field="current_weight" />
           <AllocationBar label="Target" rows={rows} field="optimized_weight" />
@@ -88,9 +121,12 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
 
       <section className="panel" aria-labelledby="pf-trades-title">
         <header className="panel-head">
-          <h2 id="pf-trades-title">Rebalancing</h2>
+          <div>
+            <h3 id="pf-trades-title">Rebalancing trades</h3>
+            <p className="panel-note">Share changes to reach the target weights at today's prices.</p>
+          </div>
         </header>
-        <div className="table-scroll">
+        <div className="pf2-scroll" tabIndex={0} role="region" aria-label="Rebalancing trades, scrolls horizontally">
           <table className="score-table pf-table">
             <thead>
               <tr>
