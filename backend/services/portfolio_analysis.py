@@ -15,6 +15,8 @@ RISK_FREE = 0.04
 CONCENTRATION_LIMIT = 0.25
 SECTOR_LIMIT = 0.5
 MIN_HISTORY = 30
+# A holding needs this share of the window's rows to take part in performance and risk stats.
+MIN_WINDOW_COVERAGE = 0.8
 DATA_TTL = 600
 
 
@@ -34,6 +36,20 @@ def _num(value, digits: int = 4) -> Optional[float]:
     if math.isnan(f) or math.isinf(f):
         return None
     return round(f, digits)
+
+
+def sanitize(value):
+    """Replace NaN/inf floats anywhere in a response structure with None so JSON encoding cannot fail."""
+    if isinstance(value, dict):
+        return {k: sanitize(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [sanitize(v) for v in value]
+    if isinstance(value, (float, np.floating)):
+        f = float(value)
+        return f if math.isfinite(f) else None
+    if isinstance(value, np.integer):
+        return int(value)
+    return value
 
 
 def _cached_stock(ticker: str) -> Optional[dict]:
@@ -75,10 +91,15 @@ def max_drawdown(series: pd.Series) -> Optional[float]:
 def compute_performance(closes: pd.DataFrame, weights: dict[str, float], benchmark: pd.Series) -> Optional[dict]:
     """Buy-and-hold at the given weights, both lines normalised to 100 on the first common date.
 
-    Weights are renormalised over the tickers that have history. Returns None if there is not
-    enough overlapping data.
+    Only holdings with at least MIN_WINDOW_COVERAGE of the benchmark's rows take part, so one
+    recent listing cannot shorten the window for everyone. Weights are renormalised over those
+    holdings and the excluded tickers are returned under "excluded". Returns None if there is
+    not enough overlapping data.
     """
-    cols = [t for t in weights if t in closes.columns]
+    window = int(benchmark.notna().sum())
+    present = [t for t in weights if t in closes.columns]
+    cols = [t for t in present if closes[t].notna().sum() >= MIN_WINDOW_COVERAGE * window]
+    excluded = [t for t in present if t not in cols]
     if not cols:
         return None
     frame = closes[cols].copy()
@@ -108,6 +129,7 @@ def compute_performance(closes: pd.DataFrame, weights: dict[str, float], benchma
     keep = [d for d in keep if d in port.index]
 
     return {
+        "excluded": excluded,
         "dates": [d.strftime("%Y-%m-%d") for d in keep],
         "portfolio": [round(float(port.loc[d]), 2) for d in keep],
         "benchmark": [round(float(bench.loc[d]), 2) for d in keep],
@@ -148,7 +170,7 @@ def _merge_holdings(holdings: list[dict]) -> dict[str, float]:
             shares = float(h.get("shares") or 0)
         except (TypeError, ValueError):
             shares = 0.0
-        if not ticker or shares <= 0 or math.isnan(shares):
+        if not ticker or shares <= 0 or not math.isfinite(shares):
             continue
         merged[ticker] = merged.get(ticker, 0.0) + shares
     return merged
@@ -246,11 +268,20 @@ def analyze_portfolio(holdings: list[dict], investor: str = "buffett", horizon: 
         performance = compute_performance(closes, {p["ticker"]: p["weight"] for p in positions}, closes[BENCHMARK])
     if performance:
         stats = performance.pop("stats")
+        excluded = performance.pop("excluded")
+        if excluded:
+            warnings.append(
+                f"{', '.join(excluded)} has less than {MIN_WINDOW_COVERAGE:.0%} of the one-year price history, "
+                "so it is left out of the performance and risk figures; the other holdings are reweighted."
+                if len(excluded) == 1 else
+                f"{', '.join(excluded)} have less than {MIN_WINDOW_COVERAGE:.0%} of the one-year price history, "
+                "so they are left out of the performance and risk figures; the other holdings are reweighted."
+            )
     else:
         performance = {"dates": [], "portfolio": [], "benchmark": []}
         warnings.append("Performance history was not available.")
 
-    return {
+    return sanitize({
         "total_value": round(sum(p["value"] for p in positions), 2),
         "positions": positions,
         "sector_allocation": sectors,
@@ -260,7 +291,7 @@ def analyze_portfolio(holdings: list[dict], investor: str = "buffett", horizon: 
         "performance": performance,
         "stats": stats,
         "warnings": warnings,
-    }
+    })
 
 
 def _safe_stock(ticker: str) -> Optional[dict]:

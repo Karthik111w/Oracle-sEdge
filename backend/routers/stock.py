@@ -8,6 +8,8 @@ from ..services import ai_guard
 
 router = APIRouter(prefix="/api/stock", tags=["Stock"])
 
+SEARCH_MAX_LENGTH = 64
+
 @router.get("/investors")
 def get_investors():
     """Return all investor profiles with term/philosophy metadata."""
@@ -28,7 +30,7 @@ def get_investors():
 @router.get("/search")
 def search_stocks(q: str = ""):
     """Ticker and company name search for the header search box."""
-    query = q.strip()
+    query = q.strip()[:SEARCH_MAX_LENGTH]
     if not query:
         return {"results": []}
     return {"results": search_tickers(query)}

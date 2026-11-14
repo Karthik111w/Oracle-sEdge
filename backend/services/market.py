@@ -18,6 +18,8 @@ INDICES = [
 OVERVIEW_TTL = 600
 SPARK_POINTS = 30
 
+MAX_ENTRIES = 64
+
 _lock = threading.Lock()
 _store: dict[str, tuple[float, Any]] = {}
 
@@ -32,7 +34,12 @@ def ttl_cached(key: str, ttl: float, loader: Callable[[], Any]) -> Any:
     value = loader()
     if value is not None:
         with _lock:
+            for stale in [k for k, (expires, _) in _store.items() if expires <= now]:
+                del _store[stale]
+            _store.pop(key, None)
             _store[key] = (now + ttl, value)
+            while len(_store) > MAX_ENTRIES:
+                del _store[next(iter(_store))]
     return value
 
 

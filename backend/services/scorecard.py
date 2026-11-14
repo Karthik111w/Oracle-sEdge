@@ -545,6 +545,9 @@ def _earnings_consistency_pct(stock_data):
         1 for i in range(1, len(eps)) if eps[i] > eps[i - 1]
     )
     return positive_growth_years / (len(eps) - 1)
+MIN_HISTORY_WEIGHT_COVERAGE = 0.8
+
+
 def calculate_scorecard_history(stock_data: dict) -> list:
     """
     Calculate the Buffett Scorecard score for each historical year available.
@@ -581,7 +584,11 @@ def calculate_scorecard_history(stock_data: dict) -> list:
         result = calculate_scorecard(sliced_data)
         # Early years lack the history for growth metrics; a score from a few metrics would draw a false cliff.
         weighted = [m for m in result["metrics"] if m["max"]]
-        if not weighted or sum(1 for m in weighted if m["score"] is not None) < len(weighted) / 2:
+        # The total renormalises over scored metrics, so require them to carry most of the weight
+        # or a year with only a few scorable metrics can spike to 100.
+        total_weight = sum(m["max"] for m in weighted)
+        scored_weight = sum(m["max"] for m in weighted if m["score"] is not None)
+        if not weighted or total_weight <= 0 or scored_weight < MIN_HISTORY_WEIGHT_COVERAGE * total_weight:
             continue
         year_label = years[i - 1] if i - 1 < len(years) else str(i)
 

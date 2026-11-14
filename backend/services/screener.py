@@ -5,11 +5,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from .stock_data import get_stock_data
-from .scorecard import calculate_scorecard_by_investor
-from .dcf import calculate_dcf
-from .margin_of_safety import calculate_margin_of_safety
-from .risk_filter import check_risk_flags
-from .classifier import classify_stock
+from .analysis import build_analysis, normalize_investor, normalize_horizon
 from .portfolio_optimizer import INVESTOR_CANDIDATE_UNIVERSE
 
 # Liquid US large caps, a handful per GICS sector.
@@ -40,6 +36,10 @@ CORE_UNIVERSE = [
 
 WARM_WORKERS = 4
 REFRESH_AFTER = 30 * 60
+# After a warm where fewer than half the tickers loaded, try the whole universe again soon.
+POOR_WARM_RETRY_AFTER = 2 * 60
+# A ticker that failed is retried on a later request after this long.
+FAILED_RETRY_AFTER = 60
 
 
 def _build_universe() -> list[str]:
@@ -55,10 +55,19 @@ UNIVERSE = _build_universe()
 _lock = threading.Lock()
 _raw: dict[str, dict] = {}
 _failed: dict[str, str] = {}
-_state = {"warming": False, "done": 0, "total": len(UNIVERSE), "updated_at": None, "updated_ts": None}
+_failed_at: dict[str, float] = {}
+_state = {
+    "warming": False,  # a worker thread is running
+    "full": False,  # ... and it is walking the whole universe (not just retrying failures)
+    "completed": False,  # at least one full warm has finished
+    "done": 0,
+    "total": len(UNIVERSE),
+    "updated_at": None,
+    "next_refresh_ts": None,
+}
 
 
-def _fetch_one(ticker: str) -> None:
+def _fetch_one(ticker: str) -> bool:
     try:
         data = get_stock_data(ticker)
     except Exception as exc:
@@ -70,33 +79,55 @@ def _fetch_one(ticker: str) -> None:
         if data:
             _raw[ticker] = data
             _failed.pop(ticker, None)
+            _failed_at.pop(ticker, None)
         else:
             _failed[ticker] = reason
-        _state["done"] += 1
+            _failed_at[ticker] = time.time()
+        if _state["full"]:
+            _state["done"] += 1
+    return bool(data)
 
 
-def _warm(tickers: list[str]) -> None:
+def _warm(tickers: list[str], full: bool) -> None:
+    ok = 0
     try:
         with ThreadPoolExecutor(max_workers=WARM_WORKERS) as pool:
-            list(pool.map(_fetch_one, tickers))
+            ok = sum(pool.map(_fetch_one, tickers))
     finally:
         with _lock:
             _state["warming"] = False
-            _state["updated_ts"] = time.time()
-            _state["updated_at"] = datetime.now(timezone.utc).isoformat()
+            if full:
+                poor = ok * 2 < len(tickers)
+                _state["completed"] = True
+                _state["next_refresh_ts"] = time.time() + (POOR_WARM_RETRY_AFTER if poor else REFRESH_AFTER)
+                if ok:
+                    _state["updated_at"] = datetime.now(timezone.utc).isoformat()
 
 
 def ensure_warm() -> None:
-    """Start the background warmer if there is no data yet or it is stale. Never runs two at once."""
+    """Start the background worker if the data is missing, stale, or some tickers failed. Never runs two at once."""
     with _lock:
         if _state["warming"]:
             return
-        ts = _state["updated_ts"]
-        if ts is not None and time.time() - ts < REFRESH_AFTER:
-            return
-        _state.update(warming=True, done=0, total=len(UNIVERSE))
-        tickers = list(UNIVERSE)
-    threading.Thread(target=_warm, args=(tickers,), daemon=True, name="screener-warmer").start()
+        now = time.time()
+        next_refresh = _state["next_refresh_ts"]
+        if not _state["completed"] or next_refresh is None or now >= next_refresh:
+            tickers, full = list(UNIVERSE), True
+        else:
+            tickers = [t for t in UNIVERSE if t in _failed and now - _failed_at.get(t, 0) >= FAILED_RETRY_AFTER]
+            full = False
+            if not tickers:
+                return
+        _state["warming"] = True
+        _state["full"] = full
+        if full:
+            _state.update(done=0, total=len(tickers))
+    try:
+        threading.Thread(target=_warm, args=(tickers, full), daemon=True, name="screener-warmer").start()
+    except Exception:
+        with _lock:
+            _state["warming"] = False
+        raise
 
 
 def reset_state() -> None:
@@ -104,27 +135,19 @@ def reset_state() -> None:
     with _lock:
         _raw.clear()
         _failed.clear()
-        _state.update(warming=False, done=0, total=len(UNIVERSE), updated_at=None, updated_ts=None)
+        _failed_at.clear()
+        _state.update(warming=False, full=False, completed=False, done=0, total=len(UNIVERSE), updated_at=None, next_refresh_ts=None)
 
 
 def analyze_stock(stock_data: dict, investor: str, horizon: str) -> dict:
-    """Scorecard, DCF, margin, risk and classification for one stock, null-safe."""
-    scorecard = calculate_scorecard_by_investor(stock_data, investor, horizon)
-    price = stock_data.get("current_price")
-    try:
-        dcf = calculate_dcf(stock_data, horizon)
-    except Exception:
-        dcf = None
-    margin = None
-    if dcf and dcf.get("intrinsic_value") is not None and price is not None:
-        margin = calculate_margin_of_safety(dcf["intrinsic_value"], price)
-    risk = check_risk_flags(stock_data, sector=stock_data.get("sector", ""))
-    details = classify_stock(scorecard, margin["margin_pct"] if margin else -100.0, risk["is_avoid"], horizon)
+    """Flat view of analysis.build_analysis (kept for the screener rows and the portfolio analysis)."""
+    result = build_analysis(stock_data, investor, horizon)
+    details = result["classification_details"]
     return {
-        "scorecard": scorecard,
-        "dcf": dcf,
-        "margin": margin,
-        "risk": risk,
+        "scorecard": result["scorecard"],
+        "dcf": result["dcf"],
+        "margin": result["margin"],
+        "risk": result["risk"],
         "classification": details["classification"],
         "classification_label": details["horizon_label"],
     }
@@ -173,10 +196,14 @@ def build_row(stock_data: dict, investor: str, horizon: str) -> Optional[dict]:
 
 
 def get_screener(investor: str = "buffett", horizon: str = "long") -> dict:
+    investor = normalize_investor(investor)
+    horizon = normalize_horizon(horizon)
     ensure_warm()
     with _lock:
         snapshot = list(_raw.values())
-        status = "warming" if _state["warming"] else "ready"
+        # Stale rows stay valid during a refresh, so "warming" only means no warm has ever finished.
+        status = "ready" if _state["completed"] else "warming"
+        refreshing = _state["warming"] and _state["completed"]
         progress = {"done": _state["done"], "total": _state["total"]}
         updated_at = _state["updated_at"]
     rows = []
@@ -190,6 +217,7 @@ def get_screener(investor: str = "buffett", horizon: str = "long") -> dict:
     rows.sort(key=lambda r: (r["score"] is None, -(r["score"] or 0), r["ticker"] or ""))
     return {
         "status": status,
+        "refreshing": refreshing,
         "progress": progress,
         "updated_at": updated_at,
         "investor": investor,

@@ -1,4 +1,5 @@
 import threading
+import time
 
 import numpy as np
 import pandas as pd
@@ -143,6 +144,94 @@ def test_fresh_data_is_not_refetched(monkeypatch):
     assert calls == ["AAA"]
 
 
+def _join_warmer():
+    for t in threading.enumerate():
+        if t.name == "screener-warmer":
+            t.join(5)
+
+
+def test_poor_warm_retries_soon_and_failed_tickers_retry_after_backoff(monkeypatch):
+    monkeypatch.setattr(screener, "UNIVERSE", ["AAA", "BBB", "CCC"])
+    calls = []
+
+    def fake_fetch(ticker):
+        calls.append(ticker)
+        return make_stock(ticker) if ticker == "AAA" else None
+
+    monkeypatch.setattr(screener, "get_stock_data", fake_fetch)
+    screener.get_screener()
+    _join_warmer()
+    # 1 of 3 loaded: not marked fresh for the full interval.
+    assert screener._state["next_refresh_ts"] - time.time() <= screener.POOR_WARM_RETRY_AFTER + 1
+
+    # Inside the backoff nothing is refetched.
+    screener.get_screener()
+    _join_warmer()
+    assert sorted(calls) == ["AAA", "BBB", "CCC"]
+
+    # After the backoff only the failed tickers are retried, and progress is untouched.
+    for t in ("BBB", "CCC"):
+        screener._failed_at[t] -= screener.FAILED_RETRY_AFTER + 1
+    screener._state["next_refresh_ts"] = time.time() + 1000
+    monkeypatch.setattr(screener, "get_stock_data", lambda t: calls.append(t) or make_stock(t))
+    out = screener.get_screener()
+    _join_warmer()
+    assert sorted(calls[3:]) == ["BBB", "CCC"]
+    assert out["progress"] == {"done": 3, "total": 3}
+    assert len(screener.get_screener()["rows"]) == 3
+
+
+def test_refresh_keeps_status_ready(monkeypatch):
+    monkeypatch.setattr(screener, "UNIVERSE", ["AAA"])
+    monkeypatch.setattr(screener, "get_stock_data", lambda t: make_stock(t))
+    screener.get_screener()
+    _join_warmer()
+    screener._state["next_refresh_ts"] = time.time() - 1
+    release = threading.Event()
+    monkeypatch.setattr(screener, "get_stock_data", lambda t: release.wait(5) and make_stock(t))
+    out = screener.get_screener()
+    assert out["status"] == "ready"
+    assert out["refreshing"] is True
+    assert len(out["rows"]) == 1
+    release.set()
+    _join_warmer()
+    assert screener.get_screener()["refreshing"] is False
+
+
+def test_thread_start_failure_resets_warming_flag(monkeypatch):
+    class Boom:
+        def __init__(self, *a, **k):
+            pass
+
+        def start(self):
+            raise RuntimeError("cannot start new thread")
+
+    monkeypatch.setattr(screener.threading, "Thread", Boom)
+    with pytest.raises(RuntimeError):
+        screener.ensure_warm()
+    assert screener._state["warming"] is False
+
+
+def test_unknown_investor_and_horizon_are_normalised(monkeypatch):
+    monkeypatch.setattr(screener, "UNIVERSE", ["AAA"])
+    monkeypatch.setattr(screener, "get_stock_data", lambda t: make_stock(t))
+    out = screener.get_screener("FOO", "bar")
+    assert out["investor"] == "buffett" and out["horizon"] == "long"
+    _join_warmer()
+    assert screener.get_screener("Graham", "SHORT")["investor"] == "graham"
+
+
+def test_market_store_is_capped_and_purged():
+    for i in range(market.MAX_ENTRIES + 10):
+        market.ttl_cached(f"k{i}", 100, lambda: 1)
+    assert len(market._store) == market.MAX_ENTRIES
+    assert "k0" not in market._store
+    market.ttl_cached("short", 0.01, lambda: 1)
+    time.sleep(0.03)
+    market.ttl_cached("other", 100, lambda: 1)
+    assert "short" not in market._store
+
+
 def test_market_overview_omits_failing_index(monkeypatch):
     idx = pd.date_range("2025-01-01", periods=40, freq="B")
 
@@ -276,3 +365,65 @@ def test_analyze_portfolio_rejects_empty_and_unpriced(monkeypatch):
     monkeypatch.setattr(pa, "_cached_stock", lambda t: None)
     with pytest.raises(pa.PortfolioError):
         pa.analyze_portfolio([{"ticker": "AAA", "shares": 1}])
+
+
+def test_performance_excludes_short_history_holdings():
+    closes = make_closes(250)
+    closes["NEW"] = np.nan
+    closes.loc[closes.index[-40:], "NEW"] = 20.0 * (1.01 ** np.arange(40))
+    perf = pa.compute_performance(closes, {"AAA": 0.5, "NEW": 0.5}, closes["SPY"])
+    assert perf["excluded"] == ["NEW"]
+    # The window is still the full year, not the 40 days of the recent listing.
+    assert len(perf["dates"]) > 40
+    expected = closes["AAA"].iloc[-1] / closes["AAA"].iloc[0] - 1
+    assert perf["stats"]["return_1y"] == pytest.approx(expected, abs=1e-3)
+
+
+def test_analyze_portfolio_warns_about_excluded_tickers(monkeypatch):
+    stocks = {"AAA": make_stock("AAA", price=100.0), "NEW": make_stock("NEW", price=20.0)}
+    monkeypatch.setattr(pa, "_cached_stock", lambda t: stocks.get(t))
+    closes = make_closes(250)
+    closes["NEW"] = np.nan
+    closes.loc[closes.index[-40:], "NEW"] = 20.0
+    monkeypatch.setattr(pa, "fetch_closes", lambda tickers, period="1y": closes)
+    result = pa.analyze_portfolio([{"ticker": "AAA", "shares": 1}, {"ticker": "NEW", "shares": 1}])
+    assert any("NEW" in w and "left out of the performance" in w for w in result["warnings"])
+    assert "excluded" not in result["performance"]
+    assert len(result["performance"]["dates"]) > 40
+
+
+def test_sanitize_replaces_non_finite_floats():
+    out = pa.sanitize({"a": float("nan"), "b": [float("inf"), 1.5, np.float32("nan")], "c": {"d": -np.inf}})
+    assert out == {"a": None, "b": [None, 1.5, None], "c": {"d": None}}
+
+
+def test_portfolio_endpoints_validate_input():
+    from fastapi.testclient import TestClient
+    from backend.main import app
+    client = TestClient(app)
+
+    huge = {"holdings": [{"ticker": "KO", "shares": 1e308}, {"ticker": "PEP", "shares": 1e308}]}
+    for path in ("/api/portfolio/analyze", "/api/portfolio/optimize"):
+        r = client.post(path, json=huge)
+        assert r.status_code == 422
+        assert isinstance(r.json(), dict)
+        bad_ticker = client.post(path, json={"holdings": [{"ticker": "KO;DROP", "shares": 1}]})
+        assert bad_ticker.status_code == 422
+        too_long = client.post(path, json={"holdings": [{"ticker": "A" * 13, "shares": 1}]})
+        assert too_long.status_code == 422
+        negative = client.post(path, json={"holdings": [{"ticker": "KO", "shares": -1}]})
+        assert negative.status_code == 422
+        many = client.post(path, json={"holdings": [{"ticker": "KO", "shares": 1}] * 51})
+        assert many.status_code == 422
+    nan_body = '{"holdings": [{"ticker": "KO", "shares": NaN}]}'
+    assert client.post("/api/portfolio/analyze", content=nan_body, headers={"content-type": "application/json"}).status_code == 422
+
+
+def test_search_query_is_capped(monkeypatch):
+    from fastapi.testclient import TestClient
+    from backend.main import app
+    from backend.routers import stock as stock_router
+    seen = []
+    monkeypatch.setattr(stock_router, "search_tickers", lambda q: seen.append(q) or [])
+    TestClient(app).get("/api/stock/search", params={"q": "x" * 500})
+    assert len(seen[0]) == 64

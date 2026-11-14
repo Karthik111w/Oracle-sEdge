@@ -39,7 +39,10 @@ def build_analysis(stock_data: dict, investor: str = DEFAULT_INVESTOR, horizon: 
     investor = normalize_investor(investor)
     horizon = normalize_horizon(horizon)
     scorecard = calculate_scorecard_by_investor(stock_data, investor, horizon)
-    dcf = calculate_dcf(stock_data, horizon)
+    try:
+        dcf = calculate_dcf(stock_data, horizon)
+    except Exception:
+        dcf = {"error": "Valuation failed"}
     margin, risk = _margin_and_risk(stock_data, dcf)
     return {
         "scorecard": scorecard,

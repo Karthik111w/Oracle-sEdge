@@ -1,23 +1,32 @@
+from typing import Annotated
+
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StringConstraints
 from ..services.portfolio_optimizer import (
     optimize_portfolio,
     parse_bulk_portfolio_text,
     _get_market_conditions,
     _get_adaptive_recommendations,
 )
-from ..services.portfolio_analysis import analyze_portfolio, PortfolioError
+from ..services.portfolio_analysis import analyze_portfolio, sanitize, PortfolioError
 
 router = APIRouter(prefix="/api/portfolio", tags=["Portfolio"])
 
+MAX_HOLDINGS = 50
+MAX_SHARES = 1e9
+MAX_MONEY = 1e15
+
+Ticker = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=12, pattern=r"^[A-Za-z0-9.\-^=]+$")]
+
+
 class Holding(BaseModel):
-    ticker: str
-    shares: float
+    ticker: Ticker
+    shares: float = Field(ge=0, le=MAX_SHARES, allow_inf_nan=False)
 
 class PortfolioRequest(BaseModel):
-    holdings: list[Holding]
-    cash_available: float = 0.0
-    account_value: float = 0.0
+    holdings: list[Holding] = Field(max_length=MAX_HOLDINGS)
+    cash_available: float = Field(default=0.0, ge=0, le=MAX_MONEY, allow_inf_nan=False)
+    account_value: float = Field(default=0.0, ge=0, le=MAX_MONEY, allow_inf_nan=False)
     use_recommendations: bool = False
     investor: str = "buffett"
     horizon: str = "long"
@@ -26,7 +35,7 @@ class BulkParseRequest(BaseModel):
     raw_text: str
 
 class AnalyzeRequest(BaseModel):
-    holdings: list[Holding]
+    holdings: list[Holding] = Field(max_length=MAX_HOLDINGS)
     investor: str = "buffett"
     horizon: str = "long"
 
@@ -52,7 +61,7 @@ def optimize_portfolio_endpoint(request: PortfolioRequest):
             investor=request.investor,
             horizon=request.horizon
         )
-        return result
+        return sanitize(result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

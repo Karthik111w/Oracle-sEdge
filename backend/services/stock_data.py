@@ -83,16 +83,28 @@ def _abs_list(values: list) -> list:
     return [abs(v) if v is not None else None for v in values]
 
 
-def _dividend_yield_fraction(info: dict) -> Optional[float]:
-    """Dividend yield as a fraction. Current yfinance returns percent (2.14), older versions a fraction."""
-    raw = _to_float(info.get("dividendYield"))
-    if raw is None:
+MAX_PLAUSIBLE_YIELD = 0.25
+
+
+def _dividend_yield_fraction(info: dict, price: Optional[float] = None) -> Optional[float]:
+    """Dividend yield as a fraction, or None when it cannot be determined or looks wrong.
+
+    Prefers dividendRate / price. The dividendYield field is a percent in current yfinance
+    but was a fraction in older versions, so it is only used as a last resort (as a percent).
+    """
+    rate = _to_float(info.get("dividendRate"))
+    price = price if price and price > 0 else _to_float(info.get("currentPrice") or info.get("regularMarketPrice"))
+    candidate = None
+    if rate is not None and rate >= 0 and price and price > 0:
+        candidate = rate / price
+    if candidate is None:
+        candidate = _to_float(info.get("trailingAnnualDividendYield"))
+    if candidate is None:
+        percent = _to_float(info.get("dividendYield"))
+        candidate = percent / 100 if percent is not None else None
+    if candidate is None or candidate < 0 or candidate > MAX_PLAUSIBLE_YIELD:
         return None
-    trailing = _to_float(info.get("trailingAnnualDividendYield"))
-    as_fraction, as_percent = raw, raw / 100
-    if trailing:
-        return as_fraction if abs(as_fraction - trailing) < abs(as_percent - trailing) else as_percent
-    return as_percent if raw >= 0.2 else as_fraction
+    return candidate
 
 
 def _next_earnings_date(t) -> Optional[str]:
@@ -106,7 +118,7 @@ def _next_earnings_date(t) -> Optional[str]:
         return None
 
 
-def _build_stats(info: dict, t) -> dict:
+def _build_stats(info: dict, t, price: Optional[float] = None) -> dict:
     return {
         "pe_trailing": _to_float(info.get("trailingPE")),
         "pe_forward": _to_float(info.get("forwardPE")),
@@ -116,7 +128,7 @@ def _build_stats(info: dict, t) -> dict:
         "ev_to_ebitda": _to_float(info.get("enterpriseToEbitda")),
         "eps_trailing": _to_float(info.get("trailingEps")),
         "eps_forward": _to_float(info.get("forwardEps")),
-        "dividend_yield": _dividend_yield_fraction(info),
+        "dividend_yield": _dividend_yield_fraction(info, price),
         "payout_ratio": _to_float(info.get("payoutRatio")),
         "fifty_two_week_low": _to_float(info.get("fiftyTwoWeekLow")),
         "fifty_two_week_high": _to_float(info.get("fiftyTwoWeekHigh")),
@@ -299,7 +311,7 @@ def _fetch_stock_data(ticker: str) -> Optional[dict]:
             "employees": int(employees) if employees is not None else None,
             "country": info.get("country") or None,
             "exchange": info.get("exchange") or info.get("fullExchangeName") or None,
-            "stats": _build_stats(info, t),
+            "stats": _build_stats(info, t, current_price),
             "etf_data": {
                 "yield": etf_yield,
                 "expense_ratio": expense_ratio,
