@@ -55,15 +55,28 @@ def test_classify_stock_does_not_auto_avoid_on_risk_flag():
 
 
 def test_strategy_bounds_cap_each_asset_at_twenty_percent():
+    # Six holdings can fill 100% at 20% each, so no cap is lifted.
+    bounds = portfolio_optimizer._strategy_bounds(
+        np.array([0.3, 0.25, 0.15, 0.1, 0.1, 0.1]),
+        [95.0, 85.0, 90.0, 82.0, 88.0, 40.0],
+        80.0,
+        allow_wide=True,
+    )
+    assert bounds[0][1] == 0.2
+    assert bounds[1][1] == 0.2
+    assert bounds[5][1] == 0.1
+    assert all(u <= 0.2 + 1e-9 for _, u in bounds)
+
+
+def test_strategy_bounds_lift_cap_when_too_few_holdings_to_reach_full_investment():
     bounds = portfolio_optimizer._strategy_bounds(
         np.array([0.4, 0.3, 0.2]),
         [95.0, 85.0, 40.0],
         80.0,
         allow_wide=True,
     )
-    assert bounds[0][1] == 0.2
-    assert bounds[1][1] == 0.2
-    assert bounds[2][1] == 0.2
+    assert sum(u for _, u in bounds) >= 1.0
+    assert bounds[0][1] > 0.2 and bounds[1][1] > 0.2
 
 
 def test_balanced_horizon_keeps_base_weights_and_short_uses_momentum_tilt():

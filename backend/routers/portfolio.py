@@ -6,6 +6,7 @@ from ..services.portfolio_optimizer import (
     _get_market_conditions,
     _get_adaptive_recommendations,
 )
+from ..services.portfolio_analysis import analyze_portfolio, PortfolioError
 
 router = APIRouter(prefix="/api/portfolio", tags=["Portfolio"])
 
@@ -23,6 +24,21 @@ class PortfolioRequest(BaseModel):
 
 class BulkParseRequest(BaseModel):
     raw_text: str
+
+class AnalyzeRequest(BaseModel):
+    holdings: list[Holding]
+    investor: str = "buffett"
+    horizon: str = "long"
+
+@router.post("/analyze")
+def analyze_portfolio_endpoint(request: AnalyzeRequest):
+    holdings = [{"ticker": h.ticker, "shares": h.shares} for h in request.holdings]
+    try:
+        return analyze_portfolio(holdings, request.investor, request.horizon)
+    except PortfolioError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/optimize")
 def optimize_portfolio_endpoint(request: PortfolioRequest):

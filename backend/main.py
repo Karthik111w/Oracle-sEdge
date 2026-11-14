@@ -14,9 +14,9 @@ if not __package__:
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     import backend  # noqa: F401
-    from backend.routers import stock, portfolio
+    from backend.routers import stock, portfolio, market, screener
 else:
-    from .routers import stock, portfolio
+    from .routers import stock, portfolio, market, screener
 
 load_dotenv()
 
@@ -32,6 +32,8 @@ app.add_middleware(
 
 app.include_router(stock.router)
 app.include_router(portfolio.router)
+app.include_router(market.router)
+app.include_router(screener.router)
 
 project_root = Path(__file__).resolve().parent.parent
 frontend_dir = project_root / "frontend"
