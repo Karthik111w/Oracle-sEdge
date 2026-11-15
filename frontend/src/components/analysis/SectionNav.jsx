@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLenis } from 'lenis/react';
+import { motion, useScroll } from 'motion/react';
 
 const topbarHeight = () => document.querySelector('.topnav')?.offsetHeight || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navbar-height')) || 64;
 
@@ -9,6 +10,7 @@ const SectionNav = ({ sections }) => {
   const [active, setActive] = useState(sections[0]?.id);
   const root = useRef(null);
   const lenis = useLenis();
+  const { scrollYProgress } = useScroll();
   const ids = sections.map((s) => s.id).join('|');
 
   // Publish the navbar and this bar's heights so section anchors can clear both.
@@ -80,12 +82,13 @@ const SectionNav = ({ sections }) => {
   return (
     <nav ref={root} className="an-nav" aria-label="Sections on this page">
       <div className="an-nav-track">
-        {sections.map((s) => (
+        {sections.map((s, i) => (
           <a key={s.id} href={`#${s.id}`} className={`an-nav-link${active === s.id ? ' is-active' : ''}`} aria-current={active === s.id ? 'true' : undefined} onClick={(e) => go(e, s.id)}>
-            {s.label}
+            <span className="mono an-nav-idx">{String(i + 1).padStart(2, '0')}</span> {s.label}
           </a>
         ))}
       </div>
+      <motion.span className="an-nav-progress" style={{ scaleX: scrollYProgress }} aria-hidden="true" />
     </nav>
   );
 };

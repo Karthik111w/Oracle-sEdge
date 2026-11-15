@@ -1,5 +1,6 @@
 import React from 'react';
 import { cashStreamNoun } from '../lib/verdict';
+import OnView from './analysis/OnView';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const pct = (val) => (Number.isFinite(val) ? `${(val * 100).toFixed(1)}%` : 'n/a');
@@ -54,8 +55,9 @@ const DCFChart = ({ dcf }) => {
         </div>
       </dl>
 
-      <div className="fcf-chart" role="img" aria-label={chartLabel}>
-        <ResponsiveContainer width="100%" height={300}>
+      <OnView className="fcf-chart an-fcf" fallback={<span className="skel an-mini-skel" aria-hidden="true" />}>
+        <div className="an-mini-fill" role="img" aria-label={chartLabel}>
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
             <XAxis dataKey="year" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
@@ -71,11 +73,12 @@ const DCFChart = ({ dcf }) => {
               formatter={(value) => [`$${value.toLocaleString()}M`, undefined]}
             />
             <Legend wrapperStyle={{ paddingTop: '10px', fontSize: 12 }} />
-            <Bar dataKey="fcf" name="Projected" fill="var(--text-muted)" fillOpacity={0.35} radius={[3, 3, 0, 0]} />
-            <Bar dataKey="discounted" name="Worth today" fill="var(--color-gold)" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="fcf" name="Projected" fill="var(--text-muted)" fillOpacity={0.35} radius={[3, 3, 0, 0]} animationDuration={900} animationEasing="ease-out" />
+            <Bar dataKey="discounted" name="Worth today" fill="var(--color-gold)" radius={[3, 3, 0, 0]} animationBegin={200} animationDuration={900} animationEasing="ease-out" />
           </BarChart>
         </ResponsiveContainer>
-      </div>
+        </div>
+      </OnView>
     </section>
   );
 };

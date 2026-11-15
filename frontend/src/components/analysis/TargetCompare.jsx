@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { cashStreamNoun } from '../../lib/verdict';
 import { finite, money } from './format';
 
@@ -35,11 +36,18 @@ const TargetCompare = ({ price, fair, target, low, high, valuationModel }) => {
         </div>
       </header>
       <div className="an-compare" role="img" aria-label={summary}>
-        {rows.map((r) => (
+        {rows.map((r, i) => (
           <div key={r.key} className="an-compare-row">
             <span className="an-compare-label">{r.label}</span>
             <span className="an-compare-track">
-              <span className={`an-compare-bar is-${r.key}`} style={{ width: at(r.value) }} />
+              <motion.span
+                className={`an-compare-bar is-${r.key}`}
+                style={{ width: at(r.value), transformOrigin: 'left center' }}
+                initial={{ scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true, margin: '0px 0px -8% 0px' }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: i * 0.1 }}
+              />
               {r.key === 'target' && hasRange && <span className="an-compare-whisker" style={{ left: at(low), width: `calc(${at(high)} - ${at(low)})` }} />}
             </span>
             <span className="mono an-compare-value">

@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatMoney } from './home/LensVerdictCard';
+import { CountUp } from './fx';
 import { cashStreamNoun, marginText } from '../lib/verdict';
 
 const rate = (v) => (Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : 'n/a');
@@ -44,15 +45,15 @@ const ValuationPanel = ({ dcf, margin }) => {
       <dl className="deck-facts">
         <div>
           <dt>Fair value</dt>
-          <dd className="mono">{formatMoney(fair)}</dd>
+          <dd className="mono">{Number.isFinite(fair) ? <CountUp value={fair} format={formatMoney} /> : 'n/a'}</dd>
         </div>
         <div>
           <dt>Price</dt>
-          <dd className="mono">{formatMoney(price)}</dd>
+          <dd className="mono">{Number.isFinite(price) ? <CountUp value={price} format={formatMoney} /> : 'n/a'}</dd>
         </div>
         <div>
           <dt>Margin of safety</dt>
-          <dd className={`mono tone-${pct === null ? 'mid' : pct >= 0 ? 'pos' : 'neg'}`}>{marginText(pct)}</dd>
+          <dd className={`mono tone-${pct === null ? 'mid' : pct >= 0 ? 'pos' : 'neg'}`}>{pct === null ? 'n/a' : <CountUp value={pct} format={marginText} />}</dd>
          
         </div>
       </dl>

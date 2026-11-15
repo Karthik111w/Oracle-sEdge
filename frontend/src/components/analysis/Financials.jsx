@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import OnView from './OnView';
 import { compactMoney, finite } from './format';
 
 const axisTick = { fill: 'var(--text-muted)', fontSize: 11 };
@@ -35,39 +36,47 @@ const MARGINS = [
   { key: 'net', label: 'Net', source: 'net_income', stroke: 'var(--text-muted)', dash: '5 3' },
 ];
 
-function SmallBars({ title, data, dataKey }) {
+function SmallBars({ title, data, dataKey, order, year, setYear }) {
   const have = data.filter((d) => finite(d[dataKey]));
   if (have.length === 0) return null;
-  const last = have[have.length - 1][dataKey];
+  const shown = year ? data.find((d) => d.year === year) : null;
+  const last = shown && finite(shown[dataKey]) ? shown[dataKey] : have[have.length - 1][dataKey];
   const summary = `${title} by year: ${have.map((d) => `${d.year} ${compactMoney(d[dataKey])}`).join(', ')}.`;
   return (
     <figure className="an-mini">
       <figcaption>
         <span>{title}</span>
-        <span className="mono an-mini-latest">{compactMoney(last)}</span>
+        <span className="mono an-mini-latest">
+          {year && shown ? <span className="an-mini-year">{shown.year} </span> : null}
+          {compactMoney(last)}
+        </span>
       </figcaption>
-      <div className="an-mini-chart" role="img" aria-label={summary}>
+      <OnView className="an-mini-chart" fallback={<span className="skel an-mini-skel" aria-hidden="true" />}>
+        <div className="an-mini-fill" role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
+          <BarChart data={data} margin={{ top: 6, right: 4, left: 0, bottom: 0 }} onMouseMove={(e) => setYear(e?.activeLabel ?? null)} onMouseLeave={() => setYear(null)}>
             <CartesianGrid stroke="var(--border-color)" strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="year" tick={axisTick} axisLine={false} tickLine={false} />
             <YAxis tick={axisTick} axisLine={false} tickLine={false} width={44} tickFormatter={compactMoney} domain={[(min) => Math.min(0, min), (max) => Math.max(0, max)]} />
             <ReferenceLine y={0} stroke="var(--border-color-hover)" />
-            <Tooltip cursor={{ fill: 'var(--bg-hover)' }} formatter={(v) => [compactMoney(v), title]} {...tooltipStyle} />
-            <Bar dataKey={dataKey} radius={[3, 3, 0, 0]} isAnimationActive={false}>
+            <Tooltip cursor={{ fill: 'var(--color-gold-subtle)' }} formatter={(v) => [compactMoney(v), title]} {...tooltipStyle} />
+            <Bar dataKey={dataKey} radius={[3, 3, 0, 0]} isAnimationActive animationBegin={order * 140} animationDuration={900} animationEasing="ease-out">
               {data.map((d) => (
-                <Cell key={d.year} fill={finite(d[dataKey]) && d[dataKey] < 0 ? 'var(--color-danger)' : 'var(--color-gold)'} />
+                <Cell key={d.year} fill={finite(d[dataKey]) && d[dataKey] < 0 ? 'var(--color-danger)' : 'var(--color-gold)'} fillOpacity={year && year !== d.year ? 0.3 : 1} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      </div>
+        </div>
+      </OnView>
     </figure>
   );
 }
 
 const Financials = ({ financials }) => {
   const [showTable, setShowTable] = useState(false);
+  // The year under the pointer in any chart, highlighted in all of them.
+  const [year, setYear] = useState(null);
 
   const model = useMemo(() => {
     const years = financials?.years;
@@ -99,28 +108,31 @@ const Financials = ({ financials }) => {
   return (
     <div className="an-fin">
       <div className="an-minis">
-        {SERIES.map((s) => (
-          <SmallBars key={s.key} title={s.label} data={rows} dataKey={s.key} />
+        {SERIES.map((s, i) => (
+          <SmallBars key={s.key} title={s.label} data={rows} dataKey={s.key} order={i} year={year} setYear={setYear} />
         ))}
         {marginSeries.length > 0 && (
           <figure className="an-mini">
             <figcaption>
               <span>Margins, % of revenue</span>
             </figcaption>
-            <div className="an-mini-chart" role="img" aria-label={marginSummary}>
+            <OnView className="an-mini-chart" fallback={<span className="skel an-mini-skel" aria-hidden="true" />}>
+              <div className="an-mini-fill" role="img" aria-label={marginSummary}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={rows} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+                <LineChart data={rows} margin={{ top: 6, right: 8, left: 0, bottom: 0 }} onMouseMove={(e) => setYear(e?.activeLabel ?? null)} onMouseLeave={() => setYear(null)}>
                   <CartesianGrid stroke="var(--border-color)" strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="year" tick={axisTick} axisLine={false} tickLine={false} />
                   <YAxis tick={axisTick} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => `${Math.round(v)}%`} />
                   <Tooltip formatter={(v, name) => [finite(v) ? `${v.toFixed(1)}%` : 'n/a', name]} {...tooltipStyle} />
+                  {year && <ReferenceLine x={year} stroke="var(--color-gold)" strokeOpacity={0.6} />}
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} iconType="plainline" />
                   {marginSeries.map((m) => (
-                    <Line key={m.key} type="monotone" dataKey={m.key} name={m.label} stroke={m.stroke} strokeDasharray={m.dash} strokeWidth={2} dot={{ r: 2.5 }} connectNulls isAnimationActive={false} />
+                    <Line key={m.key} type="monotone" dataKey={m.key} name={m.label} stroke={m.stroke} strokeDasharray={m.dash} strokeWidth={2} dot={{ r: 2.5 }} connectNulls isAnimationActive animationBegin={3 * 140} animationDuration={900} animationEasing="ease-out" />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
-            </div>
+              </div>
+            </OnView>
           </figure>
         )}
       </div>

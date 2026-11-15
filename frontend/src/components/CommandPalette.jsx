@@ -52,6 +52,7 @@ export function useFocusTrap(ref, active) {
   useEffect(() => {
     if (!active) return undefined;
     const previous = opener.current;
+    const node = ref.current;
     const onKey = (e) => {
       if (e.key !== 'Tab' || !ref.current) return;
       const nodes = [...ref.current.querySelectorAll(FOCUSABLE)].filter((n) => n.offsetParent !== null || n === document.activeElement);
@@ -69,7 +70,11 @@ export function useFocusTrap(ref, active) {
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
-      if (previous && previous !== document.body && typeof previous.focus === 'function' && document.contains(previous)) previous.focus();
+      // Deferred so a dev-only effect re-run (dialog still mounted) does not pull focus out of it.
+      queueMicrotask(() => {
+        if (node?.isConnected) return;
+        if (previous && previous !== document.body && typeof previous.focus === 'function' && document.contains(previous)) previous.focus();
+      });
     };
   }, [ref, active]);
 }

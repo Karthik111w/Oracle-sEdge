@@ -1,4 +1,5 @@
 import React from 'react';
+import OnView from './analysis/OnView';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 
 // Business quality score for each past year the statements allow. Years that could not be
@@ -22,7 +23,8 @@ const ScorecardTrend = ({ trend, lensLabel }) => {
           </p>
         </div>
       </header>
-      <div className="an-trend" role="img" aria-label={summary}>
+      <OnView className="an-trend" fallback={<span className="skel an-mini-skel" aria-hidden="true" />}>
+        <div className="an-mini-fill" role="img" aria-label={summary}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
             <CartesianGrid stroke="var(--border-color)" strokeDasharray="3 3" vertical={false} />
@@ -34,10 +36,11 @@ const ScorecardTrend = ({ trend, lensLabel }) => {
               contentStyle={{ background: 'var(--bg-surface-solid)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: 12 }}
               labelStyle={{ color: 'var(--text-muted)' }}
             />
-            <Line type="monotone" dataKey="score" stroke="var(--color-gold)" strokeWidth={2} dot={{ r: 3, fill: 'var(--color-gold)' }} isAnimationActive={false} />
+            <Line type="monotone" dataKey="score" stroke="var(--color-gold)" strokeWidth={2} dot={{ r: 3, fill: 'var(--color-gold)' }} isAnimationActive animationDuration={1000} animationEasing="ease-out" />
           </LineChart>
         </ResponsiveContainer>
-      </div>
+        </div>
+      </OnView>
     </section>
   );
 };

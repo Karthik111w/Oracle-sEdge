@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
+import { CountUp } from '../fx';
 import { getLensSummary } from '../../api/client';
 import { cached } from '../../api/cache';
 import { LENSES } from '../home/lenses';
 import { finite } from './format';
-import { verdictLabel, verdictTone } from '../../lib/verdict';
+import { verdictLabel } from '../../lib/verdict';
+import { vClass, vStyle } from './verdictColor';
+
+const ease = [0.16, 1, 0.3, 1];
 
 const SHORT = Object.fromEntries(LENSES.map((l) => [l.value, l.short]));
 
@@ -38,9 +43,12 @@ const LensGrid = ({ ticker, horizon, investor, onSelect }) => {
     return (
       <div aria-busy="true">
         <span className="skel an-lens-skel-line" aria-hidden="true" />
-        <div className="an-lenses" aria-hidden="true">
+        <div className="an-rings" aria-hidden="true">
           {LENSES.map((l) => (
-            <span key={l.value} className="skel an-lens-skel" />
+            <span key={l.value} className="an-ring-skel">
+              <span className="skel an-ring-skel-dial" />
+              <span className="skel an-ring-skel-line" />
+            </span>
           ))}
         </div>
       </div>
@@ -53,20 +61,37 @@ const LensGrid = ({ ticker, horizon, investor, onSelect }) => {
   return (
     <div>
       {state.consensus?.summary && <p className="an-consensus">{state.consensus.summary}</p>}
-      <ul className="an-lenses">
-        {lenses.map((l) => {
+      <ul className="an-rings">
+        {lenses.map((l, i) => {
           const label = verdictLabel(l);
           const selected = l.investor === investor;
+          const frac = finite(l.score) ? Math.min(1, Math.max(0, l.score / 100)) : 0;
           return (
             <li key={l.investor}>
-              <button type="button" className={`an-lens${selected ? ' is-selected' : ''}`} aria-pressed={selected} onClick={() => onSelect(l.investor)} title={l.explanation}>
-                <span className="an-lens-name">{SHORT[l.investor] || l.label}</span>
-                <span className="an-lens-score">
-                  <span className="mono an-lens-num">{finite(l.score) ? Math.round(l.score) : 'n/a'}</span>
-                  <span className="muted mono an-lens-grade">{l.grade || ''}</span>
+              <button type="button" className={`an-ring ${vClass(l.classification)}${selected ? ' is-selected' : ''}`} style={vStyle(l.classification)} aria-pressed={selected} onClick={() => onSelect(l.investor)} title={l.explanation}>
+                <span className="an-ring-dial">
+                  <svg viewBox="0 0 100 100" aria-hidden="true">
+                    <circle cx="50" cy="50" r="42" className="an-ring-track" />
+                    <g transform="rotate(-90 50 50)">
+                      <motion.circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        className="an-ring-arc"
+                        initial={{ pathLength: 0 }}
+                        whileInView={{ pathLength: frac }}
+                        viewport={{ once: true, margin: '0px 0px -10% 0px' }}
+                        transition={{ duration: 1.1, ease, delay: i * 0.08 }}
+                      />
+                    </g>
+                  </svg>
+                  <span className="an-ring-score mono">
+                    {finite(l.score) ? <CountUp value={l.score} duration={1.2} /> : 'n/a'}
+                  </span>
                 </span>
-                <span className={`an-lens-verdict tone-${verdictTone(l.classification)}`}>{label}</span>
-                <span className="muted an-lens-term">{l.term === 'short' ? 'Short-term lens' : 'Long-term lens'}</span>
+                <span className="an-ring-name">{SHORT[l.investor] || l.label}</span>
+                <span className="an-ring-verdict">{label}</span>
+                <span className="muted an-ring-term">{l.grade ? `Grade ${l.grade}, ` : ''}{l.term === 'short' ? 'short term' : 'long term'}</span>
               </button>
             </li>
           );

@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { verdictLabel, verdictTone, marginText } from '../../lib/verdict';
+import { motion } from 'motion/react';
+import { verdictLabel, marginText } from '../../lib/verdict';
+import { CountUp } from '../fx';
+import { vClass, vStyle } from './verdictColor';
 import { finite, money, num, compactMoney, pct, signedPct, toneOf } from './format';
 
 const CONSENSUS = {
@@ -20,7 +23,8 @@ const formatDate = (iso) => {
   return Number.isNaN(d.getTime()) ? 'n/a' : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
-// Classification, score and the fair value comparison, beside the price chart.
+// Why the lens landed where it did. The verdict itself, its score and the fair value figures
+// are in the page header; this sits beside the price chart with the reasoning.
 export function VerdictBlock({ data, lensLabel }) {
   const label = verdictLabel(data);
   const score = data.scorecard?.total_score;
@@ -29,26 +33,22 @@ export function VerdictBlock({ data, lensLabel }) {
   const fairValue = margin?.intrinsic_value;
   const priceValue = margin?.current_price ?? data.stock_data?.current_price;
   return (
-    <div className="panel an-verdict">
-      <p className="an-kicker">Verdict, {lensLabel} lens</p>
-      <div className={`an-verdict-word tone-${verdictTone(data.classification)}`}>{label}</div>
+    <div className={`panel an-verdict ${vClass(data.classification)}`} style={vStyle(data.classification)}>
+      <p className="an-kicker">The read, {lensLabel} lens</p>
+      <div className="display an-verdict-word">{label}</div>
       <div className="an-verdict-score">
-        <span className="mono an-verdict-num">{finite(score) ? Math.round(score) : 'n/a'}</span>
+        <span className="mono an-verdict-num">{finite(score) ? <CountUp value={score} /> : 'n/a'}</span>
         <span className="muted">/100{data.scorecard?.grade ? `, grade ${data.scorecard.grade}` : ''}</span>
       </div>
-      {data.classification_explanation && <p className="panel-text">{data.classification_explanation}</p>}
+      {data.classification_explanation && <p className="panel-text an-verdict-why">{data.classification_explanation}</p>}
       <dl className="an-facts an-facts--stack">
-        <div>
-          <dt>Fair value</dt>
-          <dd className="mono">{money(margin?.intrinsic_value)}</dd>
-        </div>
-        <div>
-          <dt>Price</dt>
-          <dd className="mono">{money(priceValue)}</dd>
-        </div>
         <div>
           <dt>Margin of safety</dt>
           <dd className={`mono tone-${toneOf(pctValue)}`}>{marginText(pctValue)}</dd>
+        </div>
+        <div>
+          <dt>Fair value</dt>
+          <dd className="mono">{money(fairValue)}</dd>
         </div>
       </dl>
       {pctValue !== null && pctValue < 0 && finite(fairValue) && fairValue > 0 && finite(priceValue) && (
@@ -64,7 +64,7 @@ function RangeBar({ low, high, price }) {
   return (
     <div className="an-range">
       <div className="an-range-bar" role="img" aria-label={`Price ${money(price)}, ${at.toFixed(0)} percent of the way from the 52-week low ${money(low)} to the high ${money(high)}`}>
-        <span className="an-range-mark" style={{ left: `${at}%` }} />
+        <motion.span className="an-range-mark" initial={{ left: '0%' }} whileInView={{ left: `${at}%` }} viewport={{ once: true }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} />
       </div>
       <div className="an-range-ends mono">
         <span>{money(low)}</span>
