@@ -100,9 +100,7 @@
 .ld-readout-tab.is-active { color: var(--color-gold); border-top-color: var(--color-gold); }
 
 .ld-readout-body { min-height: 10.6rem; }
-.ld-readout-verdict { margin: 0; font-size: 2.9rem; line-height: 1; color: var(--color-gold); }
-.ld-readout-verdict.tone-pos { color: var(--color-success); }
-.ld-readout-verdict.tone-neg { color: var(--color-danger); }
+.ld-readout-verdict { margin: 0; font-size: 2.9rem; line-height: 1; }
 .ld-readout-score { margin: 0.35rem 0 0; font-size: 1.05rem; color: var(--text-heading); }
 .ld-readout-score span:last-child { color: var(--text-muted); }
 .ld-readout-note { margin: 0.6rem 0 0.9rem; font-size: var(--text-sm); line-height: 1.5; color: var(--text-secondary); }
@@ -178,7 +176,9 @@
 
 .ld-journey-rail { position: absolute; right: 0; top: 50%; display: grid; gap: 0.55rem; margin: 0; padding: 0; list-style: none; transform: translateY(-50%); }
 .ld-journey-rail button { display: block; width: 3px; height: 26px; padding: 0; border: 0; border-radius: 2px; background: var(--border-color-hover); cursor: pointer; transition: background-color 0.3s ease, height 0.4s var(--ease-out); }
-.ld-journey-rail button::after { content: ''; position: absolute; inset: -4px -12px; }
+.ld-journey-rail button::after { content: ''; position: absolute; inset: -4px -12px; border-radius: 6px; }
+.ld-journey-rail button:focus-visible { outline: none; }
+.ld-journey-rail button:focus-visible::after { outline: 2px solid var(--color-gold); outline-offset: 0; }
 .ld-journey-rail li { position: relative; }
 .ld-journey-rail button.is-active { height: 44px; background: var(--color-gold); }
 

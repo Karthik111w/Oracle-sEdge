@@ -32,7 +32,7 @@
 
   --fx-glare: rgba(242, 208, 140, 0.16);
   --fx-spot: rgba(242, 208, 140, 0.09);
-  --fx-grain-opacity: 0.05;
+  --fx-grain-opacity: 0.035;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -73,7 +73,14 @@ body {
   background-repeat: no-repeat;
 }
 
-/* Film grain over everything; never intercepts input. */
+[data-theme='light'] body {
+  background-color: var(--bg-primary);
+  background-image: radial-gradient(1200px 620px at 78% -8%, var(--color-gold-subtle), transparent 62%);
+  background-repeat: no-repeat;
+}
+
+/* Film grain over everything; never intercepts input. Plain opacity, no blend mode: a
+   full-viewport blended layer makes the compositor re-blend the whole page every frame. */
 body::after {
   content: '';
   position: fixed;
@@ -82,8 +89,8 @@ body::after {
   pointer-events: none;
   opacity: var(--fx-grain-opacity);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
 }
+@media (hover: none), (max-width: 720px) { body::after { display: none; } }
 
 ::selection { background: var(--color-gold); color: #14110a; }
 
@@ -182,12 +189,12 @@ body::after {
 /* ---- Interaction kit ---- */
 .fx-split { display: block; }
 .fx-split-mask { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: 0.08em; }
-.fx-split-word { display: inline-block; will-change: transform; }
+.fx-split-word { display: inline-block; }
 .fx-split-word.is-accent { font-style: italic; color: var(--color-gold); }
 
-.fx-magnetic { display: inline-flex; will-change: transform; }
+.fx-magnetic { display: inline-flex; }
 
-.fx-tilt { position: relative; transform-style: preserve-3d; will-change: transform; }
+.fx-tilt { position: relative; transform-style: preserve-3d; }
 .fx-tilt-glare {
   position: absolute;
   inset: 0;
@@ -203,3 +210,18 @@ body::after {
 @media (prefers-reduced-motion: reduce) {
   .panel, .fx-spot, .btn-solid, .ticker-search-btn { transition: none; }
 }
+
+/* ---- Verdict colour language: the same four colours as the 3D rings ---- */
+.vc-Buy { color: #34d399; }
+.vc-Watchlist { color: var(--color-gold); }
+.vc-Hold { color: #9aa9c7; }
+.vc-Avoid { color: #f2685f; }
+[data-theme='light'] .vc-Buy { color: #047857; }
+[data-theme='light'] .vc-Hold { color: #4a5a7a; }
+[data-theme='light'] .vc-Avoid { color: #b91c1c; }
+
+/* ---- Paper theme: brass fills are dark enough that their labels must be light ---- */
+[data-theme='light'] .btn-solid,
+[data-theme='light'] .ticker-search-btn,
+[data-theme='light'] .segmented-option.is-active:has(.segmented-thumb--gold),
+[data-theme='light'] .lens-tab.is-active { color: #fffdf8; }

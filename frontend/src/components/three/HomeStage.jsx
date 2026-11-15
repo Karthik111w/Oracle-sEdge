@@ -31,7 +31,7 @@ export default function HomeStage({ active = true }) {
   return (
     <div className={`stage${active ? '' : ' is-idle'}`} aria-hidden="true">
       <Canvas
-        dpr={[1, compact ? 1.5 : 1.75]}
+        dpr={[1, 1.5]}
         camera={{ position: [0, 0, compact ? 8.6 : 7.4], fov: 34, near: 0.1, far: 60 }}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         frameloop={active && visible ? 'always' : 'never'}

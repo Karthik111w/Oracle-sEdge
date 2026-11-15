@@ -19,13 +19,20 @@ export const VERDICT_RING = {
 };
 export const ringColor = (classification) => VERDICT_RING[classification] || '#e3b25a';
 
+let webglSupport;
+
+// Probes once and releases the probe's context: browsers cap live WebGL contexts per page.
 export function canUseWebGL() {
+  if (webglSupport !== undefined) return webglSupport;
   try {
     const canvas = document.createElement('canvas');
-    return Boolean(window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl')));
+    const gl = window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl'));
+    webglSupport = Boolean(gl);
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
   } catch {
-    return false;
+    webglSupport = false;
   }
+  return webglSupport;
 }
 
 export const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;

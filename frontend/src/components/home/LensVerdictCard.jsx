@@ -14,8 +14,6 @@ export const analysisKey = (ticker, lens) => `analysis:${ticker}:${lens}:long`;
 // Yahoo lists some names as "Coca-Cola Company (The)".
 export const displayName = (name = '') => name.replace(/^(.*) \(The\)$/, 'The $1');
 
-const VERDICT_TONE = { Buy: 'pos', Avoid: 'neg' };
-
 export const formatMoney = (v) =>
   Number.isFinite(v) ? v.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : 'n/a';
 
@@ -167,7 +165,7 @@ const LensVerdictCard = ({ lens, onSelect, onPause, onResume }) => {
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.22, ease }}
               >
-                <div className={`verdict-word tone-${VERDICT_TONE[verdict] || 'mid'}`}>{verdict}</div>
+                <div className={`verdict-word vc-${data.classification}`}>{verdict}</div>
                 <div className="verdict-why">{data.classification_explanation}</div>
               </motion.div>
             </AnimatePresence>

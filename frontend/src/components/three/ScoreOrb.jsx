@@ -1,4 +1,4 @@
-import { Suspense, useRef } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, Lightformer } from '@react-three/drei';
 import * as THREE from 'three';
@@ -40,28 +40,57 @@ function Gauge({ score, tone, color: explicit }) {
       </mesh>
       <mesh scale={[1, 1, 0.16]}>
         <sphereGeometry args={[0.8, 48, 24]} />
-        <meshPhysicalMaterial transmission={1} thickness={0.8} ior={1.5} roughness={0.05} clearcoat={1} iridescence={0.8} iridescenceIOR={1.3} />
+        <meshPhysicalMaterial color="#dfe6ff" transparent opacity={0.16} roughness={0.05} metalness={0.15} clearcoat={1} clearcoatRoughness={0.05} iridescence={0.8} iridescenceIOR={1.3} envMapIntensity={1.6} depthWrite={false} />
       </mesh>
     </group>
   );
 }
 
 // A small 3D gauge: a glass lens ringed by an arc that sweeps to the score.
-// Decorative: the number itself is rendered as text by the caller.
-// `color` (any CSS colour) overrides the tone colour, e.g. the verdict ring colour.
+// Decorative: the number itself is rendered as text by the caller. `color` (any CSS colour)
+// overrides the tone colour, e.g. the verdict ring colour.
 export default function ScoreOrb({ score, tone = 'mid', color }) {
+  const wrap = useRef(null);
+  const [onScreen, setOnScreen] = useState(true);
+
+  // Stop the render loop while the gauge is scrolled out of view or the tab is hidden.
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return undefined;
+    let inView = true;
+    const update = () => setOnScreen(inView && !document.hidden);
+    const io = new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting;
+      update();
+    });
+    io.observe(el);
+    document.addEventListener('visibilitychange', update);
+    return () => {
+      io.disconnect();
+      document.removeEventListener('visibilitychange', update);
+    };
+  }, []);
+
   return (
-    <Canvas dpr={[1, 1.75]} camera={{ position: [0, 0, 3.6], fov: 36 }} gl={{ antialias: true, alpha: true }} aria-hidden="true">
-      <Suspense fallback={null}>
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[3, 4, 5]} intensity={1.8} />
-        <Environment resolution={128} frames={1}>
-          <Lightformer form="rect" intensity={3} position={[0, 3, 2]} scale={[8, 2, 1]} rotation-x={Math.PI / 2} />
-          <Lightformer form="rect" intensity={2} color="#ffd98f" position={[-4, 0, 2]} scale={[2, 6, 1]} rotation-y={Math.PI / 2} />
-          <Lightformer form="rect" intensity={1.2} color="#9fb8ff" position={[4, 0, 1]} scale={[2, 6, 1]} rotation-y={-Math.PI / 2} />
-        </Environment>
-        <Gauge score={score} tone={tone} color={color} />
-      </Suspense>
-    </Canvas>
+    <div ref={wrap} style={{ width: '100%', height: '100%' }}>
+      <Canvas
+        dpr={[1, 1.5]}
+        camera={{ position: [0, 0, 3.6], fov: 36 }}
+        gl={{ antialias: true, alpha: true }}
+        frameloop={onScreen ? 'always' : 'never'}
+        aria-hidden="true"
+      >
+        <Suspense fallback={null}>
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[3, 4, 5]} intensity={1.8} />
+          <Environment resolution={128} frames={1}>
+            <Lightformer form="rect" intensity={3} position={[0, 3, 2]} scale={[8, 2, 1]} rotation-x={Math.PI / 2} />
+            <Lightformer form="rect" intensity={2} color="#ffd98f" position={[-4, 0, 2]} scale={[2, 6, 1]} rotation-y={Math.PI / 2} />
+            <Lightformer form="rect" intensity={1.2} color="#9fb8ff" position={[4, 0, 1]} scale={[2, 6, 1]} rotation-y={-Math.PI / 2} />
+          </Environment>
+          <Gauge score={score} tone={tone} color={color} />
+        </Suspense>
+      </Canvas>
+    </div>
   );
 }

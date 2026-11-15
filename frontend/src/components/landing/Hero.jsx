@@ -8,7 +8,7 @@ import { LENSES } from '../home/lenses';
 import { TICKER, analysisKey } from '../home/LensVerdictCard';
 import { getStockAnalysis } from '../../api/client';
 import { cached } from '../../api/cache';
-import { verdictLabel, verdictTone } from '../../lib/verdict';
+import { verdictLabel } from '../../lib/verdict';
 import { ringColor, stage } from '../three/stage';
 
 const ease = [0.16, 1, 0.3, 1];
@@ -76,7 +76,6 @@ export default function Hero() {
 
   const current = LENSES.find((l) => l.value === lens);
   const data = verdicts[lens];
-  const tone = data ? verdictTone(data.classification) : 'mid';
 
   return (
     <section className="ld-hero">
@@ -158,13 +157,12 @@ export default function Hero() {
             <span className="ld-dot" /> Live
           </span>
         </div>
-        <div className="ld-readout-tabs" role="tablist" aria-label="Investor lens">
+        <div className="ld-readout-tabs" role="group" aria-label="Investor lens">
           {LENSES.map((l, i) => (
             <button
               key={l.value}
               type="button"
-              role="tab"
-              aria-selected={l.value === lens}
+              aria-pressed={l.value === lens}
               className={`ld-readout-tab${l.value === lens ? ' is-active' : ''}`}
               onClick={() => setLens(l.value)}
             >
@@ -179,7 +177,7 @@ export default function Hero() {
         <div className="ld-readout-body" aria-live="polite">
           {data ? (
             <>
-              <p className={`ld-readout-verdict display tone-${tone}`}>{verdictLabel(data)}</p>
+              <p className={`ld-readout-verdict display vc-${data.classification}`}>{verdictLabel(data)}</p>
               <p className="ld-readout-score mono">
                 <CountUp key={lens} value={data.scorecard?.total_score} duration={0.8} />
                 <span>/100</span>

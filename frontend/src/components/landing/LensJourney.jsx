@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { motion, AnimatePresence, useMotionValueEvent, useScroll } from 'motion/react';
+import { motion, AnimatePresence, useMotionValueEvent, useReducedMotion, useScroll } from 'motion/react';
 import { useLenis } from 'lenis/react';
 import LensVerdictCard from '../home/LensVerdictCard';
 import { LENSES, weightShares } from '../home/lenses';
@@ -13,10 +13,13 @@ const COUNT = LENSES.length;
 export default function LensJourney() {
   const root = useRef(null);
   const lenis = useLenis();
+  const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
   const { scrollYProgress } = useScroll({ target: root, offset: ['start start', 'end end'] });
 
   useMotionValueEvent(scrollYProgress, 'change', (p) => {
+    // Without the pinned frame (reduced motion) the rail picks the lens, not the scroll position.
+    if (reduce) return;
     stage.journey = p;
     if (p <= 0.02) return;
     const i = Math.min(COUNT - 1, Math.max(0, Math.floor(((p - 0.1) / 0.9) * COUNT)));
@@ -29,6 +32,10 @@ export default function LensJourney() {
 
   // Jump the page to the scroll position where a given lens is in focus.
   const goTo = (i) => {
+    if (reduce) {
+      setIndex(i);
+      return;
+    }
     const el = root.current;
     if (!el) return;
     const span = el.offsetHeight - window.innerHeight;
