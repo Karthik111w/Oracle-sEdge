@@ -904,3 +904,4 @@
 .an-range-wrap input[type='range'] { border: 0; padding: 0; box-shadow: none; border-radius: 0; background: transparent; }
 .an-range-tick.is-start .an-range-tick-label { transform: translateX(-6px); }
 .an-range-tick.is-end .an-range-tick-label { transform: translateX(calc(-100% + 6px)); }
+.an-radar-dot.is-on { r: 6.5px; }

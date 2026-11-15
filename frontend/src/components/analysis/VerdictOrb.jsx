@@ -6,6 +6,8 @@ import { verdictTone } from '../../lib/verdict';
 import { vClass, vStyle } from './verdictColor';
 import { finite } from './format';
 
+import { ringColor } from '../three/stage';
+
 const ScoreOrb = lazy(() => import('../three/ScoreOrb'));
 const ease = [0.16, 1, 0.3, 1];
 
@@ -41,7 +43,7 @@ const VerdictOrb = ({ score, classification, etf = false }) => {
       {webgl && hasScore ? (
         <Suspense fallback={<StaticRing score={score} />}>
           <div className="an-orb-gl">
-            <ScoreOrb score={score} tone={verdictTone(classification)} />
+            <ScoreOrb score={score} tone={verdictTone(classification)} color={ringColor(classification)} />
           </div>
         </Suspense>
       ) : (

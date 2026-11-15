@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import OnView from './analysis/OnView';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from 'recharts';
@@ -12,8 +12,26 @@ const tone = (score, max) => {
   return 'neg';
 };
 
+// A vertex marker. Recharts animates the radar and keeps these elements from its first paint,
+// so the highlight is toggled on the DOM node (see the effect below) rather than through props.
+function RadarDot({ cx, cy, payload, onHover }) {
+  // Recharts hands over the radar point; the metric row it came from is one level down.
+  const name = payload?.payload?.full;
+  if (!name) return null;
+  return (
+    <g onMouseEnter={() => onHover(name)} onMouseLeave={() => onHover(null)}>
+      <circle cx={cx} cy={cy} r={14} fill="transparent" />
+      <circle cx={cx} cy={cy} r={3.5} className="an-radar-dot" data-metric={name} />
+    </g>
+  );
+}
+
 const ScoreCard = ({ scorecard }) => {
   const [hi, setHi] = useState(null);
+  const radarBox = useRef(null);
+  useEffect(() => {
+    radarBox.current?.querySelectorAll('.an-radar-dot').forEach((el) => el.classList.toggle('is-on', el.getAttribute('data-metric') === hi));
+  }, [hi]);
   if (!scorecard || !scorecard.metrics) return null;
 
   // Normalise each metric to 0-100 for the radar (max varies by metric and sector).
@@ -45,6 +63,7 @@ const ScoreCard = ({ scorecard }) => {
       {chartData.length >= 3 && (
         <OnView className="radar" fallback={<span className="skel an-mini-skel" aria-hidden="true" />}>
           <div
+            ref={radarBox}
             className="an-mini-fill"
             role="img"
             aria-label={`Radar chart of ${chartData.length} scored metrics as a share of their points: ${chartData.map((d) => `${d.metric} ${Math.round(d.normalized)} percent`).join(', ')}`}
@@ -81,15 +100,7 @@ const ScoreCard = ({ scorecard }) => {
                   isAnimationActive
                   animationDuration={900}
                   animationEasing="ease-out"
-                  dot={({ cx, cy, payload }) => {
-                    const on = payload.full === hi;
-                    return (
-                      <g key={payload.full} onMouseEnter={() => setHi(payload.full)} onMouseLeave={() => setHi(null)}>
-                        <circle cx={cx} cy={cy} r={14} fill="transparent" />
-                        <circle cx={cx} cy={cy} r={on ? 6.5 : 3.5} className={`an-radar-dot${on ? ' is-on' : ''}`} />
-                      </g>
-                    );
-                  }}
+                  dot={<RadarDot onHover={setHi} />}
                 />
               </RadarChart>
             </ResponsiveContainer>

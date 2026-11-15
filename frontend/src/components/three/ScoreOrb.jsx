@@ -5,12 +5,12 @@ import * as THREE from 'three';
 
 const TONE_COLOR = { pos: '#34d399', neg: '#f87171', mid: '#e3b25a' };
 
-function Gauge({ score, tone }) {
+function Gauge({ score, tone, color: explicit }) {
   const group = useRef();
   const arc = useRef();
   const drawn = useRef(0);
   const built = useRef(0);
-  const color = TONE_COLOR[tone] || TONE_COLOR.mid;
+  const color = explicit || TONE_COLOR[tone] || TONE_COLOR.mid;
   const target = THREE.MathUtils.clamp((score || 0) / 100, 0, 1);
 
   useFrame((state, dt) => {
@@ -48,7 +48,8 @@ function Gauge({ score, tone }) {
 
 // A small 3D gauge: a glass lens ringed by an arc that sweeps to the score.
 // Decorative: the number itself is rendered as text by the caller.
-export default function ScoreOrb({ score, tone = 'mid' }) {
+// `color` (any CSS colour) overrides the tone colour, e.g. the verdict ring colour.
+export default function ScoreOrb({ score, tone = 'mid', color }) {
   return (
     <Canvas dpr={[1, 1.75]} camera={{ position: [0, 0, 3.6], fov: 36 }} gl={{ antialias: true, alpha: true }} aria-hidden="true">
       <Suspense fallback={null}>
@@ -59,7 +60,7 @@ export default function ScoreOrb({ score, tone = 'mid' }) {
           <Lightformer form="rect" intensity={2} color="#ffd98f" position={[-4, 0, 2]} scale={[2, 6, 1]} rotation-y={Math.PI / 2} />
           <Lightformer form="rect" intensity={1.2} color="#9fb8ff" position={[4, 0, 1]} scale={[2, 6, 1]} rotation-y={-Math.PI / 2} />
         </Environment>
-        <Gauge score={score} tone={tone} />
+        <Gauge score={score} tone={tone} color={color} />
       </Suspense>
     </Canvas>
   );
