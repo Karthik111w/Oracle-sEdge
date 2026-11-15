@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
+import { verdictLabel, verdictTone, marginText } from '../../lib/verdict';
 import { finite, money, num, compactMoney, pct, signedPct, toneOf } from './format';
-
-export const verdictTone = (label = '') => (/avoid/i.test(label) ? 'neg' : /buy/i.test(label) ? 'pos' : 'mid');
 
 const CONSENSUS = {
   strong_buy: 'Strong buy',
@@ -23,14 +22,16 @@ const formatDate = (iso) => {
 
 // Classification, score and the fair value comparison, beside the price chart.
 export function VerdictBlock({ data, lensLabel }) {
-  const label = data.classification_label || data.classification;
+  const label = verdictLabel(data);
   const score = data.scorecard?.total_score;
   const margin = data.margin;
   const pctValue = finite(margin?.margin_pct) ? margin.margin_pct : null;
+  const fairValue = margin?.intrinsic_value;
+  const priceValue = margin?.current_price ?? data.stock_data?.current_price;
   return (
     <div className="panel an-verdict">
       <p className="an-kicker">Verdict, {lensLabel} lens</p>
-      <div className={`an-verdict-word tone-${verdictTone(label)}`}>{label || 'n/a'}</div>
+      <div className={`an-verdict-word tone-${verdictTone(data.classification)}`}>{label}</div>
       <div className="an-verdict-score">
         <span className="mono an-verdict-num">{finite(score) ? Math.round(score) : 'n/a'}</span>
         <span className="muted">/100{data.scorecard?.grade ? `, grade ${data.scorecard.grade}` : ''}</span>
@@ -43,13 +44,16 @@ export function VerdictBlock({ data, lensLabel }) {
         </div>
         <div>
           <dt>Price</dt>
-          <dd className="mono">{money(margin?.current_price ?? data.stock_data?.current_price)}</dd>
+          <dd className="mono">{money(priceValue)}</dd>
         </div>
         <div>
           <dt>Margin of safety</dt>
-          <dd className={`mono tone-${toneOf(pctValue)}`}>{signedPct(pctValue)}</dd>
+          <dd className={`mono tone-${toneOf(pctValue)}`}>{marginText(pctValue)}</dd>
         </div>
       </dl>
+      {pctValue !== null && pctValue < 0 && finite(fairValue) && fairValue > 0 && finite(priceValue) && (
+        <p className="muted an-fact-note">Price is {(priceValue / fairValue).toFixed(1)}x fair value.</p>
+      )}
     </div>
   );
 }
@@ -103,7 +107,7 @@ export function KeyStats({ stockData, isEtf }) {
         {tile('PEG', multiple(s.peg), finite(s.peg))}
         {tile('Price to book', multiple(s.price_to_book), finite(s.price_to_book))}
         {tile('EV / EBITDA', multiple(s.ev_to_ebitda), finite(s.ev_to_ebitda))}
-        {tile('Dividend yield', finite(s.dividend_yield) && s.dividend_yield > 0 ? pct(s.dividend_yield, 2) : finite(s.dividend_yield) ? 'None' : 'n/a', finite(s.dividend_yield))}
+        {!isEtf && tile('Dividend yield', finite(s.dividend_yield) && s.dividend_yield > 0 ? pct(s.dividend_yield, 2) : finite(s.dividend_yield) ? 'None' : 'n/a', finite(s.dividend_yield))}
         {tile('Payout ratio', pct(s.payout_ratio, 0), finite(s.payout_ratio))}
         {tile('Beta', num(stockData.beta, 2), finite(stockData.beta))}
         {tile('Next earnings', formatDate(s.next_earnings_date), !!s.next_earnings_date)}

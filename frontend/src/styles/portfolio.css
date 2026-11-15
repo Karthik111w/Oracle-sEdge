@@ -203,3 +203,4 @@
   .pf2-watch select { width: 100%; }
   .pf2-legend li { grid-template-columns: 14px minmax(0, 1fr) auto; }
 }
+.pf2-count { margin: 0.25rem 0 0; }

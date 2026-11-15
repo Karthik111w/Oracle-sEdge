@@ -30,6 +30,7 @@ const PREFS_KEY = 'oe_prefs';
 const RECENT_KEY = 'recently_viewed';
 const PORTFOLIO_KEYS = ['portfolio_holdings', 'portfolio_cash', 'portfolio_account_value'];
 const EXPORT_APP = 'oracles-edge';
+const MAX_HOLDINGS = 50;
 
 const finiteOr = (v, fallback) => (Number.isFinite(Number(v)) && v !== '' && v !== null ? Number(v) : fallback);
 
@@ -71,7 +72,8 @@ function parseImport(text) {
         .filter((h) => h && typeof h.ticker === 'string' && Number.isFinite(Number(h.shares)))
         .map((h) => ({ ticker: cleanTicker(h.ticker), shares: Number(h.shares) }))
         .filter((h) => h.ticker && h.shares >= 0)
-        .slice(0, 200);
+        .slice(0, MAX_HOLDINGS);
+      out.holdingsTrimmed = p.holdings.length > MAX_HOLDINGS ? p.holdings.length : 0;
     }
     if (p.cash !== undefined) out.cash = Math.max(0, finiteOr(p.cash, 0));
     if (p.account_value !== undefined) out.accountValue = Math.max(0, finiteOr(p.account_value, 0));
@@ -98,6 +100,8 @@ const SettingsPage = () => {
   const [confirmClear, setConfirmClear] = useState(false);
   const [dataMsg, setDataMsg] = useState(null);
   const fileRef = useRef(null);
+  const clearBtnRef = useRef(null);
+  const restoreClearFocus = useRef(false);
 
   useEffect(() => {
     try {
@@ -107,11 +111,21 @@ const SettingsPage = () => {
         setHasKey(true);
       }
       const storedModel = localStorage.getItem('gemini_model');
-      if (storedModel) setGeminiModel(storedModel);
+      if (storedModel) {
+        if (MODELS.some((m) => m.value === storedModel)) setGeminiModel(storedModel);
+        else localStorage.setItem('gemini_model', MODELS[0].value);
+      }
     } catch {
       // storage unavailable: settings can't persist in this browser
     }
   }, []);
+
+  useEffect(() => {
+    if (!confirmClear && restoreClearFocus.current) {
+      restoreClearFocus.current = false;
+      clearBtnRef.current?.focus();
+    }
+  }, [confirmClear]);
 
   const flash = (message) => {
     setStatus(message);
@@ -148,7 +162,7 @@ const SettingsPage = () => {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     setDataMsg({ tone: 'ok', text: 'Exported your watchlist, portfolio holdings and defaults.' });
   };
 
@@ -169,7 +183,7 @@ const SettingsPage = () => {
     try {
       if (parsed.holdings) {
         localStorage.setItem('portfolio_holdings', JSON.stringify(parsed.holdings));
-        parts.push(`${parsed.holdings.length} ${parsed.holdings.length === 1 ? 'holding' : 'holdings'}`);
+        parts.push(`${parsed.holdings.length} ${parsed.holdings.length === 1 ? 'holding' : 'holdings'}${parsed.holdingsTrimmed ? ` (limited to the first ${MAX_HOLDINGS} of ${parsed.holdingsTrimmed} rows)` : ''}`);
       }
       if (parsed.cash !== undefined) localStorage.setItem('portfolio_cash', String(parsed.cash));
       if (parsed.accountValue !== undefined) localStorage.setItem('portfolio_account_value', String(parsed.accountValue));
@@ -192,6 +206,7 @@ const SettingsPage = () => {
     } catch {
       // storage unavailable
     }
+    restoreClearFocus.current = true;
     setConfirmClear(false);
     setDataMsg({ tone: 'ok', text: 'Saved data cleared. Your API key and appearance setting were kept.' });
   };
@@ -318,13 +333,13 @@ const SettingsPage = () => {
                 <button type="button" className="btn-solid sh-danger" onClick={handleClearData} autoFocus>
                   Yes, clear saved data
                 </button>
-                <button type="button" className="btn-quiet" onClick={() => setConfirmClear(false)}>
+                <button type="button" className="btn-quiet" onClick={() => { restoreClearFocus.current = true; setConfirmClear(false); }}>
                   Cancel
                 </button>
               </div>
             </div>
           ) : (
-            <button type="button" className="btn-quiet settings-remove" onClick={() => setConfirmClear(true)}>
+            <button type="button" ref={clearBtnRef} className="btn-quiet settings-remove" onClick={() => setConfirmClear(true)}>
               Clear saved data
             </button>
           )}

@@ -11,7 +11,7 @@ const ETFProfileCard = ({ stockData }) => {
     ['Expense ratio', percent(etf.expense_ratio), 'Annual fee'],
     ['Assets under management', compactMoney(etf.total_assets), 'Fund size'],
     ['5-year return', percent(etf.five_year_return), 'Average per year'],
-    ['Dividend yield', percent(etf.yield), 'Income'],
+    ['Dividend yield', percent(finite(etf.yield) ? etf.yield : stockData.stats?.dividend_yield), 'Income'],
     ['NAV', finite(etf.nav_price) ? money(etf.nav_price) : 'n/a', 'Net asset value per share'],
     // Yahoo reports YTD return already as a percentage number.
     ['Year to date', finite(etf.ytd_return) ? signedPct(etf.ytd_return) : 'n/a', 'Price return this year'],

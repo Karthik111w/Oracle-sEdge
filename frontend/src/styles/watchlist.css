@@ -12,14 +12,14 @@
 .wl2-compare[aria-disabled='true'] { opacity: 0.5; pointer-events: none; }
 
 .wl2-scroll { position: relative; overflow-x: auto; border-top: 1px solid var(--border-color); }
-.wl2-table { width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0; font-size: var(--text-sm); }
+.wl2-table { --row-bg: var(--bg-primary); --row-hover: color-mix(in srgb, var(--text-primary) 5%, var(--bg-primary)); width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0; font-size: var(--text-sm); }
 .wl2-table th, .wl2-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-color); text-align: left; font-weight: 400; white-space: nowrap; }
+.wl2-table td, .wl2-table th { background: var(--row-bg); }
 .wl2-table .num { text-align: right; }
 .wl2-table thead th { padding: 0.4rem 0.75rem; font-size: var(--text-xs); color: var(--text-muted); }
-.wl2-table tbody tr:hover > * { background: var(--bg-hover); }
+.wl2-table tbody tr:hover > * { background: var(--row-hover); }
 
-.wl2-sticky { position: sticky; left: 0; z-index: 1; background: var(--bg-primary); min-width: 11rem; max-width: 15rem; }
-.wl2-table tbody tr:hover > .wl2-sticky { background: color-mix(in srgb, var(--text-primary) 4%, var(--bg-primary)); }
+.wl2-sticky { position: sticky; left: 0; z-index: 1; background: var(--row-bg); min-width: 11rem; max-width: 15rem; }
 
 .wl2-sort { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0; background: transparent; color: inherit; font: inherit; font-weight: 500; cursor: pointer; }
 .num .wl2-sort { flex-direction: row-reverse; }
@@ -34,6 +34,9 @@
 .wl2-verdict { font-weight: 600; }
 .wl2-err { color: var(--text-muted); }
 .wl2-remove-col { width: 3rem; }
+.wl2-remove { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: transparent; color: var(--text-muted); }
+.wl2-remove:hover { color: var(--color-danger); background: var(--bg-hover); }
+.wl2-lens { color: var(--text-primary); }
 
 .wl2-empty { padding: 2rem 0; border-top: 1px solid var(--border-color); }
 .wl2-empty h2 { margin-bottom: 0.4rem !important; }

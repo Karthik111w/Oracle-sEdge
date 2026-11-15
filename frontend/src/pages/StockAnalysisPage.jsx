@@ -25,18 +25,19 @@ import Financials from '../components/analysis/Financials';
 import { finite } from '../components/analysis/format';
 import { displayName, formatMoney } from '../components/home/LensVerdictCard';
 import { LENSES } from '../components/home/lenses';
+import { HORIZON_OPTIONS, LENS_OPTIONS } from '../lib/verdict';
 import '../styles/analysis.css';
 
-const INVESTOR_OPTIONS = LENSES.map((l) => ({ value: l.value, label: l.label }));
 const INVESTOR_KEYS = LENSES.map((l) => l.value);
-
-const HORIZON_OPTIONS = [
-  { value: 'long', label: 'Long term' },
-  { value: 'short', label: 'Short term' },
-];
 
 const FUND_SECTIONS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'memo', label: 'Memo' },
+];
+
+const FUND_SECTIONS_WITH_RISKS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'risks', label: 'Risks' },
   { id: 'memo', label: 'Memo' },
 ];
 
@@ -134,7 +135,7 @@ const StockAnalysisPage = () => {
   }, [data]);
 
   const copyLink = async () => {
-    const url = window.location.href;
+    const url = window.location.href.split('#')[0];
     try {
       await navigator.clipboard.writeText(url);
     } catch {
@@ -203,7 +204,8 @@ const StockAnalysisPage = () => {
   const hasDcf = !isEtf && dcf && !dcf.error && finite(dcf.intrinsic_value);
   const watching = watchlist.has(sd.ticker);
   const lensLabel = data.scorecard?.investor_label || LENSES.find((l) => l.value === investor)?.label || 'Investor';
-  const sections = isEtf ? FUND_SECTIONS : STOCK_SECTIONS;
+  const etfFlags = isEtf && (data.risk?.flags?.length || 0) > 0;
+  const sections = isEtf ? (etfFlags ? FUND_SECTIONS_WITH_RISKS : FUND_SECTIONS) : STOCK_SECTIONS;
   const fairValue = data.margin?.intrinsic_value ?? dcf?.intrinsic_value;
   const price = data.margin?.current_price ?? sd.current_price;
   const stats = sd.stats || {};
@@ -242,7 +244,7 @@ const StockAnalysisPage = () => {
           </div>
         </div>
         <div className="analysis-controls">
-          <SegmentedControl id="investor" label="Investor lens" options={INVESTOR_OPTIONS} value={investor} onChange={handleInvestorSelect} />
+          <SegmentedControl id="investor" label="Investor lens" options={LENS_OPTIONS} value={investor} onChange={handleInvestorSelect} />
           <SegmentedControl id="horizon" label="Horizon" options={HORIZON_OPTIONS} value={horizon} onChange={handleHorizonSelect} tone="teal" />
         </div>
       </header>
@@ -280,13 +282,13 @@ const StockAnalysisPage = () => {
               <MetricDeck data={data} ticker={sd.ticker} investor={investor} horizon={horizon} />
             </Section>
 
-            <Section id="valuation" title="Valuation" lead="What the business is worth on its cash flows, what the price assumes, and how sensitive the answer is.">
+            <Section id="valuation" title="Valuation" lead="What the business is worth by the model, what the price assumes, and how sensitive the answer is.">
               {hasDcf ? (
                 <>
                   <div className="analysis-grid an-val-grid">
                     <div className="analysis-col">
                       <ValuationPanel dcf={dcf} margin={data.margin} />
-                      <TargetCompare price={price} fair={fairValue} target={stats.analyst_target_mean} low={stats.analyst_target_low} high={stats.analyst_target_high} />
+                      <TargetCompare valuationModel={dcf.valuation_model} price={price} fair={fairValue} target={stats.analyst_target_mean} low={stats.analyst_target_low} high={stats.analyst_target_high} />
                     </div>
                     {finite(dcf.base_value) && finite(dcf.shares) && finite(dcf.years) && <DcfCalculator dcf={dcf} price={price} />}
                   </div>
@@ -316,6 +318,12 @@ const StockAnalysisPage = () => {
               <RiskFlags riskData={data.risk} />
             </Section>
           </>
+        )}
+
+        {etfFlags && (
+          <Section id="risks" title="Risks">
+            <RiskFlags riskData={data.risk} />
+          </Section>
         )}
 
         <Section id="memo" title="Memo">

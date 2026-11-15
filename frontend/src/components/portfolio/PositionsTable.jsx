@@ -2,7 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { displayName, formatMoney } from '../home/LensVerdictCard';
-import { pct, signedPoints, tone } from './format';
+import { pctFromFraction, signedPoints, tone } from './format';
+import { marginText, verdictLabel, verdictTone } from '../../lib/verdict';
+import { ariaSort, makeComparator, nextSort } from '../../lib/table';
 
 const COLUMNS = [
   { key: 'ticker', label: 'Holding', text: true },
@@ -10,33 +12,21 @@ const COLUMNS = [
   { key: 'price', label: 'Price' },
   { key: 'value', label: 'Value' },
   { key: 'weight', label: 'Weight' },
-  { key: 'change_pct', label: 'Today' },
+  { key: 'change_pct', label: 'Day' },
   { key: 'score', label: 'Score' },
   { key: 'classification_label', label: 'Verdict', text: true },
   { key: 'margin_pct', label: 'Margin of safety' },
 ];
 
-const VERDICT_TONE = { Buy: 'pos', Avoid: 'neg' };
-
-const PositionsTable = ({ positions, totalValue }) => {
-  const [sort, setSort] = useState({ key: 'value', dir: 'desc' });
+const PositionsTable = ({ positions, totalValue, investor = 'buffett', horizon = 'long' }) => {
+  const [sort, setSort] = useState({ key: 'value', dir: -1 });
 
   const rows = useMemo(() => {
-    const { key, dir } = sort;
-    const sign = dir === 'asc' ? 1 : -1;
-    return [...positions].sort((a, b) => {
-      const av = a[key];
-      const bv = b[key];
-      const aMissing = av == null || av === '';
-      const bMissing = bv == null || bv === '';
-      if (aMissing || bMissing) return aMissing === bMissing ? 0 : aMissing ? 1 : -1;
-      if (typeof av === 'string') return sign * av.localeCompare(bv);
-      return sign * (av - bv);
-    });
+    const col = COLUMNS.find((c) => c.key === sort.key);
+    return [...positions].sort(makeComparator((p) => p[sort.key], { text: col?.text, dir: sort.dir, tiebreak: (a, b) => a.ticker.localeCompare(b.ticker) }));
   }, [positions, sort]);
 
-  const toggle = (key, text) =>
-    setSort((cur) => (cur.key === key ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: text ? 'asc' : 'desc' }));
+  const toggle = (col) => setSort((cur) => nextSort(cur, col));
 
   const totalDay = positions.reduce((sum, p) => (Number.isFinite(p.change_pct) && Number.isFinite(p.value) ? sum + (p.value * p.change_pct) / (100 + p.change_pct) : sum), 0);
   const prevTotal = Number.isFinite(totalValue) ? totalValue - totalDay : NaN;
@@ -51,10 +41,10 @@ const PositionsTable = ({ positions, totalValue }) => {
             {COLUMNS.map((c) => {
               const active = sort.key === c.key;
               return (
-                <th key={c.key} scope="col" className={c.text ? '' : 'num'} aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                  <button type="button" className={`pf2-sort${active ? ' is-active' : ''}`} onClick={() => toggle(c.key, c.text)}>
+                <th key={c.key} scope="col" className={c.text ? '' : 'num'} aria-sort={ariaSort(sort, c.key)}>
+                  <button type="button" className={`pf2-sort${active ? ' is-active' : ''}`} onClick={() => toggle(c)}>
                     {c.label}
-                    {active && (sort.dir === 'asc' ? <ArrowUp size={12} aria-hidden="true" /> : <ArrowDown size={12} aria-hidden="true" />)}
+                    {active && (sort.dir === 1 ? <ArrowUp size={12} aria-hidden="true" /> : <ArrowDown size={12} aria-hidden="true" />)}
                   </button>
                 </th>
               );
@@ -65,7 +55,7 @@ const PositionsTable = ({ positions, totalValue }) => {
           {rows.map((p) => (
             <tr key={p.ticker}>
               <th scope="row" className="pf2-holding">
-                <Link to={`/stock/${encodeURIComponent(p.ticker)}`} className="pf2-ticker mono">{p.ticker}</Link>
+                <Link to={`/stock/${encodeURIComponent(p.ticker)}?investor=${investor}&horizon=${horizon}`} className="pf2-ticker mono">{p.ticker}</Link>
                 {p.name && <span className="pf2-name">{displayName(p.name)}</span>}
               </th>
               <td className="mono num">{Number.isFinite(p.shares) ? +p.shares.toFixed(4) : 'n/a'}</td>
@@ -76,7 +66,7 @@ const PositionsTable = ({ positions, totalValue }) => {
                   <span className="pf2-weight-bar" aria-hidden="true">
                     <span style={{ width: `${Math.min(100, Math.max(0, (p.weight || 0) * 100))}%` }} />
                   </span>
-                  <span className="mono">{pct(p.weight)}</span>
+                  <span className="mono">{pctFromFraction(p.weight)}</span>
                 </span>
               </td>
               <td className={`mono num ${tone(p.change_pct)}`}>{signedPoints(p.change_pct)}</td>
@@ -84,8 +74,8 @@ const PositionsTable = ({ positions, totalValue }) => {
                 {Number.isFinite(p.score) ? Math.round(p.score) : 'n/a'}
                 {p.grade && <span className={`pf2-grade grade-${p.grade}`}> {p.grade}</span>}
               </td>
-              <td className={`tone-${VERDICT_TONE[p.classification_label || p.classification] || 'mid'}`}>{p.classification_label || p.classification || 'n/a'}</td>
-              <td className={`mono num ${tone(p.margin_pct)}`}>{signedPoints(p.margin_pct, 1)}</td>
+              <td className={`tone-${verdictTone(p.classification)}`}>{verdictLabel(p)}</td>
+              <td className={`mono num ${tone(p.margin_pct)}`}>{marginText(p.margin_pct)}</td>
             </tr>
           ))}
         </tbody>
@@ -95,7 +85,7 @@ const PositionsTable = ({ positions, totalValue }) => {
             <td />
             <td />
             <td className="mono num">{formatMoney(totalValue)}</td>
-            <td className="mono num">{pct(sumWeight)}</td>
+            <td className="mono num">{pctFromFraction(sumWeight)}</td>
             <td className={`mono num ${tone(totalChange)}`}>{signedPoints(totalChange)}</td>
             <td />
             <td />

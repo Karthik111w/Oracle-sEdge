@@ -1,0 +1,205 @@
+/* ============================================================
+   Observatory theme
+   Loaded after index.css. Re-tunes the tokens (ink, bone, brass), adds the display
+   serif, and gives the shared surfaces depth: hairline borders, a pointer-following
+   light on panels, film grain. Page-specific styling stays in the page stylesheets.
+   ============================================================ */
+
+:root {
+  --font-display: 'Instrument Serif', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+
+  --bg-primary: #07080b;
+  --bg-secondary: #0b0d12;
+  --bg-surface: rgba(14, 16, 22, 0.78);
+  --bg-surface-solid: #0e1016;
+  --bg-input: rgba(16, 18, 25, 0.7);
+  --bg-pill-group: rgba(14, 16, 22, 0.9);
+
+  --color-gold: #e3b25a;
+  --color-gold-light: #f2d08c;
+  --color-gold-dark: #b98a35;
+  --color-gold-glow: rgba(227, 178, 90, 0.28);
+  --color-gold-subtle: rgba(227, 178, 90, 0.1);
+  --color-primary: var(--color-gold);
+
+  --text-primary: #e9e6df;
+  --text-secondary: #a6a9b4;
+  --text-muted: #838897;
+  --text-heading: #fbf8f1;
+
+  --border-color: rgba(255, 244, 220, 0.09);
+  --border-color-hover: rgba(255, 244, 220, 0.2);
+
+  --fx-glare: rgba(242, 208, 140, 0.16);
+  --fx-spot: rgba(242, 208, 140, 0.09);
+  --fx-grain-opacity: 0.05;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='light'] {
+  --bg-primary: #f6f3ec;
+  --bg-secondary: #efeae0;
+  --bg-surface: rgba(255, 253, 248, 0.86);
+  --bg-surface-solid: #fffdf8;
+  --bg-input: #fffdf8;
+  --bg-pill-group: rgba(239, 234, 224, 0.95);
+  --bg-row: rgba(246, 243, 236, 0.9);
+  --bg-table-header: rgba(239, 234, 224, 0.75);
+
+  /* Brass darkened for paper: 4.9:1 as text on the page colour. */
+  --color-gold: #8f600d;
+  --color-gold-light: #b07a1c;
+  --color-gold-dark: #6f4a08;
+  --color-gold-glow: rgba(143, 96, 13, 0.24);
+  --color-gold-subtle: rgba(143, 96, 13, 0.09);
+  --color-primary: var(--color-gold);
+
+  --text-primary: #16181d;
+  --text-secondary: #3c4049;
+  --text-muted: #666b76;
+  --text-heading: #0c0d10;
+
+  --border-color: rgba(22, 24, 29, 0.12);
+  --border-color-hover: rgba(22, 24, 29, 0.26);
+
+  --fx-glare: rgba(185, 138, 53, 0.14);
+  --fx-spot: rgba(185, 138, 53, 0.08);
+  --fx-grain-opacity: 0.035;
+}
+
+body {
+  background-color: var(--bg-primary);
+  background-image: radial-gradient(1200px 620px at 78% -8%, var(--color-gold-subtle), transparent 62%);
+  background-repeat: no-repeat;
+}
+
+/* Film grain over everything; never intercepts input. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: var(--fx-grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+::selection { background: var(--color-gold); color: #14110a; }
+
+/* ---- Display type ---- */
+.display,
+.page-head h1,
+.section-head h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.02;
+}
+
+.page-head h1 { font-size: clamp(2.8rem, 6vw, 4.4rem); }
+.section-head h2 { font-size: clamp(1.9rem, 3.6vw, 2.7rem); }
+.display em, .page-head h1 em, .section-head h2 em { font-style: italic; color: var(--color-gold); }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+.eyebrow::before { content: ''; width: 1.6rem; height: 1px; background: currentColor; opacity: 0.7; }
+
+/* ---- Surfaces ---- */
+.panel,
+.fx-spot {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--text-heading) 3.5%, transparent), transparent 42%),
+    var(--bg-surface-solid);
+  border-color: var(--border-color);
+  border-radius: 16px;
+  transition: border-color 0.4s var(--ease-out), transform 0.5s var(--ease-out), box-shadow 0.5s var(--ease-out);
+}
+
+/* The light that follows the pointer (coordinates come from components/fx/Spotlight). */
+.panel::before,
+.fx-spot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(520px circle at var(--mx, 50%) var(--my, 0%), var(--fx-spot), transparent 60%);
+  transition: opacity 0.5s var(--ease-out);
+}
+
+@media (hover: hover) {
+  .panel:hover,
+  .fx-spot:hover { border-color: var(--border-color-hover); }
+  .panel:hover::before,
+  .fx-spot:hover::before { opacity: 1; }
+}
+
+/* ---- Navigation: floating glass bar ---- */
+.topnav {
+  background: color-mix(in srgb, var(--bg-primary) 62%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  border-bottom: 1px solid var(--border-color);
+}
+.topnav-name { font-family: var(--font-display); font-size: 1.45rem; font-weight: 400; letter-spacing: 0; }
+
+/* ---- Buttons ---- */
+.btn-solid,
+.ticker-search-btn {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out), background-color 0.2s ease;
+}
+.btn-solid::after,
+.ticker-search-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%) skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .btn-solid:hover:not(:disabled),
+  .ticker-search-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 28px -10px var(--color-gold-glow); }
+  .btn-solid:hover:not(:disabled)::after,
+  .ticker-search-btn:hover::after { transform: translateX(120%) skewX(-18deg); transition: transform 0.7s var(--ease-out); }
+}
+
+/* ---- Interaction kit ---- */
+.fx-split { display: block; }
+.fx-split-mask { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: 0.08em; }
+.fx-split-word { display: inline-block; will-change: transform; }
+.fx-split-word.is-accent { font-style: italic; color: var(--color-gold); }
+
+.fx-magnetic { display: inline-flex; will-change: transform; }
+
+.fx-tilt { position: relative; transform-style: preserve-3d; will-change: transform; }
+.fx-tilt-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-out);
+}
+@media (hover: hover) { .fx-tilt:hover .fx-tilt-glare { opacity: 1; } }
+.fx-tilt > :not(.fx-tilt-glare) { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .panel, .fx-spot, .btn-solid, .ticker-search-btn { transition: none; }
+}

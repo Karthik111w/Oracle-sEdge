@@ -12,9 +12,11 @@
 .cmp2-swatch { flex: none; }
 
 .cmp2-scroll { position: relative; overflow-x: auto; border-top: 1px solid var(--border-color); }
-.cmp2-table { width: 100%; min-width: 560px; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+.cmp2-table { --row-bg: var(--bg-primary); --row-hover: color-mix(in srgb, var(--text-primary) 5%, var(--bg-primary)); width: 100%; min-width: 560px; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 .cmp2-table th, .cmp2-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color); text-align: left; font-weight: 400; vertical-align: middle; }
-.cmp2-sticky { position: sticky; left: 0; z-index: 1; width: 9.5rem; background: var(--bg-primary); }
+.cmp2-table td, .cmp2-table th { background: var(--row-bg); }
+.cmp2-sticky { position: sticky; left: 0; z-index: 1; width: 9.5rem; background: var(--row-bg); }
+.cmp2-table tbody tr:hover > * { background: var(--row-hover); }
 .cmp2-label { font-size: var(--text-sm); color: var(--text-secondary); }
 .cmp2-colhead { vertical-align: bottom !important; padding-bottom: 0.9rem !important; }
 

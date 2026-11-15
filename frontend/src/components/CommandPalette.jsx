@@ -46,9 +46,12 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 
 // Keeps Tab inside `ref` while active and returns focus to the previous element on close.
 export function useFocusTrap(ref, active) {
+  // Read during the first render: autoFocus inside the dialog has not run yet, so this is still the opener.
+  const opener = useRef(undefined);
+  if (opener.current === undefined) opener.current = typeof document !== 'undefined' ? document.activeElement : null;
   useEffect(() => {
     if (!active) return undefined;
-    const previous = document.activeElement;
+    const previous = opener.current;
     const onKey = (e) => {
       if (e.key !== 'Tab' || !ref.current) return;
       const nodes = [...ref.current.querySelectorAll(FOCUSABLE)].filter((n) => n.offsetParent !== null || n === document.activeElement);
@@ -66,7 +69,7 @@ export function useFocusTrap(ref, active) {
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
-      if (previous && typeof previous.focus === 'function' && document.contains(previous)) previous.focus();
+      if (previous && previous !== document.body && typeof previous.focus === 'function' && document.contains(previous)) previous.focus();
     };
   }, [ref, active]);
 }
@@ -85,8 +88,11 @@ const Palette = ({ onClose }) => {
   const [active, setActive] = useState(0);
   const recent = useRecentlyViewed();
   const watchlist = useWatchlist();
-  const { status, results } = useTickerSearch(query);
+  const search = useTickerSearch(query);
+  const { status, results } = search;
   const q = query.trim();
+  // The state lags the input by a render; only trust it once it belongs to the current text.
+  const settled = search.query === q && (status === 'ok' || status === 'error');
 
   useFocusTrap(dialogRef, true);
   useScrollLock(true);
@@ -123,15 +129,15 @@ const Palette = ({ onClose }) => {
     }
     const out = [];
     const clean = cleanTicker(q);
-    const exact = results.some((r) => r.symbol === clean);
     const stocks = [];
-    if (TICKER_LIKE.test(q) && !exact) stocks.push({ key: 'analyze', kind: 'analyze', symbol: clean });
+    // A typed ticker is offered only when the search came back empty or failed, never ahead of real results.
+    if (TICKER_LIKE.test(q) && settled && (status === 'error' || !results.length)) stocks.push({ key: 'analyze', kind: 'analyze', symbol: clean });
     results.forEach((r, i) => stocks.push({ key: `s-${r.symbol}-${i}`, kind: 'result', item: r, symbol: r.symbol }));
     if (stocks.length) out.push({ title: 'Companies', items: stocks });
     const pages = PAGES.filter((p) => p.label.toLowerCase().startsWith(q.toLowerCase()));
     if (pages.length) out.push({ title: 'Pages', items: pages.map((p) => ({ key: `p-${p.to}`, kind: 'page', ...p })) });
     return out;
-  }, [q, results, recent, watchlist.tickers]);
+  }, [q, results, settled, status, recent, watchlist.tickers]);
 
   const flat = useMemo(() => sections.flatMap((s) => s.items), [sections]);
 

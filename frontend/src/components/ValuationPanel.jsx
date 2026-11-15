@@ -1,7 +1,9 @@
 import React from 'react';
 import { formatMoney } from './home/LensVerdictCard';
+import { cashStreamNoun, marginText } from '../lib/verdict';
 
 const rate = (v) => (Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : 'n/a');
+const wholeRate = (v) => `${Math.round(v * 100)}%`;
 
 function marginNote(pct) {
   if (pct === null) return 'No valuation is available for this security.';
@@ -18,6 +20,9 @@ const ValuationPanel = ({ dcf, margin }) => {
   const pct = Number.isFinite(margin?.margin_pct) ? margin.margin_pct : null;
   const implied = dcf?.implied_growth;
   const hasImplied = Number.isFinite(implied) && Number.isFinite(dcf?.growth_rate);
+  const bound = dcf?.implied_growth_bound;
+  const noun = cashStreamNoun(dcf?.valuation_model);
+  const priceMultiple = fair > 0 && price > 0 ? price / fair : null;
   const bear = dcf?.scenarios?.bear?.intrinsic_value;
   const bull = dcf?.scenarios?.bull?.intrinsic_value;
   const hasRange = bear > 0 && bull > 0;
@@ -47,9 +52,12 @@ const ValuationPanel = ({ dcf, margin }) => {
         </div>
         <div>
           <dt>Margin of safety</dt>
-          <dd className={`mono tone-${pct === null ? 'mid' : pct >= 0 ? 'pos' : 'neg'}`}>{pct === null ? 'n/a' : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`}</dd>
+          <dd className={`mono tone-${pct === null ? 'mid' : pct >= 0 ? 'pos' : 'neg'}`}>{marginText(pct)}</dd>
+         
         </div>
       </dl>
+
+      {pct !== null && pct < 0 && priceMultiple !== null && <p className="muted an-fact-note">Price is {priceMultiple.toFixed(1)}x fair value.</p>}
 
       {fair > 0 && price > 0 && (
         <div className="value-line" aria-hidden="true">
@@ -72,7 +80,12 @@ const ValuationPanel = ({ dcf, margin }) => {
       <p className="panel-text">{marginNote(pct)}</p>
       {hasImplied && (
         <p className="panel-text an-implied">
-          <strong>What the price implies.</strong> The current price assumes cash flows grow about {rate(implied)} a year at first; the model uses {rate(dcf.growth_rate)}.
+          <strong>What the price implies.</strong>{' '}
+          {bound === 'above'
+            ? `The current price implies ${noun} growth of more than ${wholeRate(implied)} a year, beyond the range the model searches; the model uses ${rate(dcf.growth_rate)}.`
+            : bound === 'below'
+              ? `The current price implies ${noun} growth of less than ${wholeRate(implied)} a year (shrinking); the model uses ${rate(dcf.growth_rate)}.`
+              : `The current price assumes ${noun} ${noun === 'free cash flow' ? 'grows' : 'grow'} about ${rate(implied)} a year at first; the model uses ${rate(dcf.growth_rate)}.`}
         </p>
       )}
       {!hasImplied && hasValue && Number.isFinite(dcf?.base_value) && (

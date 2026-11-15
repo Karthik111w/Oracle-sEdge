@@ -1,6 +1,6 @@
 import React from 'react';
 import { formatMoney } from '../home/LensVerdictCard';
-import { num, pct, signedPct, tone } from './format';
+import { num, pctFromFraction, signedPctFromFraction, tone } from './format';
 
 // Headline figures for the analysed portfolio. Every figure can be null.
 const AnalysisSummary = ({ data }) => {
@@ -9,13 +9,13 @@ const AnalysisSummary = ({ data }) => {
     { label: 'Total value', value: formatMoney(data.total_value) },
     {
       label: '1-year return',
-      value: signedPct(s.return_1y),
+      value: signedPctFromFraction(s.return_1y),
       cls: tone(s.return_1y),
-      sub: Number.isFinite(s.benchmark_return_1y) ? `SPY ${signedPct(s.benchmark_return_1y)}` : 'SPY n/a',
+      sub: Number.isFinite(s.benchmark_return_1y) ? `SPY ${signedPctFromFraction(s.benchmark_return_1y)}` : 'SPY n/a',
     },
-    { label: 'Volatility', value: pct(s.volatility), sub: 'Annualized' },
+    { label: 'Volatility', value: pctFromFraction(s.volatility), sub: 'Annualized' },
     { label: 'Sharpe ratio', value: num(s.sharpe) },
-    { label: 'Max drawdown', value: signedPct(s.max_drawdown), cls: tone(s.max_drawdown), sub: 'Over the last year' },
+    { label: 'Max drawdown', value: signedPctFromFraction(s.max_drawdown), cls: tone(s.max_drawdown), sub: 'Over the last year' },
     {
       label: 'Beta',
       value: num(data.weighted_beta),

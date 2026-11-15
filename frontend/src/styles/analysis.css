@@ -123,6 +123,7 @@
 }
 
 .an-table-wrap {
+  position: relative;
   max-width: 100%;
   overflow-x: auto;
 }
@@ -517,3 +518,4 @@
 @media (prefers-reduced-motion: reduce) {
   .an-walk-chevron, .an-chart-fill, .an-lens { transition: none; }
 }
+.an-fact-note { margin: 0.5rem 0 0; font-size: var(--text-xs); }

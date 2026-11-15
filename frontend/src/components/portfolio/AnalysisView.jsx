@@ -27,7 +27,7 @@ export const AnalysisSkeleton = () => (
   </div>
 );
 
-const AnalysisView = ({ data, investorLabel }) => {
+const AnalysisView = ({ data, investorLabel, investor, horizon }) => {
   const positions = data.positions || [];
   const warnings = data.warnings || [];
   return (
@@ -54,7 +54,7 @@ const AnalysisView = ({ data, investorLabel }) => {
             <p className="panel-note">Scores, verdicts and margin of safety use the {investorLabel} lens. Select a column heading to sort.</p>
           </div>
         </header>
-        <PositionsTable positions={positions} totalValue={data.total_value} />
+        <PositionsTable positions={positions} totalValue={data.total_value} investor={investor} horizon={horizon} />
       </section>
 
       <div className="pf2-pair">

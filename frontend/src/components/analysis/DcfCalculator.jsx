@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { fairValuePerShare, marginOfSafety, MIN_RATE_SPREAD } from './dcfMath';
+import { cashStreamNoun, marginText } from '../../lib/verdict';
 import { finite, money, signedPct, toneOf } from './format';
 
 const SPREAD_PTS = MIN_RATE_SPREAD * 100;
@@ -28,7 +29,7 @@ function Slider({ id, label, hint, value, min, max, onChange }) {
   );
 }
 
-// Re-runs the backend's cash flow projection in the browser. Starts from the model's own inputs.
+// Re-runs the backend's projection in the browser. Starts from the model's own inputs.
 const DcfCalculator = ({ dcf, price }) => {
   const init = useMemo(
     () => ({ growth: dcf.growth_rate * 100, discount: dcf.discount_rate * 100, terminal: dcf.terminal_rate * 100 }),
@@ -38,6 +39,7 @@ const DcfCalculator = ({ dcf, price }) => {
   useEffect(() => setV(init), [init]);
 
   const years = dcf.years;
+  const noun = cashStreamNoun(dcf.valuation_model);
   const inputs = { base: dcf.base_value, years, shares: dcf.shares };
   const fair = fairValuePerShare({ ...inputs, growth: v.growth / 100, discount: v.discount / 100, terminal: v.terminal / 100 });
   const model = fairValuePerShare({ ...inputs, growth: init.growth / 100, discount: init.discount / 100, terminal: init.terminal / 100 });
@@ -68,7 +70,7 @@ const DcfCalculator = ({ dcf, price }) => {
 
       <div className="an-calc-grid">
         <div className="an-sliders">
-          <Slider id="an-g" label="Starting growth" hint="Yearly growth in free cash flow for year 1." value={v.growth} min={-10} max={40} onChange={setGrowth} />
+          <Slider id="an-g" label="Starting growth" hint={`Yearly growth in ${noun} for year 1.`} value={v.growth} min={-10} max={40} onChange={setGrowth} />
           <Slider id="an-d" label="Discount rate" hint="The return you require. Higher lowers today's value." value={v.discount} min={discountMin} max={Math.max(15, discountMin)} onChange={setDiscount} />
           <Slider id="an-t" label="Terminal growth" hint="Growth after the projection, forever." value={v.terminal} min={0} max={5} onChange={setTerminal} />
         </div>
@@ -83,7 +85,7 @@ const DcfCalculator = ({ dcf, price }) => {
             </div>
             <div>
               <dt>Margin of safety</dt>
-              <dd className={`mono tone-${toneOf(mos)}`}>{signedPct(mos)}</dd>
+              <dd className={`mono tone-${toneOf(mos)}`}>{marginText(mos)}</dd>
             </div>
             <div>
               <dt>Model fair value</dt>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatMoney } from './home/LensVerdictCard';
+import { pctFromFraction } from './portfolio/format';
 import '../styles/portfolio.css';
 
 // Gold steps for allocation segments, largest first; one accent only.
@@ -16,7 +17,6 @@ function describeChanges(rows) {
   return { ups: ups.map(fmt), downs: downs.map(fmt), none: moves.length === 0 };
 }
 
-const pct = (v, digits = 1) => (Number.isFinite(v) ? `${(v * 100).toFixed(digits)}%` : 'n/a');
 const signed = (v, digits = 2) => `${v > 0 ? '+' : ''}${v.toFixed(digits)}`;
 
 function AllocationBar({ label, rows, field: weightKey }) {
@@ -31,7 +31,7 @@ function AllocationBar({ label, rows, field: weightKey }) {
               key={r.ticker}
               className="alloc-seg"
               style={{ flexGrow: r[weightKey], '--shade': SHADES[i % SHADES.length] }}
-              title={`${r.ticker} ${pct(r[weightKey])}`}
+              title={`${r.ticker} ${pctFromFraction(r[weightKey])}`}
             >
               {r[weightKey] > 0.08 && <span className="mono">{r.ticker}</span>}
             </span>
@@ -81,8 +81,8 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
             <dt>Account value</dt>
             <dd className="mono">{formatMoney(results.account_value)}</dd>
           </div>
-          <Compare label="Expected return" now={results.current_return} next={strategy.optimized_return} format={(v) => pct(v)} />
-          <Compare label="Volatility" now={results.current_volatility} next={strategy.optimized_volatility} format={(v) => pct(v)} betterHigh={false} />
+          <Compare label="Expected return" now={results.current_return} next={strategy.optimized_return} format={(v) => pctFromFraction(v)} />
+          <Compare label="Volatility" now={results.current_volatility} next={strategy.optimized_volatility} format={(v) => pctFromFraction(v)} betterHigh={false} />
           <Compare label="Sharpe ratio" now={results.current_sharpe} next={strategy.optimized_sharpe} format={(v) => v.toFixed(2)} />
         </dl>
         {results.cash_available > 0 && (
@@ -133,7 +133,7 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
                 <th scope="col">Ticker</th>
                 <th scope="col" className="num">Score</th>
                 <th scope="col" className="num">Price</th>
-                <th scope="col" className="num">Today</th>
+                <th scope="col" className="num">Day</th>
                 <th scope="col" className="num">Weight now</th>
                 <th scope="col" className="num">Target</th>
                 <th scope="col" className="num">Shares now</th>
@@ -150,8 +150,8 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
                     <td className="mono num">{h.scorecard_score != null ? Math.round(h.scorecard_score) : 'n/a'}</td>
                     <td className="mono num">{formatMoney(h.price)}</td>
                     <td className={`mono num tone-${change >= 0 ? 'pos' : 'neg'}`}>{signed(change)}%</td>
-                    <td className="mono num">{pct(h.current_weight)}</td>
-                    <td className="mono num">{pct(h.optimized_weight)}</td>
+                    <td className="mono num">{pctFromFraction(h.current_weight)}</td>
+                    <td className="mono num">{pctFromFraction(h.optimized_weight)}</td>
                     <td className="mono num">{h.shares.toFixed(2)}</td>
                     <td className={`mono num${Math.abs(trade) < 0.005 ? ' muted' : trade > 0 ? ' tone-pos' : ' tone-neg'}`}>
                       {Math.abs(trade) < 0.005 ? 'Hold' : `${trade > 0 ? 'Buy' : 'Sell'} ${Math.abs(trade).toFixed(2)}`}

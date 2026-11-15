@@ -1,8 +1,9 @@
 import React from 'react';
-import { finite, money, signedPct } from './format';
+import { cashStreamNoun } from '../../lib/verdict';
+import { finite, money } from './format';
 
 // Price, the model's fair value and the analyst target on one scale, as bars from zero.
-const TargetCompare = ({ price, fair, target, low, high }) => {
+const TargetCompare = ({ price, fair, target, low, high, valuationModel }) => {
   if (!finite(target)) return null;
   const rows = [
     { key: 'price', label: 'Price', value: price },
@@ -13,15 +14,24 @@ const TargetCompare = ({ price, fair, target, low, high }) => {
   const hasRange = finite(low) && finite(high) && high >= low;
   const max = Math.max(...rows.map((r) => r.value), hasRange ? high : 0) * 1.05;
   const at = (v) => `${(v / max) * 100}%`;
-  const vs = (v) => (finite(price) && price > 0 && v !== price ? ` (${signedPct(((v - price) / price) * 100)} vs price)` : '');
-  const summary = rows.map((r) => `${r.label} ${money(r.value)}${r.key === 'price' ? '' : vs(r.value)}`).join('. ');
+  // Worded relative to the price so it cannot be mistaken for margin of safety, which divides by fair value.
+  const vs = (r) => {
+    if (r.key === 'price' || !finite(price) || price <= 0 || r.value === price) return '';
+    if (r.key === 'fair') {
+      if (r.value < price) return `Price is ${(price / r.value).toFixed(1)}x the model's fair value`;
+      return `Model fair value is ${(r.value / price).toFixed(1)}x the price`;
+    }
+    const diff = (Math.abs(r.value - price) / price) * 100;
+    return `Analyst target is ${diff.toFixed(1)}% ${r.value < price ? 'below' : 'above'} the price`;
+  };
+  const summary = rows.map((r) => `${r.label} ${money(r.value)}${vs(r) ? `. ${vs(r)}` : ''}`).join('. ');
 
   return (
     <section className="panel" aria-labelledby="an-compare-title">
       <header className="panel-head">
         <div>
           <h3 id="an-compare-title" className="an-h3">Price, model and analysts</h3>
-          <p className="panel-note">{finite(fair) ? 'The model value comes from the discounted cash flow above. ' : ''}The analyst target is the mean of published price targets.</p>
+          <p className="panel-note">{finite(fair) ? `The model value comes from the discounted ${cashStreamNoun(valuationModel)} above. ` : ''}The analyst target is the mean of published price targets.</p>
         </div>
       </header>
       <div className="an-compare" role="img" aria-label={summary}>
@@ -34,7 +44,7 @@ const TargetCompare = ({ price, fair, target, low, high }) => {
             </span>
             <span className="mono an-compare-value">
               {money(r.value)}
-              {r.key !== 'price' && <span className="muted an-compare-vs">{vs(r.value).trim().replace(/[()]/g, '')}</span>}
+              {r.key !== 'price' && <span className="muted an-compare-vs">{vs(r)}</span>}
             </span>
           </div>
         ))}

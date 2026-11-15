@@ -4,6 +4,7 @@ import { useLenis } from 'lenis/react';
 import { ThemeProvider } from './theme';
 import Navbar from './components/Navbar';
 import SmoothScroll from './components/SmoothScroll';
+import Spotlight from './components/fx/Spotlight';
 import HomePage from './pages/HomePage';
 import StockAnalysisPage from './pages/StockAnalysisPage';
 import PortfolioPage from './pages/PortfolioPage';
@@ -55,6 +56,7 @@ function App() {
       <MotionConfig reducedMotion="user">
         <BrowserRouter>
           <SmoothScroll />
+          <Spotlight />
           <a href="#main" className="skip-link">Skip to content</a>
           <Navbar />
           <CommandPalette />

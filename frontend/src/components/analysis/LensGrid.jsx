@@ -3,7 +3,7 @@ import { getLensSummary } from '../../api/client';
 import { cached } from '../../api/cache';
 import { LENSES } from '../home/lenses';
 import { finite } from './format';
-import { verdictTone } from './Overview';
+import { verdictLabel, verdictTone } from '../../lib/verdict';
 
 const SHORT = Object.fromEntries(LENSES.map((l) => [l.value, l.short]));
 
@@ -55,7 +55,7 @@ const LensGrid = ({ ticker, horizon, investor, onSelect }) => {
       {state.consensus?.summary && <p className="an-consensus">{state.consensus.summary}</p>}
       <ul className="an-lenses">
         {lenses.map((l) => {
-          const label = l.classification_label || l.classification;
+          const label = verdictLabel(l);
           const selected = l.investor === investor;
           return (
             <li key={l.investor}>
@@ -65,7 +65,7 @@ const LensGrid = ({ ticker, horizon, investor, onSelect }) => {
                   <span className="mono an-lens-num">{finite(l.score) ? Math.round(l.score) : 'n/a'}</span>
                   <span className="muted mono an-lens-grade">{l.grade || ''}</span>
                 </span>
-                <span className={`an-lens-verdict tone-${verdictTone(label)}`}>{label}</span>
+                <span className={`an-lens-verdict tone-${verdictTone(l.classification)}`}>{label}</span>
                 <span className="muted an-lens-term">{l.term === 'short' ? 'Short-term lens' : 'Long-term lens'}</span>
               </button>
             </li>

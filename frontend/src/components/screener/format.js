@@ -1,9 +1,6 @@
+import { verdictLabel } from '../../lib/verdict';
+
 export const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
-
-export const VERDICTS = ['Buy', 'Watchlist', 'Hold', 'Avoid'];
-export const VERDICT_TONE = { Buy: 'pos', Avoid: 'neg' };
-
-export const verdictOf = (row) => row.classification_label || row.classification || null;
 
 export function fmtCap(v) {
   if (!isNum(v)) return 'n/a';
@@ -22,6 +19,8 @@ export const fmtPlain = (v, digits = 1) => (isNum(v) ? v.toFixed(digits) : 'n/a'
 
 export const toneOf = (v) => (isNum(v) ? (v >= 0 ? 'pos' : 'neg') : 'mid');
 
+const round = (v, digits) => (isNum(v) ? Number(v.toFixed(digits)) : null);
+
 const csvCell = (v) => {
   if (v === null || v === undefined) return '';
   const s = String(v);
@@ -35,16 +34,16 @@ export function rowsToCsv(rows) {
       r.ticker,
       r.name,
       r.sector,
-      r.price,
-      isNum(r.change_pct) ? r.change_pct.toFixed(2) : null,
-      r.market_cap,
-      isNum(r.score) ? r.score.toFixed(1) : null,
+      round(r.price, 2),
+      round(r.change_pct, 2),
+      isNum(r.market_cap) ? Math.round(r.market_cap) : null,
+      round(r.score, 1),
       r.grade,
-      verdictOf(r),
-      r.margin_pct,
-      r.intrinsic_value,
-      isNum(r.pe) ? r.pe.toFixed(2) : null,
-      isNum(r.dividend_yield) ? (r.dividend_yield * 100).toFixed(2) : null,
+      verdictLabel(r),
+      round(r.margin_pct, 2),
+      round(r.intrinsic_value, 2),
+      round(r.pe, 2),
+      round(isNum(r.dividend_yield) ? r.dividend_yield * 100 : null, 2),
       r.risk_flags,
     ]
       .map(csvCell)

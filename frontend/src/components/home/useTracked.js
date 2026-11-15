@@ -74,7 +74,8 @@ const SCREENER_TTL = 5 * 60 * 1000;
 const screenerReady = new Map();
 const POLL_MS = 5000;
 
-// Screener rows for one lens. Polls every 5s while the backend is still scoring (status "warming").
+// Screener rows for one lens. Polls every 5s while the backend is still scoring (status "warming")
+// or serving a stale result while it refreshes.
 // state: { status: 'loading' | 'warming' | 'ready' | 'error', rows, progress }
 export function useScreener(investor, horizon) {
   const [state, setState] = useState({ status: 'loading', rows: [], progress: null });
@@ -98,8 +99,9 @@ export function useScreener(investor, horizon) {
             setState({ status: 'warming', rows, progress: d.progress || null });
             timer = setTimeout(load, POLL_MS);
           } else {
-            screenerReady.set(key, { at: Date.now(), rows });
             setState({ status: 'ready', rows, progress: null });
+            if (d?.refreshing) timer = setTimeout(load, POLL_MS);
+            else screenerReady.set(key, { at: Date.now(), rows });
           }
         })
         .catch(() => alive && setState({ status: 'error', rows: [], progress: null }));

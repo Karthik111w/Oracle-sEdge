@@ -9,6 +9,10 @@ const HOLDINGS_KEY = 'portfolio_holdings';
 const CASH_KEY = 'portfolio_cash';
 const ACCOUNT_KEY = 'portfolio_account_value';
 
+// The backend rejects more than this many holdings.
+const MAX_HOLDINGS = 50;
+const limitMessage = (extra) => `A portfolio can hold at most ${MAX_HOLDINGS} holdings.${extra ? ` ${extra}` : ''}`;
+
 const BLANK = { ticker: '', shares: '' };
 const EXAMPLE = [
   { ticker: 'AAPL', shares: 10 },
@@ -50,7 +54,8 @@ function validate(rows) {
   const errors = {};
   rows.forEach((h, i) => {
     const shares = h.shares === '' ? 0 : Number(h.shares);
-    if (!Number.isFinite(shares) || shares < 0) errors[i] = 'Shares cannot be negative.';
+    if (h.bad || !Number.isFinite(shares)) errors[i] = 'Enter a valid number of shares.';
+    else if (shares < 0) errors[i] = 'Shares cannot be negative.';
     else if (!h.ticker.trim() && shares > 0) errors[i] = 'Enter a ticker for these shares.';
   });
   return errors;
@@ -111,17 +116,25 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
     setNotice(null);
   };
 
-  const changeRow = (index, field, value) => {
+  const changeRow = (index, field, value, badInput = false) => {
     edit(
       holdings.map((h, i) => {
         if (i !== index) return h;
-        if (field === 'shares') return { ...h, shares: value === '' ? '' : Number(value) };
+        // kept as typed so an invalid entry (1e400) still reaches validation and shows its message
+        // badInput: the browser holds text it cannot read as a number (1e400), and reports value ''
+        if (field === 'shares') return { ...h, shares: value, bad: badInput };
         return { ...h, ticker: value.toUpperCase() };
       })
     );
   };
 
-  const addRow = () => edit([...holdings, { ...BLANK }]);
+  const filledCount = holdings.filter((h) => h.ticker.trim()).length;
+  const atLimit = holdings.length >= MAX_HOLDINGS;
+
+  const addRow = () => {
+    if (atLimit) return setErrors({ form: limitMessage('Remove a row before adding another.') });
+    edit([...holdings, { ...BLANK }]);
+  };
   const removeRow = (index) => {
     const next = holdings.filter((_, i) => i !== index);
     edit(next.length ? next : [{ ...BLANK }]);
@@ -134,6 +147,7 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
   const watchOptions = watchlist.tickers.filter((t) => !inList.has(t));
   const addFromWatchlist = (ticker) => {
     if (!ticker) return;
+    if (filledCount >= MAX_HOLDINGS) return setErrors({ form: limitMessage('Remove a holding before adding another.') });
     edit([...holdings.filter((h) => h.ticker.trim() || h.shares !== ''), { ticker, shares: '' }]);
   };
 
@@ -160,6 +174,11 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
         setBulkError('No new ticker/share pairs were found.');
         return;
       }
+      if (filledCount + newRows.length > MAX_HOLDINGS) {
+        const room = Math.max(0, MAX_HOLDINGS - filledCount);
+        setBulkError(limitMessage(`You have ${filledCount} and tried to add ${newRows.length} more; there is room for ${room}.`));
+        return;
+      }
       edit([...holdings.filter((h) => h.ticker.trim()), ...newRows]);
       setBulkTickers('');
     } catch (err) {
@@ -177,6 +196,10 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
     const { list, merged } = mergeRows(holdings);
     if (list.length === 0) {
       setErrors({ form: 'Add at least one ticker.' });
+      return;
+    }
+    if (list.length > MAX_HOLDINGS) {
+      setErrors({ form: limitMessage(`You have ${list.length}. Remove ${list.length - MAX_HOLDINGS} to continue.`) });
       return;
     }
     if (mode === 'analyze' && !list.some((h) => h.shares > 0)) {
@@ -261,7 +284,7 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
                   aria-label={`Shares ${index + 1}`}
                   aria-invalid={errors[index] ? 'true' : undefined}
                   value={holding.shares}
-                  onChange={(e) => changeRow(index, 'shares', e.target.value)}
+                  onChange={(e) => changeRow(index, 'shares', e.target.value, e.target.validity.badInput)}
                 />
                 <button type="button" className="pf2-remove" onClick={() => removeRow(index)} aria-label={`Remove row ${index + 1}`}>
                   <X size={16} aria-hidden="true" />
@@ -274,9 +297,10 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
               )}
             </div>
           ))}
-          <button type="button" className="btn-quiet pf2-add" onClick={addRow}>
+          <button type="button" className="btn-quiet pf2-add" onClick={addRow} aria-disabled={atLimit}>
             <Plus size={14} aria-hidden="true" /> Add row
           </button>
+          <p className="panel-note pf2-count">{filledCount} of {MAX_HOLDINGS} holdings</p>
         </div>
 
         <div className="pf2-money">

@@ -4,16 +4,9 @@ import PortfolioCharts from '../components/PortfolioCharts';
 import AnalysisView, { AnalysisSkeleton } from '../components/portfolio/AnalysisView';
 import SegmentedControl from '../components/SegmentedControl';
 import { analyzePortfolio, optimizePortfolio } from '../api/client';
-import { LENSES } from '../components/home/lenses';
+import { HORIZON_OPTIONS, LENS_OPTIONS, lensLabel } from '../lib/verdict';
 import { usePrefs } from '../lib/storage';
 import '../styles/portfolio.css';
-
-const INVESTOR_OPTIONS = LENSES.map((l) => ({ value: l.value, label: l.label }));
-
-const HORIZON_OPTIONS = [
-  { value: 'long', label: 'Long term' },
-  { value: 'short', label: 'Short term' },
-];
 
 const idle = { status: 'idle', data: null, error: null };
 
@@ -80,7 +73,7 @@ const PortfolioPage = () => {
     rerun(investor, value);
   };
 
-  const investorLabel = LENSES.find((l) => l.value === investor)?.label || investor;
+  const investorLabel = lensLabel(investor);
   const strategyOptions = Object.entries(optimizer.data?.strategies || {}).map(([key, s]) => ({ value: key, label: s.label }));
   const busy = analysis.status === 'loading' || optimizer.status === 'loading';
   const nothingYet = analysis.status === 'idle' && optimizer.status === 'idle';
@@ -95,7 +88,7 @@ const PortfolioPage = () => {
       </header>
 
       <div className="analysis-controls pf2-controls">
-        <SegmentedControl id="portfolio-investor" label="Investor lens" options={INVESTOR_OPTIONS} value={investor} onChange={handleInvestor} />
+        <SegmentedControl id="portfolio-investor" label="Investor lens" options={LENS_OPTIONS} value={investor} onChange={handleInvestor} />
         <SegmentedControl id="portfolio-horizon" label="Horizon" options={HORIZON_OPTIONS} value={horizon} onChange={handleHorizon} tone="teal" />
       </div>
 
@@ -116,10 +109,10 @@ const PortfolioPage = () => {
           {analysis.status === 'loading' && <AnalysisSkeleton />}
           {analysis.status === 'error' && (
             <p className="inline-error" role="alert">
-              The analysis failed: {analysis.error}
+              {analysis.error}
             </p>
           )}
-          {analysis.status === 'ok' && <AnalysisView data={analysis.data} investorLabel={investorLabel} />}
+          {analysis.status === 'ok' && <AnalysisView data={analysis.data} investorLabel={investorLabel} investor={investor} horizon={horizon} />}
         </section>
       )}
 
@@ -138,7 +131,7 @@ const PortfolioPage = () => {
           )}
           {optimizer.status === 'error' && (
             <p className="inline-error" role="alert">
-              The optimization failed: {optimizer.error}
+              {optimizer.error}
             </p>
           )}
           {optimizer.status === 'ok' && (

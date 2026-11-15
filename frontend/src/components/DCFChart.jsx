@@ -1,14 +1,16 @@
 import React from 'react';
+import { cashStreamNoun } from '../lib/verdict';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const pct = (val) => (Number.isFinite(val) ? `${(val * 100).toFixed(1)}%` : 'n/a');
 
 const DCFChart = ({ dcf }) => {
   if (!dcf || !dcf.projected_fcf) return null;
+  const noun = cashStreamNoun(dcf.valuation_model);
   if (dcf.error) {
     return (
       <section className="panel">
-        <h3 className="an-h3">Projected cash flow</h3>
+        <h3 className="an-h3">Projected {noun}</h3>
         <p className="panel-text">{dcf.error}</p>
       </section>
     );
@@ -22,14 +24,14 @@ const DCFChart = ({ dcf }) => {
       discounted: Math.round(item.discounted_fcf / 1e6),
     }));
   if (data.length === 0) return null;
-  const chartLabel = `Bar chart of projected free cash flow over ${data.length} years, from ${data[0].fcf.toLocaleString()} million dollars in ${data[0].year} to ${data[data.length - 1].fcf.toLocaleString()} million in ${data[data.length - 1].year}, with the present value of each year alongside.`;
+  const chartLabel = `Bar chart of projected ${noun} over ${data.length} years, from ${data[0].fcf.toLocaleString()} million dollars in ${data[0].year} to ${data[data.length - 1].fcf.toLocaleString()} million in ${data[data.length - 1].year}, with the present value of each year alongside.`;
 
   return (
     <section className="panel" aria-labelledby="fcf-title">
       <header className="panel-head">
         <div>
-          <h3 id="fcf-title" className="an-h3">Projected cash flow</h3>
-          <p className="panel-note">Ten years of free cash flow, starting from the three-year average, with growth fading to the terminal rate. Each bar pair shows the projected year and what it is worth today.</p>
+          <h3 id="fcf-title" className="an-h3">Projected {noun}</h3>
+          <p className="panel-note">{dcf.years || 10} years of {noun}, starting from the model's base figure, with growth fading to the terminal rate. Each bar pair shows the projected year and what it is worth today.</p>
         </div>
       </header>
 
