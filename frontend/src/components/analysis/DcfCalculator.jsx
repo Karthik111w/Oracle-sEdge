@@ -98,6 +98,19 @@ const DcfCalculator = ({ dcf, price }) => {
   const meter = finite(mos) ? Math.min(1, Math.abs(mos) / 100) : 0;
   const tone = toneOf(mos);
 
+  // Screen readers get the settled value only, not every spring frame.
+  const spoken = `Fair value per share ${money(fair)}. Margin of safety ${marginText(mos)}.`;
+  const [settled, setSettled] = useState('');
+  const firstSpoken = useRef(true);
+  useEffect(() => {
+    if (firstSpoken.current) {
+      firstSpoken.current = false;
+      return undefined;
+    }
+    const t = setTimeout(() => setSettled(spoken), 400);
+    return () => clearTimeout(t);
+  }, [spoken]);
+
   return (
     <section className="panel an-calc" aria-labelledby="an-calc-title">
       <header className="panel-head">
@@ -113,9 +126,10 @@ const DcfCalculator = ({ dcf, price }) => {
         </button>
       </header>
 
-      <div className="an-calc-out" aria-live="polite">
+      <div className="an-calc-out">
+        <p className="sr-only" aria-live="polite" aria-atomic="true">{settled}</p>
         <p className="an-kicker">Fair value per share</p>
-        <p className="mono an-calc-fair">
+        <p className="mono an-calc-fair" aria-hidden="true">
           <SpringNumber value={fair} format={money} />
         </p>
         <div className={`an-mos tone-${tone}`}>

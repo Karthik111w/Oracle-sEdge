@@ -271,7 +271,7 @@ const StockAnalysisPage = () => {
         lensLabel={lensLabel}
       />
 
-      {(
+      {!isEtf && (
         <div className="an-controls">
           <SegmentedControl id="investor" label="Investor lens" options={LENS_OPTIONS} value={investor} onChange={handleInvestorSelect} />
           <SegmentedControl id="horizon" label="Horizon" options={HORIZON_OPTIONS} value={horizon} onChange={handleHorizonSelect} tone="teal" />

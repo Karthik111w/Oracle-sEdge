@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLenis } from 'lenis/react';
-import { motion, useScroll } from 'motion/react';
 
 const topbarHeight = () => document.querySelector('.topnav')?.offsetHeight || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navbar-height')) || 64;
 
@@ -10,7 +9,6 @@ const SectionNav = ({ sections }) => {
   const [active, setActive] = useState(sections[0]?.id);
   const root = useRef(null);
   const lenis = useLenis();
-  const { scrollYProgress } = useScroll();
   const ids = sections.map((s) => s.id).join('|');
 
   // Publish the navbar and this bar's heights so section anchors can clear both.
@@ -88,7 +86,6 @@ const SectionNav = ({ sections }) => {
           </a>
         ))}
       </div>
-      <motion.span className="an-nav-progress" style={{ scaleX: scrollYProgress }} aria-hidden="true" />
     </nav>
   );
 };

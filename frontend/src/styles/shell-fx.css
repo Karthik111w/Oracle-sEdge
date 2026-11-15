@@ -219,7 +219,7 @@
 
 .sh-err-copy { position: relative; padding-top: 4rem; }
 .empty-state h1.sh-err-title { margin: 0; font-size: clamp(3.4rem, 11vw, 7.5rem); line-height: 0.95; font-weight: 400; letter-spacing: -0.02em; color: var(--text-heading); }
-.sh-err-title em { font-style: italic; color: var(--color-gold); filter: blur(0.5px); }
+.sh-err-title em { font-style: italic; color: var(--color-gold); }
 
 /* ---- Settings ---- */
 .sh-glass {

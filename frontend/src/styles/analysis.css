@@ -644,7 +644,7 @@
   .an-stage { padding: 1.1rem 0.9rem 1.2rem; }
 }
 
-/* ---- Section navigation: glass bar with a progress line ---- */
+/* ---- Section navigation: glass bar; the page's progress line lives in the navbar ---- */
 .an-nav {
   background: color-mix(in srgb, var(--bg-primary) 58%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
@@ -655,21 +655,11 @@
   padding: 0 0.5rem;
   overflow: hidden;
 }
-.an-nav-progress {
-  position: absolute;
-  left: 0.9rem;
-  right: 0.9rem;
-  bottom: 0;
-  height: 2px;
-  background: var(--color-gold);
-  transform-origin: left center;
-  border-radius: 2px;
-}
 .an-nav-track { padding: 0.35rem 0; }
 .an-nav-link { padding: 0.35rem 0.8rem; transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease; }
 .an-nav-link:hover { background: var(--bg-hover); }
 .an-nav-idx { font-size: 0.65rem; color: var(--text-muted); margin-right: 0.15rem; }
-.an-nav-link.is-active { border-color: var(--color-gold); color: var(--color-gold); background: var(--color-gold-subtle); }
+.an-nav-link.is-active { border-color: var(--color-gold); color: var(--color-gold); background: var(--color-gold-subtle); font-weight: 600; box-shadow: inset 0 0 0 1px var(--color-gold); }
 .an-nav-link.is-active .an-nav-idx { color: var(--color-gold); }
 .an-nav-link.is-active::after { content: none; }
 

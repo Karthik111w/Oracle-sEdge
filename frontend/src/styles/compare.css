@@ -1,3 +1,7 @@
+/* Series identity hues, kept clear of the verdict colours. Light twins are at least 4.5:1 on #f6f3ec. */
+:root { --series-1: #a78bfa; --series-2: #38bdf8; --series-3: #f472b6; --series-4: #e8e2d4; }
+[data-theme='light'] { --series-1: #6d28d9; --series-2: #0369a1; --series-3: #be185d; --series-4: #57534e; }
+
 .cmp2-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 2rem; margin-bottom: 1.25rem; }
 .cmp2-add { display: flex; align-items: flex-end; gap: 0.75rem; }
 .cmp2-add .field { width: 16rem; }

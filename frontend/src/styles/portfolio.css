@@ -259,7 +259,7 @@
 /* positions */
 .pf2-table tbody tr { transition: background-color 0.2s ease; }
 .pf2-table tbody tr:hover { background: var(--color-gold-subtle); }
-.pf2-weight-bar span { width: 100%; transform-origin: left; will-change: transform; }
+.pf2-weight-bar span { width: 100%; transform-origin: left; }
 .pfx-dot { display: inline-block; width: 8px; height: 8px; margin-right: 0.5rem; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 0%, transparent); }
 
 /* donut */
@@ -308,7 +308,7 @@
 .pfx-pair-ticker { font-weight: 600; color: var(--text-heading); }
 .pfx-pair-bars { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .pfx-bar { position: relative; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--bg-hover) 70%, transparent); }
-.pfx-bar > span { position: absolute; inset: 0; border-radius: 6px; transform-origin: left; will-change: transform; }
+.pfx-bar > span { position: absolute; inset: 0; border-radius: 6px; transform-origin: left; }
 .pfx-bar--now > span { background: var(--text-muted); opacity: 0.55; }
 .pfx-bar--next > span { background: var(--color-gold); }
 .pfx-bar--next.is-up > span { background: var(--color-success); }

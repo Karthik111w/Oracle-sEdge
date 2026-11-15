@@ -77,10 +77,11 @@ thead .sc-sticky { z-index: 3; }
 
 .sc-sort {
   display: inline-flex; align-items: center; gap: 0.25rem;
+  min-height: 40px; min-width: 44px;
   padding: 0.25rem 0; background: transparent; color: inherit;
   font: inherit; font-weight: 500; cursor: pointer;
 }
-.num .sc-sort { flex-direction: row-reverse; }
+.num .sc-sort { flex-direction: row-reverse; justify-content: flex-start; }
 .sc-sort:hover, .sc-sort.is-active { color: var(--text-heading); }
 
 .sc-company { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; color: inherit; }
@@ -133,8 +134,11 @@ thead .sc-sticky { z-index: 3; }
 .sc-fig-btn:active { transform: scale(0.97); }
 .sc-fig-btn.is-on { border-color: var(--color-gold); background: var(--color-gold-subtle); }
 
-.sc-vbar { position: relative; height: 4px; margin: 0.9rem 0 0; border-radius: 2px; background: var(--border-color); overflow: hidden; }
-.sc-vbar-seg { position: absolute; inset: 0; display: block; width: 100%; cursor: pointer; will-change: transform; }
+.sc-vbar { position: relative; margin: 0.9rem 0 0; }
+.sc-vbar-track { position: relative; height: 4px; border-radius: 2px; background: var(--border-color); overflow: hidden; }
+.sc-vbar-seg { position: absolute; inset: 0; display: block; width: 100%; }
+.sc-vbar-btn { position: absolute; top: -10px; height: 24px; min-width: 8px; padding: 0; border-radius: 4px; background: transparent; cursor: pointer; }
+.sc-vbar-btn:hover { background: color-mix(in srgb, var(--text-primary) 8%, transparent); }
 
 /* ---- view switch ---- */
 .sc-bar-actions { display: flex; align-items: center; gap: 0.75rem; }
@@ -159,6 +163,15 @@ thead .sc-sticky { z-index: 3; }
 .sc-map-axis { fill: var(--text-secondary); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
 .sc-map-quad { fill: var(--text-muted); font-family: var(--font-display); font-style: italic; font-size: 14px; }
 .sc-map-dot { cursor: pointer; }
+.sc-map-bubble { fill: var(--bub); fill-opacity: 0.3; stroke: var(--bub); }
+.sc-map-chev { stroke: var(--bub); opacity: 0.9; }
+.sc-map-tip.is-touch { pointer-events: auto; }
+.sc-map-tip-open { margin-top: 0.3rem; display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 0.8rem; border: 1px solid var(--color-gold); border-radius: 999px; font-size: var(--text-sm); font-weight: 600; color: var(--color-gold); }
+[data-theme='light'] .sc-map-bubble { fill-opacity: 0.45; stroke-width: 1.8; }
+[data-theme='light'] .sc-map-b--Buy { --bub: #047857 !important; }
+[data-theme='light'] .sc-map-b--Watchlist { --bub: #8f600d !important; }
+[data-theme='light'] .sc-map-b--Hold { --bub: #4a5a7a !important; }
+[data-theme='light'] .sc-map-b--Avoid { --bub: #b91c1c !important; }
 .sc-map-label { fill: var(--text-heading); font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; pointer-events: none; }
 .sc-map-tip {
   position: absolute; z-index: 5; pointer-events: none; width: 13.5rem;

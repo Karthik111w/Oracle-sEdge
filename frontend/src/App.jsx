@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useLenis } from 'lenis/react';
@@ -7,15 +7,17 @@ import { ThemeProvider } from './theme';
 import Navbar from './components/Navbar';
 import SmoothScroll from './components/SmoothScroll';
 import Spotlight from './components/fx/Spotlight';
-import HomePage from './pages/HomePage';
-import StockAnalysisPage from './pages/StockAnalysisPage';
-import PortfolioPage from './pages/PortfolioPage';
-import SettingsPage from './pages/SettingsPage';
-import WatchlistPage from './pages/WatchlistPage';
-import ComparePage from './pages/ComparePage';
-import ScreenerPage from './pages/ScreenerPage';
-import ErrorPage from './pages/ErrorPage';
+import LoadingSpinner from './components/LoadingSpinner';
 import CommandPalette from './components/CommandPalette';
+
+const HomePage = lazy(() => import('./pages/HomePage'));
+const StockAnalysisPage = lazy(() => import('./pages/StockAnalysisPage'));
+const PortfolioPage = lazy(() => import('./pages/PortfolioPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const WatchlistPage = lazy(() => import('./pages/WatchlistPage'));
+const ComparePage = lazy(() => import('./pages/ComparePage'));
+const ScreenerPage = lazy(() => import('./pages/ScreenerPage'));
+const ErrorPage = lazy(() => import('./pages/ErrorPage'));
 
 // Thin brass line that sweeps across the top of the viewport on each route change.
 function RouteSweep() {
@@ -64,6 +66,7 @@ function AnimatedRoutes() {
         transition={{ duration: 0.15 }}
         onAnimationStart={scrollTop}
       >
+        <Suspense fallback={<LoadingSpinner />}>
         <Routes location={location}>
           <Route path="/" element={<HomePage />} />
           <Route path="/stock/:ticker" element={<StockAnalysisPage />} />
@@ -74,6 +77,7 @@ function AnimatedRoutes() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<ErrorPage title="Page not found" message="The page you requested does not exist. Try searching for a valid stock ticker." />} />
         </Routes>
+        </Suspense>
       </motion.div>
     </AnimatePresence>
   );

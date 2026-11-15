@@ -1,11 +1,12 @@
 import React from 'react';
 
-// One entry per compared ticker. Colour comes from theme tokens; the dash pattern is a second cue.
+// One entry per compared ticker. Series hues (violet, sky, pink, bone) sit outside the verdict colours
+// (green, brass, steel, red) so a line never reads as a verdict. The dash pattern is a second cue.
 export const SERIES = [
-  { color: 'var(--color-gold)', dash: undefined },
-  { color: 'var(--text-primary)', dash: '6 4' },
-  { color: 'var(--color-success)', dash: '2 3' },
-  { color: 'var(--color-info)', dash: '10 3 2 3' },
+  { color: 'var(--series-1)', dash: undefined },
+  { color: 'var(--series-2)', dash: '6 4' },
+  { color: 'var(--series-3)', dash: '2 3' },
+  { color: 'var(--series-4)', dash: '10 3 2 3' },
 ];
 
 export const SeriesSwatch = ({ index }) => {
