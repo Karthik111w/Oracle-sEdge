@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown, ArrowUp } from 'lucide-react';
+import { motion } from 'motion/react';
+import { ringColor } from '../three/stage';
 import { displayName, formatMoney } from '../home/LensVerdictCard';
 import { pctFromFraction, signedPoints, tone } from './format';
 import { marginText, verdictLabel, verdictTone } from '../../lib/verdict';
@@ -52,8 +54,8 @@ const PositionsTable = ({ positions, totalValue, investor = 'buffett', horizon =
           </tr>
         </thead>
         <tbody>
-          {rows.map((p) => (
-            <tr key={p.ticker}>
+          {rows.map((p, idx) => (
+            <motion.tr key={p.ticker} layout="position" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: Math.min(idx, 8) * 0.05 }}>
               <th scope="row" className="pf2-holding">
                 <Link to={`/stock/${encodeURIComponent(p.ticker)}?investor=${investor}&horizon=${horizon}`} className="pf2-ticker mono">{p.ticker}</Link>
                 {p.name && <span className="pf2-name">{displayName(p.name)}</span>}
@@ -64,7 +66,11 @@ const PositionsTable = ({ positions, totalValue, investor = 'buffett', horizon =
               <td className="num">
                 <span className="pf2-weight">
                   <span className="pf2-weight-bar" aria-hidden="true">
-                    <span style={{ width: `${Math.min(100, Math.max(0, (p.weight || 0) * 100))}%` }} />
+                    <motion.span
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: Math.min(1, Math.max(0, p.weight || 0)) }}
+                      transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.2 + Math.min(idx, 8) * 0.05 }}
+                    />
                   </span>
                   <span className="mono">{pctFromFraction(p.weight)}</span>
                 </span>
@@ -74,9 +80,12 @@ const PositionsTable = ({ positions, totalValue, investor = 'buffett', horizon =
                 {Number.isFinite(p.score) ? Math.round(p.score) : 'n/a'}
                 {p.grade && <span className={`pf2-grade grade-${p.grade}`}> {p.grade}</span>}
               </td>
-              <td className={`tone-${verdictTone(p.classification)}`}>{verdictLabel(p)}</td>
+              <td className={`tone-${verdictTone(p.classification)}`}>
+                <span className="pfx-dot" style={{ background: ringColor(p.classification) }} aria-hidden="true" />
+                {verdictLabel(p)}
+              </td>
               <td className={`mono num ${tone(p.margin_pct)}`}>{marginText(p.margin_pct)}</td>
-            </tr>
+            </motion.tr>
           ))}
         </tbody>
         <tfoot>

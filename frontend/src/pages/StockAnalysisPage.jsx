@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { ArrowLeft, Check, GitCompareArrows, Link2, Star } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { getStockAnalysis } from '../api/client';
 import { cached } from '../api/cache';
 import { cleanTicker, usePrefs, useWatchlist } from '../lib/storage';
@@ -14,6 +14,8 @@ import AIReport from '../components/AIReport';
 import MetricDeck from '../components/MetricDeck';
 import SearchBar from '../components/SearchBar';
 import SegmentedControl from '../components/SegmentedControl';
+import { Reveal, SplitHeading } from '../components/fx';
+import AnalysisHeader from '../components/analysis/Header';
 import SectionNav from '../components/analysis/SectionNav';
 import PriceChart from '../components/analysis/PriceChart';
 import { AboutBlock, KeyStats, VerdictBlock } from '../components/analysis/Overview';
@@ -23,7 +25,6 @@ import SensitivityTable from '../components/analysis/SensitivityTable';
 import TargetCompare from '../components/analysis/TargetCompare';
 import Financials from '../components/analysis/Financials';
 import { finite } from '../components/analysis/format';
-import { displayName, formatMoney } from '../components/home/LensVerdictCard';
 import { LENSES } from '../components/home/lenses';
 import { HORIZON_OPTIONS, LENS_OPTIONS } from '../lib/verdict';
 import '../styles/analysis.css';
@@ -51,28 +52,66 @@ const STOCK_SECTIONS = [
   { id: 'memo', label: 'Memo' },
 ];
 
-function Section({ id, title, lead, children }) {
+// Display heading for each section; the word in `accent` is set in brass italics.
+const HEADINGS = {
+  overview: { text: 'Price and standing', accent: ['standing'] },
+  lenses: { text: 'Six investors, one company', accent: ['company'] },
+  scorecard: { text: 'The scorecard', accent: ['scorecard'] },
+  valuation: { text: 'What it is worth', accent: ['worth'] },
+  financials: { text: 'Years of financials', accent: ['financials'] },
+  risks: { text: 'What could go wrong', accent: ['wrong'] },
+  memo: { text: 'The memo', accent: ['memo'] },
+};
+
+function Section({ id, index, lead, children }) {
+  const h = HEADINGS[id];
   return (
     <section id={id} className="an-section" aria-labelledby={`${id}-heading`}>
       <header className="an-section-head">
-        <h2 id={`${id}-heading`}>{title}</h2>
-        {lead && <p className="an-section-lead">{lead}</p>}
+        <Reveal as="p" y={12} className="eyebrow an-section-eyebrow">
+          <span className="mono">{String(index + 1).padStart(2, '0')}</span> {id}
+        </Reveal>
+        <SplitHeading as="h2" id={`${id}-heading`} text={h.text} accent={h.accent} className="display an-section-title" />
+        {lead && (
+          <Reveal as="p" y={14} delay={0.15} className="an-section-lead">
+            {lead}
+          </Reveal>
+        )}
       </header>
-      {children}
+      <Reveal y={26} className="an-section-body">
+        {children}
+      </Reveal>
     </section>
   );
 }
 
+// Same silhouette as the loaded header: wordmark block on the left, ring on the right.
 function PageSkeleton() {
   return (
     <div className="an-skeleton" aria-hidden="true">
-      <span className="skel an-skel-title" />
-      <span className="skel an-skel-sub" />
+      <div className="an-hero an-skel-hero">
+        <div className="an-id">
+          <span className="skel an-skel-eyebrow" />
+          <span className="skel an-skel-word" />
+          <span className="skel an-skel-sub" />
+          <span className="skel an-skel-price" />
+          <div className="an-actions">
+            <span className="skel an-skel-pill" />
+            <span className="skel an-skel-pill" />
+            <span className="skel an-skel-pill" />
+          </div>
+        </div>
+        <div className="an-stage an-skel-stage">
+          <span className="skel an-skel-ring" />
+          <span className="skel an-skel-verdict" />
+          <span className="skel an-skel-figures" />
+        </div>
+      </div>
+      <span className="skel an-skel-bar" />
       <div className="an-skel-grid">
         <span className="skel an-skel-card" />
         <span className="skel an-skel-card an-skel-card--wide" />
       </div>
-      <span className="skel an-skel-bar" />
     </div>
   );
 }
@@ -175,12 +214,18 @@ const StockAnalysisPage = () => {
 
   if (error) {
     return (
-      <div className="page">
+      <div className="page an-page">
         {topBar}
-        <div className="empty-state" role="alert">
-          <h1>We couldn't analyze {symbol}</h1>
+        <div className="empty-state an-error" role="alert">
+          <p className="eyebrow">No analysis</p>
+          <h1 className="display an-error-title">
+            We couldn&apos;t analyze <em>{symbol}</em>
+          </h1>
           <p className="page-sub">Check the ticker symbol and try again. The server said: {error}</p>
-          <Link to="/" className="btn-solid">Back to home</Link>
+          <div className="an-error-search">
+            <SearchBar placeholder="Try another ticker" />
+          </div>
+          <Link to="/" className="btn-quiet">Back to home</Link>
         </div>
       </div>
     );
@@ -209,50 +254,34 @@ const StockAnalysisPage = () => {
   const fairValue = data.margin?.intrinsic_value ?? dcf?.intrinsic_value;
   const price = data.margin?.current_price ?? sd.current_price;
   const stats = sd.stats || {};
+  const idx = (id) => sections.findIndex((x) => x.id === id);
 
   return (
     <div className={`page page--wide an-page${loading ? ' is-refreshing' : ''}`} aria-busy={loading}>
       {topBar}
 
-      <header className="analysis-head">
-        <div className="analysis-id">
-          <h1>
-            <span className="mono">{sd.ticker}</span>
-            <span className="analysis-name">{displayName(sd.company_name)}</span>
-          </h1>
-          <p className="analysis-meta">
-            <span className="mono analysis-price">{formatMoney(sd.current_price)}</span>
-            {hasChange && (
-              <span className={`mono tone-${change >= 0 ? 'pos' : 'neg'}`}>
-                {change >= 0 ? '+' : ''}
-                {change.toFixed(2)}% today
-              </span>
-            )}
-            <span className="muted">{[sd.sector, sd.industry].filter((x) => x && x !== "Unknown").join(', ')}</span>
-          </p>
-          <div className="an-actions">
-            <button type="button" className={`btn-quiet an-action${watching ? ' is-on' : ''}`} aria-pressed={watching} onClick={() => watchlist.toggle(sd.ticker)}>
-              <Star size={14} aria-hidden="true" fill={watching ? 'currentColor' : 'none'} /> {watching ? 'Watching' : 'Watch'}
-            </button>
-            <Link to={`/compare?tickers=${encodeURIComponent(sd.ticker)}`} className="btn-quiet an-action">
-              <GitCompareArrows size={14} aria-hidden="true" /> Compare
-            </Link>
-            <button type="button" className="btn-quiet an-action" onClick={copyLink}>
-              {copied ? <Check size={14} aria-hidden="true" /> : <Link2 size={14} aria-hidden="true" />} {copied ? 'Copied' : 'Copy link'}
-            </button>
-            <span className="sr-only" role="status">{copied ? 'Link copied to the clipboard' : ''}</span>
-          </div>
-        </div>
-        <div className="analysis-controls">
+      <AnalysisHeader
+        data={data}
+        isEtf={isEtf}
+        hasDcf={hasDcf}
+        watching={watching}
+        onToggleWatch={() => watchlist.toggle(sd.ticker)}
+        copied={copied}
+        onCopy={copyLink}
+        lensLabel={lensLabel}
+      />
+
+      {(
+        <div className="an-controls">
           <SegmentedControl id="investor" label="Investor lens" options={LENS_OPTIONS} value={investor} onChange={handleInvestorSelect} />
           <SegmentedControl id="horizon" label="Horizon" options={HORIZON_OPTIONS} value={horizon} onChange={handleHorizonSelect} tone="teal" />
         </div>
-      </header>
+      )}
 
       {sections.length > 1 && <SectionNav sections={sections} />}
 
       <div className="an-body">
-        <Section id="overview" title="Overview">
+        <Section id="overview" index={idx('overview')}>
           <div className={isEtf ? 'an-overview an-overview--fund' : 'an-overview'}>
             {!isEtf && <VerdictBlock data={data} lensLabel={lensLabel} />}
             <section className="panel an-chart-panel" aria-label={`${sd.ticker} price`}>
@@ -268,11 +297,11 @@ const StockAnalysisPage = () => {
 
         {!isEtf && (
           <>
-            <Section id="lenses" title="Investor lenses" lead="The same company scored six ways. Choose one to switch the scorecard, valuation notes and memo below.">
+            <Section id="lenses" index={idx('lenses')} lead="The same company scored six ways. Choose one to switch the scorecard, valuation notes and memo below.">
               <LensGrid ticker={sd.ticker} horizon={horizon} investor={investor} onSelect={handleInvestorSelect} />
             </Section>
 
-            <Section id="scorecard" title="Scorecard" lead={`How ${sd.ticker} scores on each metric the ${lensLabel} lens weighs.`}>
+            <Section id="scorecard" index={idx('scorecard')} lead={`How ${sd.ticker} scores on each metric the ${lensLabel} lens weighs.`}>
               <div className="analysis-grid">
                 <ScoreCard scorecard={data.scorecard} />
                 <div className="analysis-col">
@@ -282,7 +311,7 @@ const StockAnalysisPage = () => {
               <MetricDeck data={data} ticker={sd.ticker} investor={investor} horizon={horizon} />
             </Section>
 
-            <Section id="valuation" title="Valuation" lead="What the business is worth by the model, what the price assumes, and how sensitive the answer is.">
+            <Section id="valuation" index={idx('valuation')} lead="What the business is worth by the model, what the price assumes, and how sensitive the answer is.">
               {hasDcf ? (
                 <>
                   <div className="analysis-grid an-val-grid">
@@ -308,25 +337,25 @@ const StockAnalysisPage = () => {
               )}
             </Section>
 
-            <Section id="financials" title="Financials" lead="Reported yearly figures from the company's statements.">
+            <Section id="financials" index={idx('financials')} lead="Reported yearly figures from the company's statements.">
               <section className="panel" aria-label="Financials">
                 <Financials financials={sd.financials} />
               </section>
             </Section>
 
-            <Section id="risks" title="Risks">
+            <Section id="risks" index={idx('risks')}>
               <RiskFlags riskData={data.risk} />
             </Section>
           </>
         )}
 
         {etfFlags && (
-          <Section id="risks" title="Risks">
+          <Section id="risks" index={idx('risks')}>
             <RiskFlags riskData={data.risk} />
           </Section>
         )}
 
-        <Section id="memo" title="Memo">
+        <Section id="memo" index={idx('memo')}>
           <AIReport ticker={sd.ticker} investor={investor} horizon={horizon} investorLabel={data.scorecard?.investor_label || lensLabel} />
         </Section>
       </div>

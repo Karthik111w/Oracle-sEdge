@@ -14,11 +14,13 @@ const PERIODS = [
 const tooltipStyle = { background: 'var(--bg-surface-solid)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: 12 };
 const tick = { fill: 'var(--text-muted)', fontSize: 12 };
 
-function ChartLegend({ tickers }) {
+const dimOf = (active, ticker) => (active && active !== ticker ? 0.12 : 1);
+
+function ChartLegend({ tickers, active }) {
   return (
     <ul className="cmp2-legend" aria-label="Chart legend">
       {tickers.map((t) => (
-        <li key={t.ticker}>
+        <li key={t.ticker} className={active && active !== t.ticker ? 'is-dim' : undefined}>
           <SeriesSwatch index={t.index} />
           <span className="mono">{t.ticker}</span>
         </li>
@@ -28,7 +30,7 @@ function ChartLegend({ tickers }) {
 }
 
 // Scorecard metrics as percent of each metric's maximum, one polygon per ticker.
-export function CompareRadar({ items }) {
+export function CompareRadar({ items, active, index = '03' }) {
   const { data, summary } = useMemo(() => {
     const names = [];
     items.forEach(({ d }) =>
@@ -56,7 +58,7 @@ export function CompareRadar({ items }) {
   if (data.length < 3) return null;
   return (
     <section className="cmp2-panel" aria-labelledby="cmp-radar-title">
-      <h2 id="cmp-radar-title">Scorecard shape</h2>
+      <div className="section-head"><span className="eyebrow">{index}</span><h2 id="cmp-radar-title">Scorecard <em>shape</em></h2></div>
       <p className="panel-note">Each metric as a percent of its maximum points under this lens. Further from the centre is stronger.</p>
       <div className="cmp2-radar" role="img" aria-label={`Radar chart of scorecard metrics. ${summary}.`}>
         <ResponsiveContainer width="100%" height="100%">
@@ -65,13 +67,13 @@ export function CompareRadar({ items }) {
             <PolarAngleAxis dataKey="metric" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} />
             <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
             {items.map(({ ticker, index }) => (
-              <Radar key={ticker} name={ticker} dataKey={ticker} stroke={SERIES[index % 4].color} strokeWidth={2} strokeDasharray={SERIES[index % 4].dash} fill={SERIES[index % 4].color} fillOpacity={0.06} isAnimationActive={false} />
+              <Radar key={ticker} name={ticker} dataKey={ticker} stroke={SERIES[index % 4].color} strokeWidth={active === ticker ? 3 : 2} strokeOpacity={dimOf(active, ticker)} strokeDasharray={SERIES[index % 4].dash} fill={SERIES[index % 4].color} fillOpacity={active === ticker ? 0.2 : active ? 0.01 : 0.06} isAnimationActive animationDuration={900} animationEasing="ease-out" />
             ))}
             <Tooltip contentStyle={tooltipStyle} formatter={(v, n) => [Number.isFinite(v) ? `${v}%` : 'n/a', n]} />
           </RadarChart>
         </ResponsiveContainer>
       </div>
-      <ChartLegend tickers={items} />
+      <ChartLegend tickers={items} active={active} />
     </section>
   );
 }
@@ -85,7 +87,7 @@ const dateLabel = (iso, period) => {
 };
 
 // Every ticker rebased to 100 at the first date they all have a price for.
-export function ComparePerformance({ items }) {
+export function ComparePerformance({ items, active, index = '04' }) {
   const [period, setPeriod] = useState('1y');
   const [state, setState] = useState({ status: 'loading', series: {} });
   const key = items.map((i) => i.ticker).join(',');
@@ -131,7 +133,7 @@ export function ComparePerformance({ items }) {
     <section className="cmp2-panel" aria-labelledby="cmp-perf-title">
       <div className="cmp2-panel-head">
         <div>
-          <h2 id="cmp-perf-title">Price performance</h2>
+          <div className="section-head"><span className="eyebrow">{index}</span><h2 id="cmp-perf-title">Price <em>performance</em></h2></div>
           <p className="panel-note">Each price rebased to 100 at the start of the period, so the lines show relative change.</p>
         </div>
         <SegmentedControl id="cmp-period" label="Period" options={PERIODS} value={period} onChange={setPeriod} />
@@ -155,14 +157,14 @@ export function ComparePerformance({ items }) {
               />
               {items.map(({ ticker, index }) =>
                 final[ticker] === undefined ? null : (
-                  <Line key={ticker} type="monotone" dataKey={ticker} stroke={SERIES[index % 4].color} strokeWidth={2} strokeDasharray={SERIES[index % 4].dash} dot={false} connectNulls isAnimationActive={false} />
+                  <Line key={ticker} type="monotone" dataKey={ticker} stroke={SERIES[index % 4].color} strokeWidth={active === ticker ? 3.2 : 2} strokeOpacity={dimOf(active, ticker)} strokeDasharray={SERIES[index % 4].dash} dot={false} connectNulls isAnimationActive animationDuration={900} animationEasing="ease-out" />
                 )
               )}
             </LineChart>
           </ResponsiveContainer>
         </div>
       )}
-      <ChartLegend tickers={items.filter((i) => final[i.ticker] !== undefined)} />
+      <ChartLegend tickers={items.filter((i) => final[i.ticker] !== undefined)} active={active} />
       {failed.length > 0 && state.status === 'ok' && <p className="muted cmp2-note">No price history for {failed.join(', ')}.</p>}
     </section>
   );

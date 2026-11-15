@@ -1,3 +1,4 @@
+import '../../styles/screener.css';
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { getPriceHistory } from '../../api/client';

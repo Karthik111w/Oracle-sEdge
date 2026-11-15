@@ -197,10 +197,145 @@
 @media (max-width: 640px) {
   .pf2-money { grid-template-columns: minmax(0, 1fr); }
   .pf2-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pf2-submit .btn-solid, .pf2-submit .pf2-secondary { flex: 1 1 100%; }
+  .pf2-submit .btn-solid, .pf2-submit .pf2-secondary, .pf2-submit .fx-magnetic { flex: 1 1 100%; }
+  .pf2-submit .fx-magnetic { display: flex; }
+  .pf2-submit .fx-magnetic .btn-solid { width: 100%; }
   .pf2-head-actions { width: 100%; }
   .pf2-watch { flex: 1 1 auto; }
   .pf2-watch select { width: 100%; }
   .pf2-legend li { grid-template-columns: 14px minmax(0, 1fr) auto; }
 }
 .pf2-count { margin: 0.25rem 0 0; }
+
+/* ================= Observatory layer (pfx-) ================= */
+.pfx-head { max-width: 58rem; }
+.pfx-head .eyebrow { margin-bottom: 1rem; }
+.pfx-eyebrow { margin-bottom: 0.6rem; }
+.pfx-section-head { display: flex; flex-direction: column; gap: 0.7rem; margin-bottom: 1.4rem; }
+.pfx-section-head h2 { margin: 0; }
+.pfx-glass {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--text-heading) 4%, transparent), transparent 45%),
+    color-mix(in srgb, var(--bg-surface-solid) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  backdrop-filter: blur(14px) saturate(1.15);
+}
+.pfx-glass .panel-head h2, .pfx-glass .panel-head h3 { font-family: var(--font-display); font-weight: 400; font-size: 1.7rem; letter-spacing: -0.01em; }
+
+/* form */
+.pf2-row-wrap { min-width: 0; }
+.pf2-remove { transition: color 0.2s, background-color 0.2s, transform 0.2s var(--ease-out); }
+.pf2-remove:hover { transform: rotate(90deg); }
+.pf2-remove:active { transform: scale(0.9); }
+.pf2-secondary { transition: border-color 0.2s, background-color 0.2s, transform 0.2s var(--ease-out); }
+.pf2-secondary:hover:not(:disabled) { border-color: var(--color-gold); background: var(--color-gold-subtle); }
+.pf2-secondary:active:not(:disabled) { transform: scale(0.97); }
+.pf2-secondary:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 3px; }
+
+/* empty state with three drifting rings */
+.pf2-empty { position: relative; overflow: hidden; display: grid; gap: 0.5rem; padding: 2rem 2rem 2rem 9.5rem; }
+.pf2-empty h2 { font-family: var(--font-display); font-weight: 400; font-size: 2rem; letter-spacing: -0.01em; }
+.pfx-empty-rings { position: absolute; left: 2rem; top: 50%; width: 5.5rem; height: 5.5rem; transform: translateY(-50%); }
+.pfx-empty-rings i {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--color-gold);
+  border-radius: 50%;
+  opacity: 0.7;
+  animation: pfx-ring 5s ease-in-out infinite;
+}
+.pfx-empty-rings i:nth-child(2) { inset: 16%; animation-delay: -1.2s; opacity: 0.5; }
+.pfx-empty-rings i:nth-child(3) { inset: 32%; animation-delay: -2.4s; opacity: 0.35; }
+@keyframes pfx-ring { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+/* summary tiles */
+.pf2-tile { position: relative; transition: border-color 0.3s var(--ease-out), transform 0.3s var(--ease-out); }
+.pf2-tile::after { content: ''; position: absolute; left: 1rem; right: 1rem; top: 0; height: 2px; background: var(--color-gold); transform: scaleX(0); transform-origin: left; transition: transform 0.5s var(--ease-out); }
+.pf2-tile:hover::after { transform: scaleX(1); }
+.pf2-tile-value { font-size: 1.3rem; letter-spacing: -0.02em; white-space: nowrap; }
+.pf2-tile-sub.tone-pos { color: var(--color-success); }
+.pf2-tile-sub.tone-neg { color: var(--color-danger); }
+
+/* positions */
+.pf2-table tbody tr { transition: background-color 0.2s ease; }
+.pf2-table tbody tr:hover { background: var(--color-gold-subtle); }
+.pf2-weight-bar span { width: 100%; transform-origin: left; will-change: transform; }
+.pfx-dot { display: inline-block; width: 8px; height: 8px; margin-right: 0.5rem; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 0%, transparent); }
+
+/* donut */
+.pfx-sector { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 1.25rem; align-items: center; }
+.pfx-donut { position: relative; width: 13rem; height: 13rem; }
+.pfx-donut svg { width: 100%; height: 100%; overflow: visible; }
+.pfx-donut-track { stroke: var(--bg-hover); opacity: 0.6; }
+.pfx-slice { cursor: pointer; transition: opacity 0.25s ease, stroke-width 0.25s var(--ease-out); }
+.pfx-slice.is-dim { opacity: 0.35 !important; }
+.pfx-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.1rem; pointer-events: none; text-align: center; padding: 0 3.4rem; }
+.pfx-donut-val { font-size: 1.75rem; color: var(--text-heading); }
+.pfx-donut-cap { font-size: var(--text-xs); color: var(--text-muted); line-height: 1.2; max-width: 100%; }
+.pfx-donut-sub { font-size: var(--text-xs); color: var(--text-secondary); }
+.pf2-legend { margin-top: 0; }
+.pf2-legend li { transition: background-color 0.2s, padding 0.25s var(--ease-out); border-radius: 6px; }
+.pf2-legend li.is-active { background: var(--color-gold-subtle); padding-left: 0.5rem; padding-right: 0.5rem; }
+.pf2-legend li.is-active .pf2-legend-name { color: var(--text-heading); }
+
+/* heatmap */
+.pfx-caption { min-height: 3em; }
+.pfx-caption-val { color: var(--color-gold); }
+.pf2-heat th { transition: color 0.2s; }
+.pf2-heat th.is-hl { color: var(--color-gold); }
+.pf2-heat td { transition: transform 0.2s var(--ease-out), box-shadow 0.2s; animation: pfx-cell 0.5s var(--ease-out) both; animation-delay: var(--d, 0ms); cursor: default; }
+.pf2-heat td.is-line { box-shadow: inset 0 0 0 1px var(--border-color-hover); }
+.pf2-heat td.is-hot { transform: scale(1.12); box-shadow: inset 0 0 0 1.5px var(--color-gold); position: relative; z-index: 1; }
+@keyframes pfx-cell { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
+
+/* performance readout */
+.pfx-readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1.5rem; margin-bottom: 0.75rem; font-size: var(--text-sm); color: var(--text-secondary); }
+.pfx-readout-date { min-width: 7.5rem; font-size: var(--text-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-gold); }
+.pfx-readout-item { display: inline-flex; align-items: center; gap: 0.45rem; }
+.pfx-readout-item b { font-size: 1.15rem; font-weight: 500; color: var(--text-heading); }
+.pfx-readout-item b.tone-pos { color: var(--color-success); }
+.pfx-readout-item b.tone-neg { color: var(--color-danger); }
+
+/* optimizer pairs */
+.pfx-pairs-key { display: flex; gap: 1.25rem; margin: 1.25rem 0 0.4rem; font-size: var(--text-xs); color: var(--text-muted); }
+.pfx-pairs-key span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.pfx-key { width: 14px; height: 6px; border-radius: 3px; }
+.pfx-key--now { background: var(--text-muted); opacity: 0.6; }
+.pfx-key--next { background: var(--color-gold); }
+.pfx-pairs { display: flex; flex-direction: column; gap: 0.15rem; list-style: none; padding: 0; margin: 0; }
+.pfx-pair { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr) 5.5rem; gap: 0.9rem; align-items: center; padding: 0.55rem 0.4rem; border-radius: 8px; transition: background-color 0.2s; }
+.pfx-pair:hover { background: var(--color-gold-subtle); }
+.pfx-pair-ticker { font-weight: 600; color: var(--text-heading); }
+.pfx-pair-bars { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.pfx-bar { position: relative; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--bg-hover) 70%, transparent); }
+.pfx-bar > span { position: absolute; inset: 0; border-radius: 6px; transform-origin: left; will-change: transform; }
+.pfx-bar--now > span { background: var(--text-muted); opacity: 0.55; }
+.pfx-bar--next > span { background: var(--color-gold); }
+.pfx-bar--next.is-up > span { background: var(--color-success); }
+.pfx-bar--next.is-down > span { background: var(--color-danger); }
+.pfx-bar em { position: absolute; left: calc(100% + 0.5rem); top: 50%; transform: translateY(-50%); font-style: normal; font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; }
+.pfx-pair-bars { padding-right: 3.2rem; }
+.pfx-pair-delta { text-align: right; font-size: var(--text-xs); color: var(--text-muted); }
+.pfx-pair-delta.is-up { color: var(--color-success); }
+.pfx-pair-delta.is-down { color: var(--color-danger); }
+
+/* trades */
+.pfx-trade td, .pfx-trade th { transition: background-color 0.2s; }
+.pfx-trade--buy { background: color-mix(in srgb, var(--color-success) 8%, transparent); }
+.pfx-trade--sell { background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
+.pfx-trade--buy th:first-child { box-shadow: inset 3px 0 0 var(--color-success); }
+.pfx-trade--sell th:first-child { box-shadow: inset 3px 0 0 var(--color-danger); }
+.pf-table tbody tr.pfx-trade:hover { background: var(--color-gold-subtle); }
+
+@media (max-width: 640px) {
+  .pfx-sector { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .pfx-sector .pf2-legend { width: 100%; }
+  .pf2-empty { padding: 7.5rem 1.25rem 1.5rem; }
+  .pfx-empty-rings { left: 1.25rem; top: 1.25rem; transform: none; width: 4.5rem; height: 4.5rem; }
+  .pfx-pair { grid-template-columns: 3.6rem minmax(0, 1fr) 4rem; gap: 0.5rem; }
+  .pfx-pair-delta { font-size: 0.68rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pfx-empty-rings i, .pf2-heat td { animation: none; }
+  .pf2-remove:hover { transform: none; }
+}

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Magnetic } from './fx';
 import { getMarketConditions, parseBulkHoldings } from '../api/client';
 import { cleanTicker, useWatchlist } from '../lib/storage';
 import TickerAutocomplete from './TickerAutocomplete';
@@ -13,6 +15,10 @@ const ACCOUNT_KEY = 'portfolio_account_value';
 const MAX_HOLDINGS = 50;
 const limitMessage = (extra) => `A portfolio can hold at most ${MAX_HOLDINGS} holdings.${extra ? ` ${extra}` : ''}`;
 
+// Stable row ids let rows animate in and out without their neighbours remounting.
+let rowSeq = 0;
+const uid = () => `r${++rowSeq}`;
+const withIds = (rows) => rows.map((h) => (h.id ? h : { ...h, id: uid() }));
 const BLANK = { ticker: '', shares: '' };
 const EXAMPLE = [
   { ticker: 'AAPL', shares: 10 },
@@ -41,12 +47,12 @@ function initialHoldings() {
   try {
     const parsed = JSON.parse(load(HOLDINGS_KEY));
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed.map((h) => ({ ticker: String(h.ticker || '').toUpperCase(), shares: h.shares === '' || h.shares == null ? '' : Number(h.shares) || 0 }));
+      return parsed.map((h) => ({ id: uid(), ticker: String(h.ticker || '').toUpperCase(), shares: h.shares === '' || h.shares == null ? '' : Number(h.shares) || 0 }));
     }
   } catch {
     // fall through to a blank form
   }
-  return [{ ...BLANK }];
+  return withIds([{ ...BLANK }]);
 }
 
 // Per-row problems, keyed by row index. Rows with neither ticker nor shares are ignored.
@@ -111,7 +117,7 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
   }, [useRecommendations, marketConditions, conditionsLoading, selectedInvestor, selectedHorizon]);
 
   const edit = (next) => {
-    setHoldings(next);
+    setHoldings(withIds(next));
     setErrors({});
     setNotice(null);
   };
@@ -207,7 +213,7 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
       return;
     }
     if (merged > 0) {
-      setHoldings([...list]);
+      setHoldings(withIds([...list]));
       setNotice(`Merged ${merged} duplicate ${merged === 1 ? 'ticker' : 'tickers'}; their shares were added together.`);
     } else {
       setNotice(null);
@@ -225,9 +231,10 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
   const cap = (v) => (v ? v[0].toUpperCase() + v.slice(1) : 'n/a');
 
   return (
-    <section className="panel" aria-labelledby="holdings-title">
+    <section className="panel pfx-glass" aria-labelledby="holdings-title">
       <header className="panel-head">
         <div>
+          <span className="eyebrow pfx-eyebrow">01 Holdings</span>
           <h2 id="holdings-title">Your holdings</h2>
           <p className="panel-note">Saved in this browser. Shares of 0 are allowed for the optimizer, to test a ticker you do not own yet.</p>
         </div>
@@ -265,8 +272,17 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
             <span>Shares</span>
             <span />
           </div>
+          <AnimatePresence initial={false} mode="popLayout">
           {holdings.map((holding, index) => (
-            <div key={index} className="pf2-row-wrap">
+            <motion.div
+              key={holding.id}
+              className="pf2-row-wrap"
+              layout="position"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: 24 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            >
               <div className="pf2-row">
                 <TickerAutocomplete
                   value={holding.ticker}
@@ -295,8 +311,9 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
                   {errors[index]}
                 </p>
               )}
-            </div>
+            </motion.div>
           ))}
+          </AnimatePresence>
           <button type="button" className="btn-quiet pf2-add" onClick={addRow} aria-disabled={atLimit}>
             <Plus size={14} aria-hidden="true" /> Add row
           </button>
@@ -382,9 +399,11 @@ const PortfolioForm = ({ onAnalyze, onOptimize, busy, selectedInvestor = 'buffet
           <button type="button" className="btn-quiet pf2-secondary" disabled={busy} onClick={() => submit('optimize')}>
             Optimize weights
           </button>
-          <button type="submit" className="btn-solid" disabled={busy}>
-            Analyze portfolio
-          </button>
+          <Magnetic>
+            <button type="submit" className="btn-solid" disabled={busy}>
+              Analyze portfolio
+            </button>
+          </Magnetic>
         </div>
       </form>
     </section>

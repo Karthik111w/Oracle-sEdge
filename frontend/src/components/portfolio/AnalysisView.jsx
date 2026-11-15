@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { Reveal } from '../fx';
 import AnalysisSummary from './AnalysisSummary';
 import PositionsTable from './PositionsTable';
 import SectorAllocation from './SectorAllocation';
@@ -47,7 +48,7 @@ const AnalysisView = ({ data, investorLabel, investor, horizon }) => {
         </section>
       )}
 
-      <section className="panel" aria-labelledby="pf2-positions-title">
+      <Reveal as="section" y={24} className="panel" aria-labelledby="pf2-positions-title">
         <header className="panel-head">
           <div>
             <h3 id="pf2-positions-title">Positions</h3>
@@ -55,16 +56,16 @@ const AnalysisView = ({ data, investorLabel, investor, horizon }) => {
           </div>
         </header>
         <PositionsTable positions={positions} totalValue={data.total_value} investor={investor} horizon={horizon} />
-      </section>
+      </Reveal>
 
       <div className="pf2-pair">
-        <section className="panel" aria-labelledby="pf2-sector-title">
+        <Reveal as="section" y={24} className="panel" aria-labelledby="pf2-sector-title">
           <header className="panel-head">
             <h3 id="pf2-sector-title">Sector allocation</h3>
           </header>
           <SectorAllocation sectors={data.sector_allocation || []} />
-        </section>
-        <section className="panel" aria-labelledby="pf2-corr-title">
+        </Reveal>
+        <Reveal as="section" y={24} className="panel" aria-labelledby="pf2-corr-title">
           <header className="panel-head">
             <div>
               <h3 id="pf2-corr-title">Correlation</h3>
@@ -72,10 +73,10 @@ const AnalysisView = ({ data, investorLabel, investor, horizon }) => {
             </div>
           </header>
           <CorrelationHeatmap correlation={data.correlation} />
-        </section>
+        </Reveal>
       </div>
 
-      <section className="panel" aria-labelledby="pf2-perf-title">
+      <Reveal as="section" y={24} className="panel" aria-labelledby="pf2-perf-title">
         <header className="panel-head">
           <div>
             <h3 id="pf2-perf-title">Performance against SPY</h3>
@@ -83,7 +84,7 @@ const AnalysisView = ({ data, investorLabel, investor, horizon }) => {
           </div>
         </header>
         <PerformanceChart performance={data.performance} />
-      </section>
+      </Reveal>
     </div>
   );
 };

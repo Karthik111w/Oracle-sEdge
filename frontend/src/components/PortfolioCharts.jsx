@@ -1,4 +1,6 @@
 import React from 'react';
+import { motion } from 'motion/react';
+import { Reveal } from './fx';
 import { formatMoney } from './home/LensVerdictCard';
 import { pctFromFraction } from './portfolio/format';
 import '../styles/portfolio.css';
@@ -19,26 +21,36 @@ function describeChanges(rows) {
 
 const signed = (v, digits = 2) => `${v > 0 ? '+' : ''}${v.toFixed(digits)}`;
 
-function AllocationBar({ label, rows, field: weightKey }) {
+const EASE = [0.16, 1, 0.3, 1];
+
+// One pair of bars per holding. The target bar starts at the current weight on first draw and
+// moves to the target, and moves again when the strategy changes. Widths come from scaleX only.
+function PairedBars({ rows }) {
+  const max = Math.max(0.01, ...rows.map((r) => Math.max(r.current_weight || 0, r.optimized_weight || 0)));
+  const fill = (w) => Math.min(1, Math.max(0, (w || 0) / max));
   return (
-    <div className="alloc">
-      <span className="alloc-label">{label}</span>
-      <div className="alloc-bar">
-        {!rows.some((r) => r[weightKey] > 0.001) && <span className="alloc-empty muted">All cash</span>}
-        {rows.map((r, i) =>
-          r[weightKey] > 0.001 ? (
-            <span
-              key={r.ticker}
-              className="alloc-seg"
-              style={{ flexGrow: r[weightKey], '--shade': SHADES[i % SHADES.length] }}
-              title={`${r.ticker} ${pctFromFraction(r[weightKey])}`}
-            >
-              {r[weightKey] > 0.08 && <span className="mono">{r.ticker}</span>}
-            </span>
-          ) : null
-        )}
-      </div>
-    </div>
+    <ul className="pfx-pairs" aria-label="Current and target weight for each holding">
+      {rows.map((r) => {
+        const delta = (r.optimized_weight || 0) - (r.current_weight || 0);
+        const dir = Math.abs(delta) < 0.005 ? 'flat' : delta > 0 ? 'up' : 'down';
+        return (
+          <motion.li key={r.ticker} layout="position" transition={{ duration: 0.6, ease: EASE }} className="pfx-pair">
+            <span className="pfx-pair-ticker mono">{r.ticker}</span>
+            <div className="pfx-pair-bars">
+              <div className="pfx-bar pfx-bar--now">
+                <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: fill(r.current_weight) }} transition={{ duration: 0.9, ease: EASE }} />
+                <em className="mono">{pctFromFraction(r.current_weight)}</em>
+              </div>
+              <div className={`pfx-bar pfx-bar--next is-${dir}`}>
+                <motion.span initial={{ scaleX: fill(r.current_weight) }} animate={{ scaleX: fill(r.optimized_weight) }} transition={{ duration: 0.9, ease: EASE, delay: 0.1 }} />
+                <em className="mono">{pctFromFraction(r.optimized_weight)}</em>
+              </div>
+            </div>
+            <span className={`pfx-pair-delta mono is-${dir}`}>{dir === 'flat' ? 'Hold' : `${delta > 0 ? '+' : '-'}${Math.abs(delta * 100).toFixed(1)} pts`}</span>
+          </motion.li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -69,7 +81,7 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
 
   return (
     <div className="pf-results">
-      <section className="panel" aria-labelledby="pf-summary-title">
+      <Reveal as="section" y={24} className="panel pfx-glass" aria-labelledby="pf-summary-title">
         <header className="panel-head">
           <div>
             <h3 id="pf-summary-title">{strategy.label}</h3>
@@ -113,13 +125,14 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
           )}
         </div>
 
-        <div className="alloc-group">
-          <AllocationBar label="Now" rows={rows} field="current_weight" />
-          <AllocationBar label="Target" rows={rows} field="optimized_weight" />
+        <div className="pfx-pairs-key" aria-hidden="true">
+          <span><i className="pfx-key pfx-key--now" />Now</span>
+          <span><i className="pfx-key pfx-key--next" />Target</span>
         </div>
-      </section>
+        <PairedBars rows={rows} />
+      </Reveal>
 
-      <section className="panel" aria-labelledby="pf-trades-title">
+      <Reveal as="section" y={24} className="panel pfx-glass" aria-labelledby="pf-trades-title">
         <header className="panel-head">
           <div>
             <h3 id="pf-trades-title">Rebalancing trades</h3>
@@ -144,8 +157,9 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
               {rows.map((h) => {
                 const trade = h.optimized_shares - h.shares;
                 const change = h.daily_change_pct ?? 0;
+                const side = Math.abs(trade) < 0.005 ? 'hold' : trade > 0 ? 'buy' : 'sell';
                 return (
-                  <tr key={h.ticker}>
+                  <tr key={h.ticker} className={`pfx-trade pfx-trade--${side}`}>
                     <th scope="row" className="mono pf-ticker">{h.ticker}</th>
                     <td className="mono num">{h.scorecard_score != null ? Math.round(h.scorecard_score) : 'n/a'}</td>
                     <td className="mono num">{formatMoney(h.price)}</td>
@@ -154,7 +168,7 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
                     <td className="mono num">{pctFromFraction(h.optimized_weight)}</td>
                     <td className="mono num">{h.shares.toFixed(2)}</td>
                     <td className={`mono num${Math.abs(trade) < 0.005 ? ' muted' : trade > 0 ? ' tone-pos' : ' tone-neg'}`}>
-                      {Math.abs(trade) < 0.005 ? 'Hold' : `${trade > 0 ? 'Buy' : 'Sell'} ${Math.abs(trade).toFixed(2)}`}
+                      {side === 'hold' ? 'Hold' : `${side === 'buy' ? 'Buy' : 'Sell'} ${Math.abs(trade).toFixed(2)}`}
                     </td>
                   </tr>
                 );
@@ -162,7 +176,7 @@ const PortfolioCharts = ({ results, activeStrategy = 'balanced' }) => {
             </tbody>
           </table>
         </div>
-      </section>
+      </Reveal>
     </div>
   );
 };

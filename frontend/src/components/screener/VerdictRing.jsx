@@ -1,3 +1,4 @@
+import '../../styles/screener.css';
 import React from 'react';
 import { motion } from 'motion/react';
 import { ringColor } from '../three/stage';

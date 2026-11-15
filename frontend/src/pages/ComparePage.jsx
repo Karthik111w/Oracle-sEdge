@@ -1,14 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, Plus, X } from 'lucide-react';
+import { CountUp, Reveal, SplitHeading } from '../components/fx';
+import VerdictRing from '../components/screener/VerdictRing';
+import { ringColor } from '../components/three/stage';
 import SegmentedControl from '../components/SegmentedControl';
 import TickerAutocomplete from '../components/TickerAutocomplete';
 import { displayName, formatMoney } from '../components/home/LensVerdictCard';
 import { CompareRadar, ComparePerformance } from '../components/compare/CompareCharts';
 import { useAnalyses } from '../components/compare/useAnalyses';
-import { SeriesSwatch } from '../components/compare/series.jsx';
+import { SERIES, SeriesSwatch } from '../components/compare/series.jsx';
 import { fmtCap, fmtPlain, isNum } from '../components/screener/format';
-import { HORIZON_OPTIONS, LENS_OPTIONS, cleanHorizon, cleanLens, lensLabel, marginText, verdictLabel, verdictTone } from '../lib/verdict';
+import { HORIZON_OPTIONS, LENS_OPTIONS, cleanHorizon, cleanLens, lensLabel, marginText, verdictLabel } from '../lib/verdict';
 import { cleanTicker, usePrefs } from '../lib/storage';
 import '../styles/compare.css';
 
@@ -120,6 +123,9 @@ const ComparePage = () => {
   const [params, setParams] = useSearchParams();
   const [input, setInput] = useState('');
   const [notice, setNotice] = useState(null);
+  const [active, setActive] = useState(null);
+  const hl = (t) => ({ onMouseEnter: () => setActive(t), onMouseLeave: () => setActive(null), onFocus: () => setActive(t), onBlur: () => setActive(null) });
+  const dimClass = (t) => (active && active !== t ? ' is-dim' : '');
 
   const tickers = useMemo(() => {
     if (!params.has('tickers')) return DEFAULT_TICKERS;
@@ -164,8 +170,9 @@ const ComparePage = () => {
 
   return (
     <div className="page page--wide">
-      <header className="page-head">
-        <h1>Compare</h1>
+      <header className="page-head cmp2-head">
+        <span className="eyebrow">Compare</span>
+        <SplitHeading as="h1" text="Side by side" accent={['side']} />
         <p className="page-sub">Two to four stocks, one investor lens and horizon, side by side.</p>
       </header>
 
@@ -191,7 +198,7 @@ const ComparePage = () => {
 
       <ul className="cmp2-chips" aria-label="Tickers in this comparison">
         {all.map(({ ticker, index, state }) => (
-          <li key={ticker} className={state.status === 'error' ? 'is-error' : undefined}>
+          <li key={ticker} className={`${state.status === 'error' ? 'is-error' : ''}${dimClass(ticker)}`} style={{ '--series': SERIES[index % 4].color }} {...hl(ticker)}>
             <SeriesSwatch index={index} />
             <span className="mono">{ticker}</span>
             <button type="button" onClick={() => removeTicker(ticker)} aria-label={`Remove ${ticker}`}>
@@ -206,6 +213,36 @@ const ComparePage = () => {
         <p className="panel-text">Add at least two tickers to compare them.</p>
       ) : (
         <>
+          <div className="section-head cmp2-sec"><span className="eyebrow">01</span><h2>The <em>verdict</em></h2></div>
+          <div className="cmp2-strip" role="list" aria-label="Verdict per ticker">
+            {all.map(({ ticker, index, state }) => (
+              <Reveal key={ticker} delay={index * 0.08} className={`cmp2-vcard${dimClass(ticker)}`} role="listitem" style={{ '--series': SERIES[index % 4].color }} {...hl(ticker)}>
+                {state.status === 'ok' ? (
+                  <>
+                    <VerdictRing score={state.d.scorecard?.total_score} classification={state.d.classification} size={84} stroke={5} label={`${ticker} score ${Math.round(state.d.scorecard?.total_score ?? 0)} of 100`}>
+                      <CountUp value={state.d.scorecard?.total_score} className="cmp2-vscore" />
+                    </VerdictRing>
+                    <div className="cmp2-vtext">
+                      <span className="cmp2-vtick"><SeriesSwatch index={index} /><Link to={`/stock/${ticker}?investor=${investor}&horizon=${horizon}`} className="mono">{ticker}</Link></span>
+                      <span className="cmp2-name">{displayName(state.d.stock_data?.company_name || '')}</span>
+                      <span className="cmp2-vverdict"><i className="sc-dot" style={{ background: ringColor(state.d.classification) }} />{verdictLabel(state.d)}<span className="muted mono">{marginText(state.d.margin?.margin_pct)}</span></span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span className="vr cmp2-vempty" style={{ width: 84, height: 84 }} aria-hidden="true" />
+                    <div className="cmp2-vtext">
+                      <span className="cmp2-vtick"><SeriesSwatch index={index} /><span className="mono">{ticker}</span></span>
+                      <span className="cmp2-name">{state.status === 'error' ? 'Could not load' : 'Scoring'}</span>
+                      {state.status === 'loading' && <span className="skel skel-cell" aria-hidden="true" />}
+                    </div>
+                  </>
+                )}
+              </Reveal>
+            ))}
+          </div>
+
+          <div className="section-head cmp2-sec"><span className="eyebrow">02</span><h2>Number by <em>number</em></h2></div>
           <div className="cmp2-scroll">
             <table className="cmp2-table">
               <caption className="sr-only">Side by side comparison through the {lens} lens, {horizonName}</caption>
@@ -213,7 +250,7 @@ const ComparePage = () => {
                 <tr>
                   <td className="cmp2-sticky" />
                   {all.map(({ ticker, state }) => (
-                    <th key={ticker} scope="col" className="cmp2-colhead">
+                    <th key={ticker} scope="col" className={`cmp2-colhead${dimClass(ticker)}`} {...hl(ticker)}>
                       {state.status === 'ok' ? (
                         <Link to={`/stock/${ticker}?investor=${investor}&horizon=${horizon}`} className="cmp2-stock">
                           <span className="mono cmp2-ticker">{ticker} <ArrowUpRight size={14} aria-hidden="true" /></span>
@@ -237,7 +274,7 @@ const ComparePage = () => {
                     return state.status === 'loading' ? (
                       <td key={ticker}><span className="skel skel-cell" aria-hidden="true" /></td>
                     ) : (
-                      <td key={ticker} className={`cmp2-verdict tone-${verdictTone(state.d?.classification)}`}>{v || 'n/a'}</td>
+                      <td key={ticker} className={`cmp2-verdict${dimClass(ticker)}`} {...hl(ticker)}><span className="cmp2-vcell"><i className="sc-dot" style={{ background: ringColor(state.d?.classification) }} />{v || 'n/a'}</span></td>
                     );
                   })}
                 </tr>
@@ -251,7 +288,7 @@ const ComparePage = () => {
                       const win = bests[row.label]?.has(ticker);
                       const tone = row.tone && isNum(v) ? ` tone-${v >= 0 ? 'pos' : 'neg'}` : '';
                       return (
-                        <td key={ticker} className={`mono cmp2-value${win ? ' is-better' : ''}${tone}`}>
+                        <td key={ticker} className={`mono cmp2-value${win ? ' is-better' : ''}${tone}${dimClass(ticker)}`} {...hl(ticker)}>
                           {isNum(v) ? row.show(v, state.d) : 'n/a'}
                         </td>
                       );
@@ -261,7 +298,7 @@ const ComparePage = () => {
               </tbody>
             </table>
           </div>
-          <p className="cmp2-key">Bold marks the stronger value where higher or lower is clearly better.</p>
+          <p className="cmp2-key">A brass marker and bold type mark the stronger value where higher or lower is clearly better.</p>
           {all.some((x) => x.state.status === 'error') && (
             <p className="inline-error" role="alert">
               Couldn't load {all.filter((x) => x.state.status === 'error').map((x) => x.ticker).join(', ')}. Check the symbol or remove it.
@@ -271,13 +308,13 @@ const ComparePage = () => {
           {items.length >= 2 && (
             <>
               <div className="cmp2-grid">
-                <CompareRadar items={items} />
-                <ComparePerformance items={items} />
+                <CompareRadar items={items} active={active} index="03" />
+                <ComparePerformance items={items} active={active} index="04" />
               </div>
 
               <div className="cmp2-notes">
                 <section>
-                  <h2>How they differ</h2>
+                  <div className="section-head"><span className="eyebrow">05</span><h2>How they <em>differ</em></h2></div>
                   <ul className="plain-list">
                     {differences(items, lens).map((line) => (
                       <li key={line}>{line}</li>
@@ -286,7 +323,7 @@ const ComparePage = () => {
                 </section>
 
                 <section>
-                  <h2>Risk flags</h2>
+                  <div className="section-head"><span className="eyebrow">06</span><h2>Risk <em>flags</em></h2></div>
                   <div className="cmp2-flags">
                     {items.map(({ ticker, d }) => (
                       <div key={ticker}>

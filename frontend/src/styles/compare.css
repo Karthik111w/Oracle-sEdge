@@ -4,7 +4,7 @@
 .cmp2-add input { width: 100%; }
 
 .cmp2-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; margin-bottom: 1.5rem; min-height: 2.2rem; }
-.cmp2-chips li { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0 0.2rem 0 0.8rem; border: 1px solid var(--border-color-hover); border-radius: 999px; font-size: var(--text-sm); color: var(--text-heading); }
+.cmp2-chips li { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0 0.2rem 0 0.8rem; border: 1px solid var(--series, var(--border-color-hover)); background: color-mix(in srgb, var(--series, transparent) 10%, transparent); transition: opacity 0.25s ease; border-radius: 999px; font-size: var(--text-sm); color: var(--text-heading); }
 .cmp2-chips li.is-error { border-color: var(--color-danger); }
 .cmp2-chips button { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; background: transparent; color: var(--text-muted); }
 .cmp2-chips button:hover { color: var(--color-danger); }
@@ -61,3 +61,40 @@ a.cmp2-stock:hover .cmp2-ticker { color: var(--color-gold); }
   .cmp2-ticker { font-size: 1.1rem; }
   .cmp2-radar { height: 300px; }
 }
+
+
+.cmp2-head { display: flex; flex-direction: column; gap: 0.9rem; }
+.cmp2-head h1 { margin: 0; }
+.cmp2-head .page-sub { margin-top: 0; }
+.cmp2-sec { margin-top: 2.5rem; }
+
+.cmp2-chips li.is-dim, .cmp2-legend li.is-dim { opacity: 0.35; }
+.cmp2-legend li { transition: opacity 0.25s ease; }
+
+/* verdict strip */
+.cmp2-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); gap: 0.75rem; }
+.cmp2-vcard { display: flex; align-items: center; gap: 1.1rem; padding: 1.1rem 1.2rem; border: 1px solid var(--border-color); border-top: 2px solid var(--series); border-radius: 16px; background: color-mix(in srgb, var(--bg-surface-solid) 72%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transition: opacity 0.25s ease, border-color 0.25s ease; }
+.cmp2-vcard:hover { border-color: var(--border-color-hover); border-top-color: var(--series); }
+.cmp2-vcard.is-dim { opacity: 0.4; }
+.cmp2-vscore { font-size: 1.7rem; }
+.cmp2-vtext { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; flex: 1; }
+.cmp2-vtick { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 1.2rem; font-weight: 600; }
+.cmp2-vtick a { color: var(--text-heading); }
+.cmp2-vtick a:hover { color: var(--color-gold); }
+.cmp2-vverdict { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.2rem; font-weight: 600; font-size: var(--text-sm); color: var(--text-heading); }
+.cmp2-vempty { border: 5px solid var(--border-color); border-radius: 50%; }
+.cmp2-vcell { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-heading); }
+
+/* highlight: dim other tickers, mark best-in-row */
+.cmp2-table td, .cmp2-table th { transition: opacity 0.25s ease; }
+.cmp2-table .is-dim { opacity: 0.35; }
+.cmp2-value.is-better { position: relative; padding-left: 1.5rem; }
+.cmp2-value.is-better::before { content: ''; position: absolute; left: 0.7rem; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 1px; transform: rotate(45deg); background: var(--color-gold); }
+.cmp2-table tbody tr:hover > * { background: var(--row-hover); }
+.cmp2-notes .section-head, .cmp2-panel .section-head { margin-bottom: 0.9rem; }
+.cmp2-panel .section-head { margin-bottom: 0.5rem; }
+.cmp2-notes { margin-top: 3.5rem; }
+.cmp2-grid { margin-top: 3.5rem; }
+
+@media (max-width: 640px) { .cmp2-vcard { padding: 0.9rem; } }
+@media (prefers-reduced-motion: reduce) { .cmp2-vcard, .cmp2-table td, .cmp2-table th, .cmp2-chips li, .cmp2-legend li { transition: none; } }

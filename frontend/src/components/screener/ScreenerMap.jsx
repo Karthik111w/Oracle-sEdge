@@ -10,7 +10,7 @@ const X_MIN = -150;
 const X_MAX = 100;
 const X_TICKS = [-150, -100, -50, 0, 50, 100];
 const Y_TICKS = [0, 25, 50, 75, 100];
-const PAD = { top: 14, right: 18, bottom: 38, left: 40 };
+const PAD = { top: 40, right: 18, bottom: 38, left: 40 };
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -81,10 +81,10 @@ export default function ScreenerMap({ rows, suffix, stale }) {
           <line x1={zeroX} x2={zeroX} y1={PAD.top} y2={PAD.top + ih} className="sc-map-zero" />
           <text x={zeroX + 6} y={PAD.top + ih - 8} className="sc-map-zero-label">fair value</text>
 
-          <text x={PAD.left + 10} y={PAD.top + 18} className="sc-map-quad">High score, above fair value</text>
-          <text x={PAD.left + iw - 10} y={PAD.top + 18} textAnchor="end" className="sc-map-quad">High score, below fair value</text>
-          <text x={PAD.left + 10} y={PAD.top + ih - 22} className="sc-map-quad">Low score, above fair value</text>
-          <text x={PAD.left + iw - 10} y={PAD.top + ih - 22} textAnchor="end" className="sc-map-quad">Low score, below fair value</text>
+          <text x={PAD.left + 10} y={20} className="sc-map-quad">{narrow ? 'High, above fair value' : 'High score, above fair value'}</text>
+          <text x={PAD.left + iw - 10} y={20} textAnchor="end" className="sc-map-quad">{narrow ? 'High, below fair value' : 'High score, below fair value'}</text>
+          <text x={PAD.left + 10} y={PAD.top + ih - 22} className="sc-map-quad">{narrow ? 'Low, above' : 'Low score, above fair value'}</text>
+          <text x={PAD.left + iw - 10} y={PAD.top + ih - 22} textAnchor="end" className="sc-map-quad">{narrow ? 'Low, below' : 'Low score, below fair value'}</text>
 
           <AnimatePresence>
             {plotted.map(({ r, rad }) => {

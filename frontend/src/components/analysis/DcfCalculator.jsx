@@ -61,7 +61,7 @@ function Slider({ id, label, hint, value, min, max, base, onChange }) {
           aria-valuetext={`${value.toFixed(1)} percent`}
           onChange={(e) => onChange(Number(e.target.value))}
         />
-        <span className={`an-range-tick${atBase ? ' is-here' : ''}`} aria-hidden="true">
+        <span className={`an-range-tick${atBase ? ' is-here' : ''}${tick < 0.14 ? ' is-start' : tick > 0.86 ? ' is-end' : ''}`} aria-hidden="true">
           <span className="an-range-tick-label mono">model {base.toFixed(1)}%</span>
         </span>
       </div>

@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import PortfolioForm from '../components/PortfolioForm';
 import PortfolioCharts from '../components/PortfolioCharts';
 import AnalysisView, { AnalysisSkeleton } from '../components/portfolio/AnalysisView';
+import { Reveal } from '../components/fx';
 import SegmentedControl from '../components/SegmentedControl';
 import { analyzePortfolio, optimizePortfolio } from '../api/client';
 import { HORIZON_OPTIONS, LENS_OPTIONS, lensLabel } from '../lib/verdict';
@@ -80,8 +81,9 @@ const PortfolioPage = () => {
 
   return (
     <div className="page page--wide">
-      <header className="page-head">
-        <h1>Portfolio</h1>
+      <header className="page-head pfx-head">
+        <span className="eyebrow">Portfolio workspace</span>
+        <h1>Your <em>portfolio</em>, read closely</h1>
         <p className="page-sub">
           Check how your holdings fit together, then see how the weights could change for a better return per unit of risk. Positions that score poorly under the chosen lens are held back.
         </p>
@@ -92,10 +94,13 @@ const PortfolioPage = () => {
         <SegmentedControl id="portfolio-horizon" label="Horizon" options={HORIZON_OPTIONS} value={horizon} onChange={handleHorizon} tone="teal" />
       </div>
 
-      <PortfolioForm onAnalyze={handleAnalyze} onOptimize={handleOptimize} busy={busy} selectedInvestor={investor} selectedHorizon={horizon} />
+      <Reveal y={20}>
+        <PortfolioForm onAnalyze={handleAnalyze} onOptimize={handleOptimize} busy={busy} selectedInvestor={investor} selectedHorizon={horizon} />
+      </Reveal>
 
       {nothingYet && (
         <section className="pf2-empty" aria-label="Before the first run">
+          <div className="pfx-empty-rings" aria-hidden="true"><i /><i /><i /></div>
           <h2>Nothing analyzed yet</h2>
           <p>
             Add your holdings above and choose Analyze portfolio for value, risk, sector mix, correlation and a one-year comparison with SPY. Optimize weights suggests a target mix and the trades to reach it.
@@ -105,7 +110,10 @@ const PortfolioPage = () => {
 
       {analysis.status !== 'idle' && (
         <section className="pf2-section" aria-labelledby="pf2-analysis-title" aria-live="polite">
-          <h2 id="pf2-analysis-title" className="pf2-section-title">Analysis</h2>
+          <div className="section-head pfx-section-head">
+            <span className="eyebrow">02 Analysis</span>
+            <h2 id="pf2-analysis-title">How it <em>holds up</em></h2>
+          </div>
           {analysis.status === 'loading' && <AnalysisSkeleton />}
           {analysis.status === 'error' && (
             <p className="inline-error" role="alert">
@@ -118,7 +126,10 @@ const PortfolioPage = () => {
 
       {optimizer.status !== 'idle' && (
         <section className="pf2-section" aria-labelledby="pf2-opt-title" aria-live="polite">
-          <h2 id="pf2-opt-title" className="pf2-section-title">Optimizer</h2>
+          <div className="section-head pfx-section-head">
+            <span className="eyebrow">03 Optimizer</span>
+            <h2 id="pf2-opt-title">A better <em>mix</em></h2>
+          </div>
           {optimizer.status === 'loading' && (
             <div className="pf2-stack-gap" aria-busy="true">
               <p className="panel-note">Fetching two years of daily returns and building the covariance matrix. This can take up to 20 seconds.</p>

@@ -11,7 +11,7 @@ import VerdictBar from '../components/screener/VerdictBar';
 import Num from '../components/screener/Num';
 import { ringColor } from '../components/three/stage';
 import { usePrefs, useWatchlist } from '../lib/storage';
-import { HORIZON_OPTIONS, LENS_OPTIONS, VERDICTS, cleanHorizon, cleanLens, marginText, verdictLabel, verdictTone } from '../lib/verdict';
+import { HORIZON_OPTIONS, LENS_OPTIONS, VERDICTS, cleanHorizon, cleanLens, marginText, verdictLabel } from '../lib/verdict';
 import { ariaSort, makeComparator, nextSort } from '../lib/table';
 import { downloadCsv, fmtCap, fmtPlain, fmtPrice, fmtSigned, isNum, rowsToCsv, toneOf } from '../components/screener/format';
 import '../styles/screener.css';
@@ -191,7 +191,7 @@ const ScreenerPage = () => {
         <p className="page-sub">Rank the tracked universe through any investor lens. Scores, verdicts and fair values follow the lens and horizon you pick.</p>
       </header>
 
-      <Reveal className="sc-figs" aria-label="Summary under the current lens">
+      <Reveal className="sc-figs" role="group" aria-label="Summary under the current lens">
         <div className="sc-fig">
           <span className="sc-fig-label">Companies scored</span>
           <span className="sc-fig-val mono"><Num value={loadingFirst ? NaN : summary.total} /></span>
