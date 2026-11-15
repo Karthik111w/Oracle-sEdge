@@ -8,15 +8,22 @@ Not financial advice. Data comes from Yahoo Finance and can be delayed or incomp
 
 | Page | What it does |
 | --- | --- |
-| Home | Live lens verdicts, index strip, margin-of-safety ranking, top screener ideas |
+| Home | A real-time 3D lens array (each ring coloured by that lens's verdict) travelled by scroll, live verdicts, index strip, margin-of-safety ranking, top screener ideas |
 | Stock analysis (`/stock/:ticker`) | Verdict, price chart against fair value, key statistics, all six lenses, scorecard and trend, DCF calculator with your own assumptions, sensitivity table, reverse DCF, financial charts, risk flags, AI memo |
-| Screener (`/screener`) | About 70 large caps scored per lens, with filters, sorting and CSV export |
+| Screener (`/screener`) | About 70 large caps scored per lens, as a sortable table or an interactive score-versus-margin map, with filters and CSV export |
 | Compare (`/compare`) | Two to four tickers side by side, scorecard radar, rebased price chart |
 | Watchlist (`/watchlist`) | Saved tickers scored through any lens |
 | Portfolio (`/portfolio`) | Positions, sector allocation, correlation, one-year performance against SPY, and a Sharpe-ratio optimizer |
 | Settings | Gemini key and model, default lens and horizon, theme, export and import of saved data |
 
 Press `Ctrl K` (or `⌘K`) anywhere to search tickers.
+
+## Frontend structure
+
+- `src/styles/theme.css` holds the design tokens (ink and paper themes, brass accent, Instrument Serif display face); page styles live beside it in `src/styles/`.
+- `src/components/three/` is the WebGL layer (react-three-fiber). It is lazy-loaded and skipped when WebGL is unavailable or the visitor prefers reduced motion, in which case static rings are shown.
+- `src/components/fx/` is the interaction kit: scroll reveals, split headings, magnetic controls, tilt cards, count-up numbers and the pointer-following light on panels.
+- Verdict colours are the same everywhere: Buy green, Watchlist brass, Hold steel, Avoid red (`ringColor` in `components/three/stage.js`).
 
 ## Run it locally
 

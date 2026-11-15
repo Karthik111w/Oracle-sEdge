@@ -1293,7 +1293,7 @@ a.ranking-row:active { background: var(--border-color); }
 
 .walk-grid--three dd { font-size: 1.05rem; }
 
-/* Keep in sync with PINNED_QUERY in VerdictWalkthrough.jsx */
+/* legacy walkthrough breakpoint */
 @media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
   .walk {
     display: grid;

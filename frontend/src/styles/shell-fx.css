@@ -218,7 +218,7 @@
 @keyframes sh-drift-c { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(4%, 7%); } }
 
 .sh-err-copy { position: relative; padding-top: 4rem; }
-.empty-state h1.sh-err-title { margin: 0; font-size: clamp(3.4rem, 11vw, 7.5rem); line-height: 0.95; font-weight: 400; letter-spacing: -0.02em; color: var(--text-heading); }
+.empty-state h1.sh-err-title { margin: 0; font-size: clamp(4.25rem, 19vw, 8rem); line-height: 0.92; text-wrap: balance; font-weight: 400; letter-spacing: -0.02em; color: var(--text-heading); }
 .sh-err-title em { font-style: italic; color: var(--color-gold); }
 
 /* ---- Settings ---- */
@@ -242,3 +242,6 @@
   .sh-err { overflow-x: visible; }
   .sh-err-rings { right: -7rem; }
 }
+
+/* The 404 rings may extend past the content column on wide screens, but never widen the page. */
+.main-content:has(.sh-err) { overflow-x: clip; }
