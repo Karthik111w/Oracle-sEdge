@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { Menu, Search, Settings, TrendingUp, X } from 'lucide-react';
 import { OPEN_EVENT, isMac, openPalette, useFocusTrap, useScrollLock } from './CommandPalette';
 import '../styles/shell.css';
+import '../styles/shell-fx.css';
 
 const LINKS = [
   { to: '/', label: 'Home' },
@@ -13,6 +14,46 @@ const LINKS = [
   { to: '/watchlist', label: 'Watchlist' },
   { to: '/compare', label: 'Compare' },
 ];
+
+// 2px brass line on the nav's bottom edge that follows page scroll; hidden when the page does not scroll.
+const ScrollProgress = () => {
+  const ref = useRef(null);
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      if (max <= 4) {
+        el.style.opacity = '0';
+        el.style.transform = 'scaleX(0)';
+        return;
+      }
+      const p = Math.min(1, Math.max(0, window.scrollY / max));
+      el.style.opacity = '1';
+      el.style.transform = `scaleX(${p})`;
+    };
+    const queue = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(queue) : null;
+    ro?.observe(document.body);
+    return () => {
+      window.removeEventListener('scroll', queue);
+      window.removeEventListener('resize', queue);
+      ro?.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [pathname]);
+
+  return <span ref={ref} className="sh-progress" aria-hidden="true" />;
+};
 
 const pillSpring = { type: 'spring', stiffness: 500, damping: 40 };
 
@@ -116,6 +157,7 @@ const Navbar = () => {
         </button>
       </div>
 
+      <ScrollProgress />
       {menuOpen && <MobileSheet isActive={isActive} onClose={() => setMenuOpen(false)} />}
     </header>
   );

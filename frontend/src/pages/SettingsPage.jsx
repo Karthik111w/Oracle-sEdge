@@ -5,6 +5,8 @@ import { LENSES } from '../components/home/lenses';
 import { cleanTicker, readJson, usePrefs, writeJson } from '../lib/storage';
 import { useTheme } from '../theme';
 import '../styles/shell.css';
+import '../styles/shell-fx.css';
+import { Reveal } from '../components/fx';
 
 const APPEARANCE_OPTIONS = [
   { value: 'system', label: 'System' },
@@ -214,14 +216,16 @@ const SettingsPage = () => {
   return (
     <div className="page page--narrow">
       <header className="page-head">
-        <h1>Settings</h1>
+        <p className="eyebrow">Settings</p>
+        <h1>Your <em>preferences</em></h1>
         <p className="page-sub">Stored only in this browser.</p>
       </header>
 
-      <section className="panel" aria-labelledby="key-title">
+      <Reveal as="section" className="panel sh-glass" delay={0.0} y={18} aria-labelledby="key-title">
         <header className="panel-head">
           <div>
-            <h2 id="key-title">Gemini API key</h2>
+            <p className="eyebrow">01</p>
+            <h2 id="key-title" className="display">Gemini API key</h2>
             <p className="panel-note">
               Powers the metric explanations and the investor memo on each analysis. The key is sent with those requests only.
             </p>
@@ -273,12 +277,13 @@ const SettingsPage = () => {
           </select>
           <span className="panel-note">If the chosen model isn't available for your key, Gemini 2.5 Flash is used instead.</span>
         </label>
-      </section>
+      </Reveal>
 
-      <section className="panel" aria-labelledby="defaults-title">
+      <Reveal as="section" className="panel sh-glass" delay={0.06} y={18} aria-labelledby="defaults-title">
         <header className="panel-head">
           <div>
-            <h2 id="defaults-title">Defaults</h2>
+            <p className="eyebrow">02</p>
+            <h2 id="defaults-title" className="display">Defaults</h2>
             <p className="panel-note">The lens and horizon used when a page opens, such as the home screener preview.</p>
           </div>
         </header>
@@ -295,22 +300,24 @@ const SettingsPage = () => {
           </label>
           <SegmentedControl id="default-horizon" label="Horizon" options={HORIZON_OPTIONS} value={prefs.horizon} onChange={(horizon) => setPrefs({ horizon })} />
         </div>
-      </section>
+      </Reveal>
 
-      <section className="panel" aria-labelledby="appearance-title">
+      <Reveal as="section" className="panel sh-glass" delay={0.12} y={18} aria-labelledby="appearance-title">
         <header className="panel-head">
           <div>
-            <h2 id="appearance-title">Appearance</h2>
+            <p className="eyebrow">03</p>
+            <h2 id="appearance-title" className="display">Appearance</h2>
             <p className="panel-note">System follows your device's light or dark setting.</p>
           </div>
         </header>
         <SegmentedControl id="appearance" options={APPEARANCE_OPTIONS} value={preference} onChange={setPreference} />
-      </section>
+      </Reveal>
 
- <section className="panel" aria-labelledby="data-title">
+ <Reveal as="section" className="panel sh-glass" delay={0.18} y={18} aria-labelledby="data-title">
         <header className="panel-head">
           <div>
-            <h2 id="data-title">Your data</h2>
+            <p className="eyebrow">04</p>
+            <h2 id="data-title" className="display">Your data</h2>
             <p className="panel-note">
               Your watchlist, portfolio holdings and defaults live in this browser only. Export them to move to another browser. The export never includes your API key.
             </p>
@@ -347,7 +354,7 @@ const SettingsPage = () => {
         <p className={`sh-data-msg${dataMsg?.tone === 'error' ? ' is-error' : ''}`} role="status" aria-live="polite">
           {dataMsg?.text}
         </p>
-      </section>
+      </Reveal>
 
       <p className="settings-flash" role="status" aria-live="polite">
         {status}

@@ -1,6 +1,8 @@
+import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useLenis } from 'lenis/react';
+import './styles/shell-fx.css';
 import { ThemeProvider } from './theme';
 import Navbar from './components/Navbar';
 import SmoothScroll from './components/SmoothScroll';
@@ -14,6 +16,33 @@ import ComparePage from './pages/ComparePage';
 import ScreenerPage from './pages/ScreenerPage';
 import ErrorPage from './pages/ErrorPage';
 import CommandPalette from './components/CommandPalette';
+
+// Thin brass line that sweeps across the top of the viewport on each route change.
+function RouteSweep() {
+  const { pathname } = useLocation();
+  const first = useRef(true);
+  const [run, setRun] = useState(0);
+
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    setRun((n) => n + 1);
+  }, [pathname]);
+
+  if (!run) return null;
+  return (
+    <motion.div
+      key={run}
+      className="sh-sweep"
+      aria-hidden="true"
+      initial={{ scaleX: 0, opacity: 1, transformOrigin: '0% 50%' }}
+      animate={{ scaleX: [0, 0.7, 1], opacity: [1, 1, 0] }}
+      transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1], times: [0, 0.55, 1] }}
+    />
+  );
+}
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -59,6 +88,7 @@ function App() {
           <Spotlight />
           <a href="#main" className="skip-link">Skip to content</a>
           <Navbar />
+          <RouteSweep />
           <CommandPalette />
           <main id="main" className="main-content" tabIndex={-1}>
             <AnimatedRoutes />
